@@ -1,0 +1,12 @@
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+__pycache__/
+*.pyc
+.DS_Store
+data/sources/*.pdf
+data/sources/*.docx
+*.tsbuildinfo
+node_modules/
