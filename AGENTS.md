@@ -23,8 +23,8 @@ Drop PDFs or Google Docs into the Drive folder. The nightly job uploads new/chan
    - `SUPABASE_SECRET_KEY`
    - `OPENAI_API_KEY`
 4. Run `python -m tis_agent sync state` to list currently synced documents.
-5. Use **Google Drive** integration to list files in folder `1P0XZLFtIBivKEx55BjvUZH6_xsWZUDZa`.
-6. For each file (skip subfolders):
+5. Use **Google Drive** integration to list files in folder `1P0XZLFtIBivKEx55BjvUZH6_xsWZUDZa`, **including nested subfolders** (e.g. `Curriculum Guides`). Walk folders recursively.
+6. For each file (skip folder entries themselves, but process files inside them):
    - Compare `id` + `modifiedTime` with synced state from step 4.
    - If missing or `modifiedTime` is newer, download the file:
      - PDF: download as-is

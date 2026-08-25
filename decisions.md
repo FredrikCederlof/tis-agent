@@ -44,3 +44,4 @@ Google Drive folder → Supabase Storage (`tis-ass`) → pgvector sync, with a n
 - Sync tracks `drive_file_id`, `drive_modified_time`, and `content_hash` on `documents`
 - Nightly agent uses Google Drive MCP + `python -m tis_agent sync file ...`
 - Run `sql/002_sync.sql` once after `001_rag.sql`
+- Nested Drive subfolders are in scope (e.g. `Curriculum Guides`). Nightly sync must walk recursively.
