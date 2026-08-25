@@ -35,3 +35,12 @@ Short record of product intent. Change these only with a reason.
 ## Milestone 1
 
 Prove reliable answers over the *Community Handbook 2026–2027* (English PDF), using a WhatsApp-style reply format, with no live WhatsApp.
+
+## Milestone 2
+
+Google Drive folder → Supabase Storage (`tis-ass`) → pgvector sync, with a nightly Cloud Agent at 03:30.
+
+- Drive folder id: `1P0XZLFtIBivKEx55BjvUZH6_xsWZUDZa`
+- Sync tracks `drive_file_id`, `drive_modified_time`, and `content_hash` on `documents`
+- Nightly agent uses Google Drive MCP + `python -m tis_agent sync file ...`
+- Run `sql/002_sync.sql` once after `001_rag.sql`
