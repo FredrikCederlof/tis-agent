@@ -28,9 +28,10 @@ Short record of product intent. Change these only with a reason.
 
 ## Out of scope until later
 
-- Live WhatsApp Business delivery (after answer quality is proven).
+- School-wide production WhatsApp number and Meta business verification.
 - Per-child personalization from a parent profile.
 - Japanese-language sources (first corpus is English).
+- Admin UI for unanswered / low-evidence questions.
 
 ## Milestone 1
 
@@ -45,3 +46,12 @@ Google Drive folder → Supabase Storage (`tis-ass`) → pgvector sync, with a n
 - Nightly agent uses Google Drive MCP + `python -m tis_agent sync file ...`
 - Run `sql/002_sync.sql` once after `001_rag.sql`
 - Nested Drive subfolders are in scope (e.g. `Curriculum Guides`). Nightly sync must walk recursively.
+
+## Milestone 3
+
+WhatsApp test preview via Meta Cloud API test number.
+
+- Webhook: `python -m tis_agent whatsapp` (FastAPI on `:8080`)
+- Flow: inbound WhatsApp text → `answer_question` → Cloud API reply
+- Public URL via tunnel for Meta webhook callback
+- No parent-facing web app

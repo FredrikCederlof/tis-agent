@@ -8,11 +8,11 @@ This repo is separate from the family weekly briefing.
 
 ## Status
 
-Milestone 2: Google Drive → Supabase Storage → nightly vector sync.
+Milestone 3: WhatsApp test preview (Meta Cloud API test number).
 
 ## Setup
 
-1. Copy `.env.example` to `.env` and set `SUPABASE_SECRET_KEY` plus `OPENAI_API_KEY` (`sk-...`).
+1. Copy `.env.example` to `.env` and set `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY` (`sk-...`), and WhatsApp vars.
 2. Run `sql/001_rag.sql` then `sql/002_sync.sql` in the [Supabase SQL Editor](https://supabase.com/dashboard/project/ixjsiwedssgutrmegyzv/sql/new).
 3. Install deps: `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
 4. Drop TIS PDFs/Docs in the [Google Drive knowledge folder](https://drive.google.com/drive/folders/1P0XZLFtIBivKEx55BjvUZH6_xsWZUDZa).
@@ -21,13 +21,17 @@ Milestone 2: Google Drive → Supabase Storage → nightly vector sync.
 
 ```bash
 python -m tis_agent sync state
-python -m tis_agent sync file /path/to/file.pdf \
-  --title "Community Handbook 2026-2027" \
-  --mime-type application/pdf \
-  --drive-id DRIVE_FILE_ID \
-  --modified 2026-08-24T08:35:15Z
 python -m tis_agent ask "What does TIS say about reporting an absence?"
 python -m tis_agent chat
+python -m tis_agent whatsapp   # webhook on http://0.0.0.0:8080/webhook
 ```
+
+### WhatsApp test preview
+
+1. Start webhook: `python -m tis_agent whatsapp`
+2. Expose with a tunnel (Cloudflare Tunnel or ngrok) to `https://YOUR_HOST/webhook`
+3. In Meta App → WhatsApp → Configuration: Callback URL = that URL, Verify token = `WHATSAPP_VERIFY_TOKEN`
+4. Subscribe to the `messages` field
+5. Message the Meta test number from your allowed WhatsApp phone
 
 Nightly sync instructions: see `AGENTS.md`.

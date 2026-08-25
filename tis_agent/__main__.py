@@ -11,7 +11,8 @@ def main() -> None:
             "  python -m tis_agent sync file --title TITLE --mime-type TYPE PATH\n"
             "  python -m tis_agent sync state\n"
             "  python -m tis_agent ask \"When should I report an absence?\"\n"
-            "  python -m tis_agent chat"
+            "  python -m tis_agent chat\n"
+            "  python -m tis_agent whatsapp"
         )
         raise SystemExit(0)
 
@@ -48,6 +49,11 @@ def main() -> None:
             print(f"\nTina: {reply}\n")
             history.append({"role": "user", "content": question})
             history.append({"role": "assistant", "content": reply})
+        return
+    if command == "whatsapp":
+        from tis_agent.whatsapp import main as whatsapp_main
+
+        whatsapp_main()
         return
 
     print(f"Unknown command: {command}")
