@@ -4,30 +4,15 @@ import json
 from dataclasses import dataclass, field
 from datetime import date
 
+from tis_agent.agent_config import load_agent_config, match_fixed_answer
 from tis_agent.analytics import (
     OUTCOME_ERROR,
+    OUTCOME_FIXED_ANSWER,
     OUTCOME_NO_EVIDENCE,
     classify_outcome,
 )
 from tis_agent.clients import embed_texts, make_openai, make_supabase
 from tis_agent.config import Settings, get_settings
-
-SYSTEM_PROMPT = """\
-You are Tina, a Tokyo International School (TIS) information assistant for parents.
-You answer only from the provided TIS document excerpts.
-
-Rules:
-- Reply in the same language as the parent's question (Swedish or English).
-- Be helpful, calm, concise, and practical.
-- Optimize for WhatsApp: short, scannable, most important facts first.
-- Do not invent school policies, dates, times, or procedures.
-- If the excerpts are not enough, say you could not confirm it from official TIS sources.
-- Prefer Confirmed facts stated in the excerpts. If you must lightly interpret, mark it as Inferred.
-- When useful, end with one citation line: "Källa: …" in Swedish or "Source: …" in English.
-- Do not use markdown headings or tables. Plain text and short numbered lists are fine.
-- Do not use markdown bold (**text**) or italics.
-- Today's date is {today}.
-"""
 
 
 def _reply_language(question: str) -> str:
@@ -36,8 +21,8 @@ def _reply_language(question: str) -> str:
     if any(ch in question for ch in "åäöÅÄÖ"):
         return "sv"
     swedish_hints = (
-        " hur ", " vad ", " när ", " var ", " kan ", " jag ", " är ", " och ",
-        " för ", " att ", " om ", " inte ", " skola", " frånvaro", " barn",
+        " hur ", " vad ", " när ", " var ", " vem ", " kan ", " jag ", " är ", " och ",
+        " för ", " att ", " om ", " inte ", " skola", " frånvaro", " barn", " dig ",
     )
     padded = f" {lower} "
     if any(h in padded for h in swedish_hints):
@@ -132,6 +117,18 @@ def answer_question(
 ) -> AnswerResult:
     settings = settings or get_settings()
     language = _reply_language(question)
+    config = load_agent_config(settings)
+
+    fixed = match_fixed_answer(question, config)
+    if fixed:
+        _key, reply = fixed
+        return AnswerResult(
+            reply=reply,
+            language=language,
+            outcome=OUTCOME_FIXED_ANSWER,
+            evidence_count=0,
+            top_similarity=None,
+        )
 
     try:
         evidence = retrieve(settings, question)
@@ -163,7 +160,7 @@ def answer_question(
     messages = [
         {
             "role": "system",
-            "content": SYSTEM_PROMPT.format(today=date.today().isoformat()),
+            "content": config.system_prompt.format(today=date.today().isoformat()),
         }
     ]
     if history:
