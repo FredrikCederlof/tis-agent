@@ -45,10 +45,10 @@ def main() -> None:
                 break
             if not question:
                 break
-            reply = answer_question(question, history=history)
-            print(f"\nTina: {reply}\n")
+            result = answer_question(question, history=history)
+            print(f"\nTina: {result.reply}\n")
             history.append({"role": "user", "content": question})
-            history.append({"role": "assistant", "content": reply})
+            history.append({"role": "assistant", "content": result.reply})
         return
     if command == "whatsapp":
         from tis_agent.whatsapp import main as whatsapp_main

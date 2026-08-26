@@ -12,7 +12,9 @@ from typing import Any
 import httpx
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, Response
 
-from tis_agent.ask import answer_question
+from tis_agent.analytics import OUTCOME_ERROR, log_interaction, resolve_session_id
+from tis_agent.ask import AnswerResult, _reply_language, answer_question
+from tis_agent.config import get_settings
 from tis_agent.whatsapp_config import WhatsAppSettings, get_whatsapp_settings
 
 logger = logging.getLogger("tis_agent.whatsapp")
@@ -125,21 +127,57 @@ def verify_webhook(
     raise HTTPException(status_code=403, detail="Verification failed")
 
 
-def _reply_to_inbound(settings: WhatsAppSettings, sender: str, text: str) -> None:
+def _reply_to_inbound(
+    settings: WhatsAppSettings,
+    sender: str,
+    text: str,
+    *,
+    wa_message_id: str | None = None,
+) -> None:
     """RAG + WhatsApp send — runs after Meta gets a fast 200 ACK."""
     logger.info("Inbound from %s: %s", sender, text[:80])
+    app_settings = get_settings()
+
     try:
-        reply = answer_question(text)
+        result = answer_question(text, settings=app_settings)
     except Exception:
         logger.exception("Tina failed to answer")
-        reply = (
-            "Sorry — I hit a temporary error looking that up. "
-            "Please try again in a moment."
+        result = AnswerResult(
+            reply=(
+                "Sorry — I hit a temporary error looking that up. "
+                "Please try again in a moment."
+            ),
+            language=_reply_language(text),
+            outcome=OUTCOME_ERROR,
+            evidence_count=0,
+            top_similarity=None,
         )
+
     try:
-        send_text(settings, sender, reply)
+        send_text(settings, sender, result.reply)
     except Exception:
         logger.exception("Failed to send WhatsApp reply to %s", sender)
+        return
+
+    try:
+        session_id = resolve_session_id(
+            app_settings, sender, language=result.language
+        )
+        log_interaction(
+            session_id=session_id,
+            wa_from=sender,
+            question=text,
+            reply=result.reply,
+            language=result.language,
+            outcome=result.outcome,
+            evidence_count=result.evidence_count,
+            top_similarity=result.top_similarity,
+            document_titles=result.document_titles,
+            wa_message_id=wa_message_id,
+            settings=app_settings,
+        )
+    except Exception:
+        logger.exception("Failed to log interaction for %s", sender)
 
 
 @app.post("/webhook")
@@ -158,8 +196,14 @@ async def receive_webhook(
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=400, detail="Invalid JSON") from exc
 
-    for _message_id, sender, text in _extract_inbound_messages(payload):
-        background_tasks.add_task(_reply_to_inbound, settings, sender, text)
+    for message_id, sender, text in _extract_inbound_messages(payload):
+        background_tasks.add_task(
+            _reply_to_inbound,
+            settings,
+            sender,
+            text,
+            wa_message_id=message_id,
+        )
 
     return {"status": "ok"}
 

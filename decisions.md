@@ -31,7 +31,16 @@ Short record of product intent. Change these only with a reason.
 - School-wide production WhatsApp number and Meta business verification.
 - Per-child personalization from a parent profile.
 - Japanese-language sources (first corpus is English).
-- Admin UI for unanswered / low-evidence questions.
+- Admin UI for unanswered / low-evidence questions (logging in progress — see Milestone 4).
+
+## Milestone 4 (in progress)
+
+Admin, analytics, and configurable Tina behavior.
+
+- **Phase A:** Log every WhatsApp Q&A to Supabase (`chat_sessions`, `interactions`); 10-minute session rule; classify outcomes (`success`, `no_evidence`, `low_confidence`, `error`). SQL: `sql/003_analytics.sql`.
+- **Phase B (next):** Editable system prompt + fixed answers (who is Tina, operator) from DB.
+- **Phase C:** Admin login + inbox for unanswered questions + basic stats.
+- **Phase D:** Weekly email summary of gaps.
 
 ## Milestone 1
 
