@@ -1,9 +1,14 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date
 
+from tis_agent.analytics import (
+    OUTCOME_ERROR,
+    OUTCOME_NO_EVIDENCE,
+    classify_outcome,
+)
 from tis_agent.clients import embed_texts, make_openai, make_supabase
 from tis_agent.config import Settings, get_settings
 
@@ -62,6 +67,16 @@ class Evidence:
     similarity: float
 
 
+@dataclass(frozen=True)
+class AnswerResult:
+    reply: str
+    language: str
+    outcome: str
+    evidence_count: int
+    top_similarity: float | None
+    document_titles: list[str] = field(default_factory=list)
+
+
 def retrieve(settings: Settings, question: str, *, match_count: int = 8) -> list[Evidence]:
     openai = make_openai(settings)
     supabase = make_supabase(settings)
@@ -114,14 +129,37 @@ def answer_question(
     *,
     settings: Settings | None = None,
     history: list[dict[str, str]] | None = None,
-) -> str:
+) -> AnswerResult:
     settings = settings or get_settings()
-    evidence = retrieve(settings, question)
-    openai = make_openai(settings)
+    language = _reply_language(question)
+
+    try:
+        evidence = retrieve(settings, question)
+    except Exception:
+        return AnswerResult(
+            reply=(
+                "Sorry — I hit a temporary error looking that up. "
+                "Please try again in a moment."
+            ),
+            language=language,
+            outcome=OUTCOME_ERROR,
+            evidence_count=0,
+            top_similarity=None,
+        )
+
+    titles = list(dict.fromkeys(e.document_title for e in evidence))
+    top_sim = max((e.similarity for e in evidence), default=None)
 
     if not evidence:
-        return no_evidence_reply(question)
+        return AnswerResult(
+            reply=no_evidence_reply(question),
+            language=language,
+            outcome=OUTCOME_NO_EVIDENCE,
+            evidence_count=0,
+            top_similarity=None,
+        )
 
+    openai = make_openai(settings)
     messages = [
         {
             "role": "system",
@@ -138,13 +176,39 @@ def answer_question(
     )
     messages.append({"role": "user", "content": user_prompt})
 
-    completion = openai.chat.completions.create(
-        model=settings.chat_model,
-        temperature=0.2,
-        messages=messages,
+    try:
+        completion = openai.chat.completions.create(
+            model=settings.chat_model,
+            temperature=0.2,
+            messages=messages,
+        )
+        reply = (completion.choices[0].message.content or "").strip()
+    except Exception:
+        return AnswerResult(
+            reply=(
+                "Sorry — I hit a temporary error looking that up. "
+                "Please try again in a moment."
+            ),
+            language=language,
+            outcome=OUTCOME_ERROR,
+            evidence_count=len(evidence),
+            top_similarity=top_sim,
+            document_titles=titles,
+        )
+
+    outcome = classify_outcome(
+        evidence_count=len(evidence),
+        top_similarity=top_sim,
     )
-    reply = (completion.choices[0].message.content or "").strip()
-    return reply
+
+    return AnswerResult(
+        reply=reply,
+        language=language,
+        outcome=outcome,
+        evidence_count=len(evidence),
+        top_similarity=top_sim,
+        document_titles=titles,
+    )
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -155,7 +219,7 @@ def main(argv: list[str] | None = None) -> None:
         print('Usage: python -m tis_agent.ask "Your question"')
         raise SystemExit(2)
     question = " ".join(args)
-    print(answer_question(question))
+    print(answer_question(question).reply)
 
 
 if __name__ == "__main__":
