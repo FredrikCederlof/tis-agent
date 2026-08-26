@@ -4,6 +4,9 @@ import hashlib
 import hmac
 import json
 import logging
+import time
+from collections import OrderedDict
+from threading import Lock
 from typing import Any
 
 import httpx
@@ -18,6 +21,27 @@ logging.basicConfig(level=logging.INFO)
 GRAPH_API_VERSION = "v21.0"
 
 app = FastAPI(title="Tina WhatsApp webhook", docs_url=None, redoc_url=None)
+
+# Meta may retry webhooks; skip duplicate message IDs within this TTL.
+_SEEN_MESSAGE_TTL_S = 24 * 60 * 60
+_SEEN_MESSAGE_MAX = 5000
+_seen_message_ids: OrderedDict[str, float] = OrderedDict()
+_seen_lock = Lock()
+
+
+def _mark_message_seen(message_id: str) -> bool:
+    """Return True if this message was already handled (duplicate webhook)."""
+    now = time.time()
+    with _seen_lock:
+        expired = [mid for mid, ts in _seen_message_ids.items() if now - ts > _SEEN_MESSAGE_TTL_S]
+        for mid in expired:
+            _seen_message_ids.pop(mid, None)
+        if message_id in _seen_message_ids:
+            return True
+        _seen_message_ids[message_id] = now
+        while len(_seen_message_ids) > _SEEN_MESSAGE_MAX:
+            _seen_message_ids.popitem(last=False)
+        return False
 
 
 def _verify_signature(app_secret: str, body: bytes, signature_header: str | None) -> bool:
@@ -55,19 +79,32 @@ def send_text(settings: WhatsAppSettings, to: str, body: str) -> None:
         response.raise_for_status()
 
 
-def _extract_inbound_messages(payload: dict[str, Any]) -> list[tuple[str, str]]:
-    """Return list of (wa_id, text) for inbound user text messages."""
-    messages: list[tuple[str, str]] = []
+def _extract_inbound_messages(payload: dict[str, Any]) -> list[tuple[str, str, str]]:
+    """Return list of (message_id, wa_id, text) for inbound user text messages."""
+    if payload.get("object") != "whatsapp_business_account":
+        return []
+
+    messages: list[tuple[str, str, str]] = []
     for entry in payload.get("entry") or []:
         for change in entry.get("changes") or []:
+            if change.get("field") not in (None, "messages"):
+                continue
             value = change.get("value") or {}
+            # Status/delivery updates — not user questions.
+            if value.get("statuses") and not value.get("messages"):
+                continue
             for msg in value.get("messages") or []:
                 if msg.get("type") != "text":
                     continue
+                message_id = msg.get("id")
                 text = ((msg.get("text") or {}).get("body") or "").strip()
                 sender = msg.get("from")
-                if text and sender:
-                    messages.append((sender, text))
+                if not message_id or not text or not sender:
+                    continue
+                if _mark_message_seen(message_id):
+                    logger.info("Skipping duplicate webhook for message %s", message_id)
+                    continue
+                messages.append((message_id, sender, text))
     return messages
 
 
@@ -121,7 +158,7 @@ async def receive_webhook(
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=400, detail="Invalid JSON") from exc
 
-    for sender, text in _extract_inbound_messages(payload):
+    for _message_id, sender, text in _extract_inbound_messages(payload):
         background_tasks.add_task(_reply_to_inbound, settings, sender, text)
 
     return {"status": "ok"}

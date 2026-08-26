@@ -12,16 +12,44 @@ You are Tina, a Tokyo International School (TIS) information assistant for paren
 You answer only from the provided TIS document excerpts.
 
 Rules:
+- Reply in the same language as the parent's question (Swedish or English).
 - Be helpful, calm, concise, and practical.
 - Optimize for WhatsApp: short, scannable, most important facts first.
 - Do not invent school policies, dates, times, or procedures.
 - If the excerpts are not enough, say you could not confirm it from official TIS sources.
 - Prefer Confirmed facts stated in the excerpts. If you must lightly interpret, mark it as Inferred.
-- When useful, end with a single Source line naming the document and page(s).
+- When useful, end with one citation line: "Källa: …" in Swedish or "Source: …" in English.
 - Do not use markdown headings or tables. Plain text and short numbered lists are fine.
 - Do not use markdown bold (**text**) or italics.
 - Today's date is {today}.
 """
+
+
+def _reply_language(question: str) -> str:
+    """Rough language tag for templated replies."""
+    lower = question.lower()
+    if any(ch in question for ch in "åäöÅÄÖ"):
+        return "sv"
+    swedish_hints = (
+        " hur ", " vad ", " när ", " var ", " kan ", " jag ", " är ", " och ",
+        " för ", " att ", " om ", " inte ", " skola", " frånvaro", " barn",
+    )
+    padded = f" {lower} "
+    if any(h in padded for h in swedish_hints):
+        return "sv"
+    return "en"
+
+
+def no_evidence_reply(question: str) -> str:
+    if _reply_language(question) == "sv":
+        return (
+            "Jag kunde inte hitta ett officiellt TIS-dokument som svarar på det.\n\n"
+            "Källa: ingen träff."
+        )
+    return (
+        "I couldn't find an official TIS source that answers that.\n\n"
+        "Source: none found."
+    )
 
 
 @dataclass(frozen=True)
@@ -92,10 +120,7 @@ def answer_question(
     openai = make_openai(settings)
 
     if not evidence:
-        return (
-            "I couldn’t find an official TIS source that answers that.\n\n"
-            "Source: none found."
-        )
+        return no_evidence_reply(question)
 
     messages = [
         {
