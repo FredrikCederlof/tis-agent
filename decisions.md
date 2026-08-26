@@ -51,7 +51,8 @@ Google Drive folder → Supabase Storage (`tis-ass`) → pgvector sync, with a n
 
 WhatsApp test preview via Meta Cloud API test number.
 
-- Webhook: `python -m tis_agent whatsapp` (FastAPI on `:8080`)
+- Webhook: `python -m tis_agent whatsapp` (FastAPI; local `:8080`, Railway uses `$PORT`)
 - Flow: inbound WhatsApp text → `answer_question` → Cloud API reply
-- Public URL via tunnel for Meta webhook callback
+- Production-style hosting: Railway (stable HTTPS for Meta). Local cloudflared only for ad-hoc debug.
+- Nightly Drive sync remains on Cursor Cloud Agents, not Railway.
 - No parent-facing web app
