@@ -7,7 +7,7 @@ import logging
 from typing import Any
 
 import httpx
-from fastapi import FastAPI, HTTPException, Query, Request, Response
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, Response
 
 from tis_agent.ask import answer_question
 from tis_agent.whatsapp_config import WhatsAppSettings, get_whatsapp_settings
@@ -88,8 +88,28 @@ def verify_webhook(
     raise HTTPException(status_code=403, detail="Verification failed")
 
 
+def _reply_to_inbound(settings: WhatsAppSettings, sender: str, text: str) -> None:
+    """RAG + WhatsApp send — runs after Meta gets a fast 200 ACK."""
+    logger.info("Inbound from %s: %s", sender, text[:80])
+    try:
+        reply = answer_question(text)
+    except Exception:
+        logger.exception("Tina failed to answer")
+        reply = (
+            "Sorry — I hit a temporary error looking that up. "
+            "Please try again in a moment."
+        )
+    try:
+        send_text(settings, sender, reply)
+    except Exception:
+        logger.exception("Failed to send WhatsApp reply to %s", sender)
+
+
 @app.post("/webhook")
-async def receive_webhook(request: Request) -> dict[str, str]:
+async def receive_webhook(
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> dict[str, str]:
     settings = get_whatsapp_settings()
     body = await request.body()
     signature = request.headers.get("X-Hub-Signature-256")
@@ -101,21 +121,8 @@ async def receive_webhook(request: Request) -> dict[str, str]:
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=400, detail="Invalid JSON") from exc
 
-    # Always ack quickly; process inbound text messages inline for MVP preview.
     for sender, text in _extract_inbound_messages(payload):
-        logger.info("Inbound from %s: %s", sender, text[:80])
-        try:
-            reply = answer_question(text)
-        except Exception:
-            logger.exception("Tina failed to answer")
-            reply = (
-                "Sorry — I hit a temporary error looking that up. "
-                "Please try again in a moment."
-            )
-        try:
-            send_text(settings, sender, reply)
-        except Exception:
-            logger.exception("Failed to send WhatsApp reply to %s", sender)
+        background_tasks.add_task(_reply_to_inbound, settings, sender, text)
 
     return {"status": "ok"}
 
