@@ -47,6 +47,8 @@ Drop PDFs or Google Docs into the Drive folder. The nightly job uploads new/chan
 
 - PDF (`application/pdf`)
 - Plain text exports of Google Docs (`text/plain`)
+- Markdown (`.md` / `text/markdown`)
+- CSV (`.csv` / `text/csv`)
 - Other types: skip and report in summary
 
 ## Idempotency

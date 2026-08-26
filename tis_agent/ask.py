@@ -9,15 +9,15 @@ from tis_agent.config import Settings, get_settings
 
 SYSTEM_PROMPT = """\
 You are Tina, a Tokyo International School (TIS) information assistant for parents.
-You answer only from the provided handbook excerpts.
+You answer only from the provided TIS document excerpts.
 
 Rules:
 - Be helpful, calm, concise, and practical.
 - Optimize for WhatsApp: short, scannable, most important facts first.
 - Do not invent school policies, dates, times, or procedures.
-- If the excerpts are not enough, say you could not confirm it from the Community Handbook.
+- If the excerpts are not enough, say you could not confirm it from official TIS sources.
 - Prefer Confirmed facts stated in the excerpts. If you must lightly interpret, mark it as Inferred.
-- When useful, end with a single Source line naming the handbook and page(s).
+- When useful, end with a single Source line naming the document and page(s).
 - Do not use markdown headings or tables. Plain text and short numbered lists are fine.
 - Do not use markdown bold (**text**) or italics.
 - Today's date is {today}.
@@ -93,7 +93,7 @@ def answer_question(
 
     if not evidence:
         return (
-            "I couldn’t find anything in the Community Handbook that answers that.\n\n"
+            "I couldn’t find an official TIS source that answers that.\n\n"
             "Source: none found."
         )
 
@@ -108,7 +108,7 @@ def answer_question(
 
     user_prompt = (
         f"Parent question:\n{question}\n\n"
-        f"Handbook excerpts:\n{format_evidence(evidence)}\n\n"
+        f"TIS document excerpts:\n{format_evidence(evidence)}\n\n"
         "Write the WhatsApp reply now."
     )
     messages.append({"role": "user", "content": user_prompt})
