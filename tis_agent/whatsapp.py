@@ -121,13 +121,16 @@ async def receive_webhook(request: Request) -> dict[str, str]:
 
 
 def main() -> None:
+    import os
+
     import uvicorn
 
     get_whatsapp_settings()  # fail fast if misconfigured
+    port = int(os.environ.get("PORT", "8080"))
     uvicorn.run(
         "tis_agent.whatsapp:app",
         host="0.0.0.0",
-        port=8080,
+        port=port,
         reload=False,
     )
 
