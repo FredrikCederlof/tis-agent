@@ -38,8 +38,8 @@ Short record of product intent. Change these only with a reason.
 Admin, analytics, and configurable Tina behavior.
 
 - **Phase A:** Log every WhatsApp Q&A to Supabase (`chat_sessions`, `interactions`); 10-minute session rule; classify outcomes (`success`, `no_evidence`, `low_confidence`, `error`). SQL: `sql/003_analytics.sql`.
-- **Phase B (next):** Editable system prompt + fixed answers (who is Tina, operator) from DB.
-- **Phase C:** Admin login + inbox for unanswered questions + basic stats.
+- **Phase B:** Editable system prompt + fixed answers (who is Tina, operator) from DB. SQL: `sql/004_agent_config.sql`.
+- **Phase C (next):** Admin login + inbox for unanswered questions + basic stats.
 - **Phase D:** Weekly email summary of gaps.
 
 ## Milestone 1
