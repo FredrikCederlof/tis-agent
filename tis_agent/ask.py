@@ -12,8 +12,9 @@ from tis_agent.analytics import (
     OUTCOME_NO_EVIDENCE,
     classify_outcome,
 )
-from tis_agent.reply_format import format_whatsapp_reply, strip_empty_source_line
+from tis_agent.clients import embed_texts, make_openai, make_supabase
 from tis_agent.config import Settings, get_settings
+from tis_agent.reply_format import format_whatsapp_reply, strip_empty_source_line
 
 
 def _reply_language(question: str) -> str:
