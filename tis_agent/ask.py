@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass, field
 from datetime import date
 
@@ -15,6 +16,20 @@ from tis_agent.analytics import (
 from tis_agent.clients import embed_texts, make_openai, make_supabase
 from tis_agent.config import Settings, get_settings
 from tis_agent.reply_format import format_whatsapp_reply, strip_empty_source_line
+
+
+def _normalize_retrieval_query(question: str) -> str:
+    """Light spelling/spacing fixes so embeddings match handbook wording better."""
+    text = question.strip()
+    replacements = (
+        (r"\bschoolbuses?\b", "school bus"),
+        (r"\bschool-bus\b", "school bus"),
+        (r"\bskolbussen\b", "skolbuss"),
+        (r"\bstrart\b", "start"),
+    )
+    for pattern, repl in replacements:
+        text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
+    return text
 
 
 def _reply_language(question: str) -> str:
@@ -61,7 +76,8 @@ class AnswerResult:
 def retrieve(settings: Settings, question: str, *, match_count: int = 8) -> list[Evidence]:
     openai = make_openai(settings)
     supabase = make_supabase(settings)
-    query_embedding = embed_texts(openai, settings.embedding_model, [question])[0]
+    query = _normalize_retrieval_query(question)
+    query_embedding = embed_texts(openai, settings.embedding_model, [query])[0]
     response = supabase.rpc(
         "match_chunks",
         {

@@ -19,7 +19,7 @@ export function ConfigForm({
   );
   const [strictGrounding, setStrictGrounding] = useState(config.strict_grounding ?? true);
   const [similarityThreshold, setSimilarityThreshold] = useState(
-    String(config.similarity_threshold ?? 0.45),
+    String(config.similarity_threshold ?? 0.40),
   );
   const [noEvidenceMessage, setNoEvidenceMessage] = useState(
     config.no_evidence_message?.replace(/\n\nSource: none found\.?\s*$/i, "") ??
@@ -105,7 +105,7 @@ export function ConfigForm({
             value={similarityThreshold}
             onChange={(e) => setSimilarityThreshold(e.target.value)}
           />
-          <p className="hint">Default 0.45. Higher = stricter (fewer answers). Real TIS matches often score 0.45–0.65.</p>
+          <p className="hint">Default 0.40. Higher = stricter (fewer answers). Real TIS matches often score 0.40–0.65.</p>
         </div>
         <div>
           <label className="label" htmlFor="no-evidence">

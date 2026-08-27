@@ -91,6 +91,11 @@ function LoginForm() {
               This email is not authorized for admin access.
             </p>
           )}
+          {searchParams.get("error") === "misconfigured" && (
+            <p className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-sm text-tis-danger">
+              Admin is missing Supabase environment variables on this deployment.
+            </p>
+          )}
 
           {sent ? (
             <p className="mt-6 rounded-xl bg-emerald-50 px-3 py-3 text-sm font-medium text-tis-success">
