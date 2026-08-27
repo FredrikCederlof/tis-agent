@@ -10,6 +10,7 @@ def main() -> None:
             "  python -m tis_agent ingest\n"
             "  python -m tis_agent sync file --title TITLE --mime-type TYPE PATH\n"
             "  python -m tis_agent sync state\n"
+            "  python -m tis_agent sync web\n"
             "  python -m tis_agent ask \"When should I report an absence?\"\n"
             "  python -m tis_agent chat\n"
             "  python -m tis_agent whatsapp"
