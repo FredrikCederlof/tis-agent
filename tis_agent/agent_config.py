@@ -36,7 +36,9 @@ DEFAULT_NO_EVIDENCE_MESSAGE = (
     "I couldn't find an official TIS source that answers that."
 )
 
-DEFAULT_SIMILARITY_THRESHOLD = 0.72
+# text-embedding-3-small scores for real TIS matches often land ~0.45–0.65;
+# 0.72 was only useful as a "strong success" analytics bar and blocked almost all answers.
+DEFAULT_SIMILARITY_THRESHOLD = 0.45
 DEFAULT_STRICT_GROUNDING = True
 
 DEFAULT_FIXED_ANSWERS: list[dict[str, Any]] = [

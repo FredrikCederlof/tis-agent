@@ -4,7 +4,7 @@
 
 alter table agent_config
   add column if not exists strict_grounding boolean not null default true,
-  add column if not exists similarity_threshold float not null default 0.72,
+  add column if not exists similarity_threshold float not null default 0.45,
   add column if not exists no_evidence_message text not null default
     'I couldn''t find an official TIS source that answers that.
 
