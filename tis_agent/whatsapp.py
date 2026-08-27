@@ -12,7 +12,12 @@ from typing import Any
 import httpx
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, Response
 
-from tis_agent.analytics import OUTCOME_ERROR, log_interaction, resolve_session_id
+from tis_agent.analytics import (
+    OUTCOME_ERROR,
+    claim_whatsapp_message,
+    log_interaction,
+    resolve_session_id,
+)
 from tis_agent.ask import AnswerResult, _reply_language, answer_question
 from tis_agent.config import get_settings
 from tis_agent.whatsapp_config import WhatsAppSettings, get_whatsapp_settings
@@ -24,7 +29,8 @@ GRAPH_API_VERSION = "v21.0"
 
 app = FastAPI(title="Tina WhatsApp webhook", docs_url=None, redoc_url=None)
 
-# Meta may retry webhooks; skip duplicate message IDs within this TTL.
+# Meta may retry webhooks; in-memory dedup is a fast path (DB dedup survives redeploys).
+_STALE_MESSAGE_MAX_AGE_S = 24 * 3600
 _SEEN_MESSAGE_TTL_S = 24 * 60 * 60
 _SEEN_MESSAGE_MAX = 5000
 _seen_message_ids: OrderedDict[str, float] = OrderedDict()
@@ -103,6 +109,19 @@ def _extract_inbound_messages(payload: dict[str, Any]) -> list[tuple[str, str, s
                 sender = msg.get("from")
                 if not message_id or not text or not sender:
                     continue
+                msg_ts = msg.get("timestamp")
+                if msg_ts is not None:
+                    try:
+                        age_s = time.time() - int(msg_ts)
+                        if age_s > _STALE_MESSAGE_MAX_AGE_S:
+                            logger.info(
+                                "Skipping stale WhatsApp message %s (age %.0fh)",
+                                message_id,
+                                age_s / 3600,
+                            )
+                            continue
+                    except (TypeError, ValueError):
+                        pass
                 if _mark_message_seen(message_id):
                     logger.info("Skipping duplicate webhook for message %s", message_id)
                     continue
@@ -135,6 +154,11 @@ def _reply_to_inbound(
     wa_message_id: str | None = None,
 ) -> None:
     """RAG + WhatsApp send — runs after Meta gets a fast 200 ACK."""
+    if wa_message_id and not claim_whatsapp_message(
+        wa_message_id, sender, text, settings=get_settings()
+    ):
+        return
+
     logger.info("Inbound from %s: %s", sender, text[:80])
     app_settings = get_settings()
 
