@@ -27,6 +27,8 @@ Open http://localhost:3000 — sign in with an email listed in `ADMIN_EMAILS`.
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable key from Supabase)
    - `ADMIN_EMAILS` (comma-separated staff emails)
+   - `NEXT_PUBLIC_TINA_API_URL` (Railway app URL)
+   - `ADMIN_SYNC_SECRET` (same secret as Railway `ADMIN_SYNC_SECRET`)
 3. Add the Vercel URL to Supabase Auth redirect URLs.
 
 WhatsApp webhook stays on Railway; admin is a separate app.
@@ -37,4 +39,5 @@ WhatsApp webhook stays on Railway; admin is a separate app.
 |-------|---------|
 | `/` | Analytics — sessions, success rate, gaps (7 days) |
 | `/config` | System prompt, fixed answers, strict grounding policy |
+| `/sync` | Manual web & calendar sync + document list |
 | `/inbox` | Unanswered questions — mark reviewed |

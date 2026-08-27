@@ -109,6 +109,22 @@ def main(argv: list[str] | None = None) -> None:
     file_cmd.add_argument("--modified")
 
     sub.add_parser("state", help="Show synced document metadata.")
+
+    web_cmd = sub.add_parser("web", help="Sync configured public web/calendar sources.")
+    web_cmd.add_argument(
+        "--url",
+        help="Sync one URL instead of the default source list.",
+    )
+    web_cmd.add_argument(
+        "--title",
+        help="Title when using --url (required with --url).",
+    )
+    web_cmd.add_argument(
+        "--source-type",
+        default="web",
+        help="Source type metadata when using --url.",
+    )
+
     sub.add_parser("local-handbook", help="Re-sync the local handbook PDF (legacy).")
 
     args = parser.parse_args(argv)
@@ -145,6 +161,26 @@ def main(argv: list[str] | None = None) -> None:
             drive_modified_time=args.modified,
         )
         print(json.dumps(asdict(result), indent=2))
+        return
+
+    if args.command == "web":
+        from dataclasses import asdict as dc_asdict
+        from tis_agent.web_sync import WebSyncResult, sync_default_web_sources, sync_web_source
+
+        if args.url:
+            if not args.title:
+                raise SystemExit("--title is required with --url")
+            source = {
+                "title": args.title,
+                "url": args.url,
+                "source_type": args.source_type,
+            }
+            if args.url.endswith(".ics"):
+                source["kind"] = "ics"
+            results = [sync_web_source(settings, source)]
+        else:
+            results = sync_default_web_sources(settings)
+        print(json.dumps([dc_asdict(r) for r in results], indent=2))
         return
 
 

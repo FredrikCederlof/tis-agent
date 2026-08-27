@@ -51,6 +51,18 @@ Drop PDFs or Google Docs into the Drive folder. The nightly job uploads new/chan
 - CSV (`.csv` / `text/csv`)
 - Other types: skip and report in summary
 
+## Web and calendar sources
+
+Public URLs can be synced into Supabase (same vector pipeline as Drive files):
+
+```bash
+python -m tis_agent sync web
+```
+
+Default sources: TIS Tech Portal (Google Sites crawl), parent Google Calendar (iCal), school uniform page.
+
+Re-run after the school updates the calendar or web pages. Calendar feed uses events from 30 days ago through 1 year ahead.
+
 ## Idempotency
 
 Re-running sync on an unchanged file should print `"status": "skipped"`.

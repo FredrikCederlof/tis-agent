@@ -22,6 +22,9 @@ from tis_agent.ask import AnswerResult, _reply_language, answer_question
 from tis_agent.config import get_settings
 from tis_agent.whatsapp_config import WhatsAppSettings, get_whatsapp_settings
 
+import os
+from dataclasses import asdict
+
 logger = logging.getLogger("tis_agent.whatsapp")
 logging.basicConfig(level=logging.INFO)
 
@@ -132,6 +135,25 @@ def _extract_inbound_messages(payload: dict[str, Any]) -> list[tuple[str, str, s
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "tina-whatsapp"}
+
+
+def _require_admin_sync_token(request: Request) -> None:
+    secret = os.environ.get("ADMIN_SYNC_SECRET", "").strip()
+    if not secret:
+        raise HTTPException(status_code=503, detail="Admin sync not configured")
+    auth = request.headers.get("Authorization", "")
+    if auth != f"Bearer {secret}":
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+@app.post("/admin/sync/web")
+async def admin_sync_web(request: Request) -> dict[str, object]:
+    """Sync public web/calendar sources into Supabase (admin manual trigger)."""
+    _require_admin_sync_token(request)
+    from tis_agent.web_sync import sync_default_web_sources
+
+    results = sync_default_web_sources()
+    return {"results": [asdict(r) for r in results]}
 
 
 @app.get("/webhook")

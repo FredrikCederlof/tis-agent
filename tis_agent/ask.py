@@ -12,7 +12,7 @@ from tis_agent.analytics import (
     OUTCOME_NO_EVIDENCE,
     classify_outcome,
 )
-from tis_agent.clients import embed_texts, make_openai, make_supabase
+from tis_agent.reply_format import format_whatsapp_reply, strip_empty_source_line
 from tis_agent.config import Settings, get_settings
 
 
@@ -33,14 +33,8 @@ def _reply_language(question: str) -> str:
 
 def no_evidence_reply(question: str) -> str:
     if _reply_language(question) == "sv":
-        return (
-            "Jag kunde inte hitta ett officiellt TIS-dokument som svarar på det.\n\n"
-            "Källa: ingen träff."
-        )
-    return (
-        "I couldn't find an official TIS source that answers that.\n\n"
-        "Source: none found."
-    )
+        return "Jag kunde inte hitta ett officiellt TIS-dokument som svarar på det."
+    return "I couldn't find an official TIS source that answers that."
 
 
 @dataclass(frozen=True)
@@ -150,7 +144,7 @@ def answer_question(
 
     if not evidence:
         return AnswerResult(
-            reply=config.no_evidence_message,
+            reply=strip_empty_source_line(config.no_evidence_message),
             language=language,
             outcome=OUTCOME_NO_EVIDENCE,
             evidence_count=0,
@@ -161,7 +155,7 @@ def answer_question(
         top_sim is None or top_sim < config.similarity_threshold
     ):
         return AnswerResult(
-            reply=config.no_evidence_message,
+            reply=strip_empty_source_line(config.no_evidence_message),
             language=language,
             outcome=OUTCOME_LOW_CONFIDENCE,
             evidence_count=len(evidence),
@@ -193,6 +187,7 @@ def answer_question(
             messages=messages,
         )
         reply = (completion.choices[0].message.content or "").strip()
+        reply = format_whatsapp_reply(reply, has_evidence=True)
     except Exception:
         return AnswerResult(
             reply=(
