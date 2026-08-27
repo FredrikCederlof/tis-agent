@@ -193,7 +193,10 @@ def answer_question(
     user_prompt = (
         f"Parent question:\n{question}\n\n"
         f"TIS document excerpts:\n{format_evidence(evidence)}\n\n"
-        "Write the WhatsApp reply now."
+        "Write the WhatsApp reply now.\n"
+        "Use only facts explicitly stated in the excerpts above. "
+        "If the excerpts do not clearly answer the question, say you cannot confirm it "
+        "from official TIS sources — do not guess or agree with assumptions."
     )
     messages.append({"role": "user", "content": user_prompt})
 
