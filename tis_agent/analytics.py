@@ -89,6 +89,34 @@ def resolve_session_id(
     return created.data[0]["id"]
 
 
+def claim_whatsapp_message(
+    wa_message_id: str,
+    wa_from: str,
+    question: str,
+    *,
+    settings: Settings | None = None,
+) -> bool:
+    """Return True if this inbound message should be processed (first time seen)."""
+    settings = settings or get_settings()
+    try:
+        sb = make_supabase(settings)
+        sb.table("whatsapp_message_dedup").insert(
+            {
+                "wa_message_id": wa_message_id,
+                "wa_from": wa_from,
+                "question": question,
+            }
+        ).execute()
+        return True
+    except Exception as exc:
+        err = str(exc).lower()
+        if "duplicate" in err or "23505" in err or "unique" in err:
+            logger.info("Skipping duplicate WhatsApp message %s", wa_message_id)
+            return False
+        logger.exception("Dedup claim failed for %s; processing anyway", wa_message_id)
+        return True
+
+
 def log_interaction(
     *,
     session_id: str,
