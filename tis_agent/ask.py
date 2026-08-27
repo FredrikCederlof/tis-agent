@@ -8,6 +8,7 @@ from tis_agent.agent_config import load_agent_config, match_fixed_answer
 from tis_agent.analytics import (
     OUTCOME_ERROR,
     OUTCOME_FIXED_ANSWER,
+    OUTCOME_LOW_CONFIDENCE,
     OUTCOME_NO_EVIDENCE,
     classify_outcome,
 )
@@ -149,11 +150,23 @@ def answer_question(
 
     if not evidence:
         return AnswerResult(
-            reply=no_evidence_reply(question),
+            reply=config.no_evidence_message,
             language=language,
             outcome=OUTCOME_NO_EVIDENCE,
             evidence_count=0,
             top_similarity=None,
+        )
+
+    if config.strict_grounding and (
+        top_sim is None or top_sim < config.similarity_threshold
+    ):
+        return AnswerResult(
+            reply=config.no_evidence_message,
+            language=language,
+            outcome=OUTCOME_LOW_CONFIDENCE,
+            evidence_count=len(evidence),
+            top_similarity=top_sim,
+            document_titles=titles,
         )
 
     openai = make_openai(settings)
@@ -196,6 +209,7 @@ def answer_question(
     outcome = classify_outcome(
         evidence_count=len(evidence),
         top_similarity=top_sim,
+        similarity_threshold=config.similarity_threshold,
     )
 
     return AnswerResult(

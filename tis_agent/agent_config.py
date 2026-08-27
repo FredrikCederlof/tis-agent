@@ -32,6 +32,14 @@ Rules:
 - Today's date is {today}.
 """
 
+DEFAULT_NO_EVIDENCE_MESSAGE = (
+    "I couldn't find an official TIS source that answers that.\n\n"
+    "Source: none found."
+)
+
+DEFAULT_SIMILARITY_THRESHOLD = 0.72
+DEFAULT_STRICT_GROUNDING = True
+
 DEFAULT_FIXED_ANSWERS: list[dict[str, Any]] = [
     {
         "key": "who_are_you",
@@ -77,6 +85,9 @@ class FixedAnswer:
 class AgentConfig:
     system_prompt: str
     fixed_answers: tuple[FixedAnswer, ...]
+    strict_grounding: bool = DEFAULT_STRICT_GROUNDING
+    similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD
+    no_evidence_message: str = DEFAULT_NO_EVIDENCE_MESSAGE
 
 
 _cache: AgentConfig | None = None
@@ -131,18 +142,57 @@ def load_agent_config(settings: Settings | None = None) -> AgentConfig:
         return _cache
 
     settings = settings or get_settings()
+    strict = DEFAULT_STRICT_GROUNDING
+    threshold = DEFAULT_SIMILARITY_THRESHOLD
+    no_evidence = DEFAULT_NO_EVIDENCE_MESSAGE
     try:
         sb = make_supabase(settings)
-        row = sb.table("agent_config").select("system_prompt, fixed_answers").eq("id", 1).single().execute()
-        data = row.data or {}
+        try:
+            row = (
+                sb.table("agent_config")
+                .select(
+                    "system_prompt, fixed_answers, strict_grounding, "
+                    "similarity_threshold, no_evidence_message"
+                )
+                .eq("id", 1)
+                .single()
+                .execute()
+            )
+            data = row.data or {}
+            strict = bool(data.get("strict_grounding", DEFAULT_STRICT_GROUNDING))
+            threshold = float(data.get("similarity_threshold") or DEFAULT_SIMILARITY_THRESHOLD)
+            no_evidence = (
+                (data.get("no_evidence_message") or "").strip() or DEFAULT_NO_EVIDENCE_MESSAGE
+            )
+        except Exception as inner:
+            if "strict_grounding" not in str(inner):
+                raise
+            logger.warning("agent_config policy columns missing — run sql/005_admin.sql")
+            row = (
+                sb.table("agent_config")
+                .select("system_prompt, fixed_answers")
+                .eq("id", 1)
+                .single()
+                .execute()
+            )
+            data = row.data or {}
         prompt = (data.get("system_prompt") or "").strip() or DEFAULT_SYSTEM_PROMPT
         fixed = _parse_fixed_answers(data.get("fixed_answers"))
     except Exception:
         logger.exception("Failed to load agent_config; using defaults")
         prompt = DEFAULT_SYSTEM_PROMPT
         fixed = _parse_fixed_answers(DEFAULT_FIXED_ANSWERS)
+        strict = DEFAULT_STRICT_GROUNDING
+        threshold = DEFAULT_SIMILARITY_THRESHOLD
+        no_evidence = DEFAULT_NO_EVIDENCE_MESSAGE
 
-    _cache = AgentConfig(system_prompt=prompt, fixed_answers=fixed)
+    _cache = AgentConfig(
+        system_prompt=prompt,
+        fixed_answers=fixed,
+        strict_grounding=strict,
+        similarity_threshold=threshold,
+        no_evidence_message=no_evidence,
+    )
     _cache_loaded_at = now
     return _cache
 

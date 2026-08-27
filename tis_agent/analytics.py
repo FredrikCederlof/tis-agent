@@ -27,6 +27,7 @@ def classify_outcome(
     top_similarity: float | None,
     had_error: bool = False,
     is_fixed_answer: bool = False,
+    similarity_threshold: float = LOW_CONFIDENCE_THRESHOLD,
 ) -> str:
     if had_error:
         return OUTCOME_ERROR
@@ -34,7 +35,7 @@ def classify_outcome(
         return OUTCOME_FIXED_ANSWER
     if evidence_count == 0:
         return OUTCOME_NO_EVIDENCE
-    if top_similarity is None or top_similarity < LOW_CONFIDENCE_THRESHOLD:
+    if top_similarity is None or top_similarity < similarity_threshold:
         return OUTCOME_LOW_CONFIDENCE
     return OUTCOME_SUCCESS
 
