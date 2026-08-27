@@ -81,7 +81,8 @@ export function ConfigForm({
         <p className="text-sm text-tis-muted">
           Control when Tina is allowed to answer. With strict grounding on, she only answers
           school questions when official TIS documents match above the threshold — otherwise
-          she sends the message below.
+          she sends the message below. The system prompt below further requires quote-backed
+          facts so she does not invent who attends meetings, fees, or other details.
         </p>
         <label className="flex items-center gap-3 text-sm">
           <input
