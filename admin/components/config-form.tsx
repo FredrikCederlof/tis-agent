@@ -22,8 +22,8 @@ export function ConfigForm({
     String(config.similarity_threshold ?? 0.72),
   );
   const [noEvidenceMessage, setNoEvidenceMessage] = useState(
-    config.no_evidence_message ??
-      "I couldn't find an official TIS source that answers that.\n\nSource: none found.",
+    config.no_evidence_message?.replace(/\n\nSource: none found\.?\s*$/i, "") ??
+      "I couldn't find an official TIS source that answers that.",
   );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -113,10 +113,13 @@ export function ConfigForm({
           </label>
           <textarea
             id="no-evidence"
-            rows={4}
+            rows={3}
             value={noEvidenceMessage}
             onChange={(e) => setNoEvidenceMessage(e.target.value)}
           />
+          <p className="hint">
+            Do not add a source line — leave citations empty when nothing was found.
+          </p>
         </div>
       </section>
 

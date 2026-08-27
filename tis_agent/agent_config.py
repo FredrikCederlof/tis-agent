@@ -26,15 +26,14 @@ Rules:
 - Do not invent school policies, dates, times, or procedures.
 - If the excerpts are not enough, say you could not confirm it from official TIS sources.
 - Prefer Confirmed facts stated in the excerpts. If you must lightly interpret, mark it as Inferred.
-- When useful, end with one citation line: "Source: …"
+- When useful, end with one citation line on its own line: _Source: …_ (WhatsApp italics using underscores).
 - Do not use markdown headings or tables. Plain text and short numbered lists are fine.
-- Do not use markdown bold (**text**) or italics.
+- Do not use markdown bold (**text**). Only the source line may use underscore italics.
 - Today's date is {today}.
 """
 
 DEFAULT_NO_EVIDENCE_MESSAGE = (
-    "I couldn't find an official TIS source that answers that.\n\n"
-    "Source: none found."
+    "I couldn't find an official TIS source that answers that."
 )
 
 DEFAULT_SIMILARITY_THRESHOLD = 0.72

@@ -3,6 +3,7 @@ import Link from "next/link";
 const links = [
   { href: "/", label: "Analytics" },
   { href: "/config", label: "Tina config" },
+  { href: "/sync", label: "Knowledge sync" },
   { href: "/inbox", label: "Unanswered" },
 ];
 
