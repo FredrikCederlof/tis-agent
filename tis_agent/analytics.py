@@ -12,7 +12,7 @@ from tis_agent.config import Settings, get_settings
 logger = logging.getLogger("tis_agent.analytics")
 
 SESSION_GAP_MINUTES = 10
-LOW_CONFIDENCE_THRESHOLD = 0.72
+LOW_CONFIDENCE_THRESHOLD = 0.40
 
 OUTCOME_SUCCESS = "success"
 OUTCOME_NO_EVIDENCE = "no_evidence"

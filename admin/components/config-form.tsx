@@ -19,7 +19,7 @@ export function ConfigForm({
   );
   const [strictGrounding, setStrictGrounding] = useState(config.strict_grounding ?? true);
   const [similarityThreshold, setSimilarityThreshold] = useState(
-    String(config.similarity_threshold ?? 0.72),
+    String(config.similarity_threshold ?? 0.40),
   );
   const [noEvidenceMessage, setNoEvidenceMessage] = useState(
     config.no_evidence_message?.replace(/\n\nSource: none found\.?\s*$/i, "") ??
@@ -77,8 +77,8 @@ export function ConfigForm({
   return (
     <form onSubmit={onSave} className="space-y-8">
       <section className="card space-y-4">
-        <h3 className="text-lg font-semibold text-tis-navy">Answer policy</h3>
-        <p className="text-sm text-slate-600">
+        <h3 className="text-lg font-bold text-tis-navy">Answer policy</h3>
+        <p className="text-sm text-tis-muted">
           Control when Tina is allowed to answer. With strict grounding on, she only answers
           school questions when official TIS documents match above the threshold — otherwise
           she sends the message below.
@@ -105,7 +105,7 @@ export function ConfigForm({
             value={similarityThreshold}
             onChange={(e) => setSimilarityThreshold(e.target.value)}
           />
-          <p className="hint">Default 0.72. Higher = stricter (fewer answers).</p>
+          <p className="hint">Default 0.40. Higher = stricter (fewer answers). Real TIS matches often score 0.40–0.65.</p>
         </div>
         <div>
           <label className="label" htmlFor="no-evidence">
@@ -124,8 +124,8 @@ export function ConfigForm({
       </section>
 
       <section className="card space-y-4">
-        <h3 className="text-lg font-semibold text-tis-navy">System prompt</h3>
-        <p className="text-sm text-slate-600">
+        <h3 className="text-lg font-bold text-tis-navy">System prompt</h3>
+        <p className="text-sm text-tis-muted">
           Instructions for RAG answers. Keep the {"{today}"} placeholder for the current date.
         </p>
         <textarea
@@ -137,8 +137,8 @@ export function ConfigForm({
       </section>
 
       <section className="card space-y-4">
-        <h3 className="text-lg font-semibold text-tis-navy">Fixed answers</h3>
-        <p className="text-sm text-slate-600">
+        <h3 className="text-lg font-bold text-tis-navy">Fixed answers</h3>
+        <p className="text-sm text-tis-muted">
           JSON array of rules for meta questions (e.g. who is Tina). Each entry needs{" "}
           <code className="rounded bg-slate-100 px-1">key</code>,{" "}
           <code className="rounded bg-slate-100 px-1">patterns</code>, and{" "}
