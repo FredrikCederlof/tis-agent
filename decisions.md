@@ -25,13 +25,13 @@ Short record of product intent. Change these only with a reason.
 - Prefer official and newer information when sources conflict.
 - If evidence is missing, say so. Do not invent school facts.
 - Show source when it adds trust. Keep WhatsApp replies short.
+- **Strict grounding (admin-steerable in Phase C):** Tina must not answer school questions unless official TIS knowledge supports it. When she cannot find a good match, she returns a clear “no official source” message — not a guess. Fixed answers (e.g. who is Tina) are the only exception.
 
 ## Out of scope until later
 
 - School-wide production WhatsApp number and Meta business verification.
 - Per-child personalization from a parent profile.
 - Japanese-language sources (first corpus is English).
-- Admin UI for unanswered / low-evidence questions (logging in progress — see Milestone 4).
 
 ## Milestone 4 (in progress)
 
@@ -39,8 +39,8 @@ Admin, analytics, and configurable Tina behavior.
 
 - **Phase A:** Log every WhatsApp Q&A to Supabase (`chat_sessions`, `interactions`); 10-minute session rule; classify outcomes (`success`, `no_evidence`, `low_confidence`, `error`). SQL: `sql/003_analytics.sql`.
 - **Phase B:** Editable system prompt + fixed answers (who is Tina, operator) from DB. SQL: `sql/004_agent_config.sql`.
-- **Phase C (next):** Admin login + inbox for unanswered questions + basic stats.
-- **Phase D:** Weekly email summary of gaps.
+- **Phase C:** Admin web UI (`admin/`) — Supabase Auth, prompt editor, answer policy (strict grounding), unanswered inbox, analytics. SQL: `sql/005_admin.sql`.
+- **Phase D (next):** Weekly email summary of gaps.
 
 ## Milestone 1
 
