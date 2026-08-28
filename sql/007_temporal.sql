@@ -10,6 +10,8 @@ alter table chunks
 create index if not exists chunks_start_date_idx on chunks (start_date);
 create index if not exists chunks_date_span_idx on chunks (start_date, end_date);
 
+drop function if exists match_chunks(vector, integer);
+
 create or replace function match_chunks (
   query_embedding vector(1536),
   match_count int default 8

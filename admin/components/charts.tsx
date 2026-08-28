@@ -1,66 +1,109 @@
 /** Lightweight SVG charts — no chart library required. */
 
+const SERIES = [
+  { key: "sessions" as const, label: "Sessions", color: "#4f8fcf" },
+  { key: "questions" as const, label: "Questions", color: "#0f9b8e" },
+  { key: "gaps" as const, label: "Unanswered", color: "#d64545" },
+];
+
 export function ActivityChart({
   points,
 }: {
   points: { label: string; sessions: number; questions: number; gaps: number }[];
 }) {
-  const width = 560;
-  const height = 220;
-  const pad = 28;
+  const width = 640;
+  const height = 240;
+  const pad = { top: 12, right: 12, bottom: 28, left: 36 };
   const maxY = Math.max(1, ...points.flatMap((p) => [p.sessions, p.questions, p.gaps]));
+  const niceMax = niceCeil(maxY);
+  const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => Math.round(niceMax * t));
 
   const x = (i: number) =>
-    pad + (points.length <= 1 ? 0 : (i / (points.length - 1)) * (width - pad * 2));
-  const y = (v: number) => height - pad - (v / maxY) * (height - pad * 2);
+    pad.left +
+    (points.length <= 1 ? 0 : (i / (points.length - 1)) * (width - pad.left - pad.right));
+  const y = (v: number) =>
+    height - pad.bottom - (v / niceMax) * (height - pad.top - pad.bottom);
 
-  const path = (key: "sessions" | "questions" | "gaps") =>
+  const line = (key: "sessions" | "questions" | "gaps") =>
     points
-      .map((p, i) => `${i === 0 ? "M" : "L"} ${x(i)} ${y(p[key])}`)
+      .map((p, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(p[key]).toFixed(1)}`)
       .join(" ");
 
+  const area = (key: "sessions" | "questions" | "gaps") => {
+    if (points.length === 0) return "";
+    const lastX = x(points.length - 1).toFixed(1);
+    const firstX = x(0).toFixed(1);
+    const base = y(0).toFixed(1);
+    return `${line(key)} L ${lastX} ${base} L ${firstX} ${base} Z`;
+  };
+
   return (
-    <div className="w-full overflow-x-auto">
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full min-w-[320px]">
-        {[0, 0.25, 0.5, 0.75, 1].map((t) => (
-          <line
-            key={t}
-            x1={pad}
-            x2={width - pad}
-            y1={y(maxY * t)}
-            y2={y(maxY * t)}
-            stroke="#e2e8f0"
-            strokeWidth="1"
-          />
+    <div className="w-full">
+      <div className="mb-3 flex flex-wrap gap-4 text-xs font-medium text-tis-muted">
+        {SERIES.map((s) => (
+          <span key={s.key} className="inline-flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
+            {s.label}
+          </span>
         ))}
-        <path d={path("sessions")} fill="none" stroke="#4f8fcf" strokeWidth="2.5" />
-        <path d={path("questions")} fill="none" stroke="#1f9d6a" strokeWidth="2.5" />
-        <path d={path("gaps")} fill="none" stroke="#d64545" strokeWidth="2.5" />
-        {points.map((p, i) => (
-          <text
-            key={p.label}
-            x={x(i)}
-            y={height - 8}
-            textAnchor="middle"
-            className="fill-slate-400 text-[10px]"
-          >
-            {p.label}
-          </text>
-        ))}
-      </svg>
-      <div className="mt-2 flex flex-wrap gap-4 text-xs text-tis-muted">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-tis-sky" /> Sessions
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-tis-success" /> Questions
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-full bg-tis-danger" /> Unanswered
-        </span>
+      </div>
+      <div className="w-full overflow-x-auto">
+        <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full min-w-[320px]">
+          {ticks.map((tick) => (
+            <g key={tick}>
+              <line
+                x1={pad.left}
+                x2={width - pad.right}
+                y1={y(tick)}
+                y2={y(tick)}
+                stroke="#eef2f7"
+                strokeWidth="1"
+              />
+              <text
+                x={pad.left - 8}
+                y={y(tick) + 3}
+                textAnchor="end"
+                className="fill-slate-400 text-[10px]"
+              >
+                {tick}
+              </text>
+            </g>
+          ))}
+          <path d={area("sessions")} fill="rgba(79, 143, 207, 0.08)" />
+          {SERIES.map((s) => (
+            <path
+              key={s.key}
+              d={line(s.key)}
+              fill="none"
+              stroke={s.color}
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          ))}
+          {points.map((p, i) => (
+            <text
+              key={p.label}
+              x={x(i)}
+              y={height - 8}
+              textAnchor="middle"
+              className="fill-slate-400 text-[10px]"
+            >
+              {p.label}
+            </text>
+          ))}
+        </svg>
       </div>
     </div>
   );
+}
+
+function niceCeil(n: number): number {
+  if (n <= 4) return 4;
+  const mag = 10 ** Math.floor(Math.log10(n));
+  const norm = n / mag;
+  const nice = norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+  return nice * mag;
 }
 
 export function OutcomeDonut({
@@ -80,14 +123,15 @@ export function OutcomeDonut({
     { label: "Fixed", value: fixed, color: "#4f8fcf" },
     { label: "Errors", value: errors, color: "#94a3b8" },
   ];
-  const total = parts.reduce((s, p) => s + p.value, 0) || 1;
+  const rawTotal = parts.reduce((s, p) => s + p.value, 0);
+  const total = rawTotal || 1;
   let offset = 0;
   const radius = 54;
   const circ = 2 * Math.PI * radius;
 
   return (
-    <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-center">
-      <svg viewBox="0 0 140 140" className="h-36 w-36 shrink-0">
+    <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+      <svg viewBox="0 0 140 140" className="h-40 w-40 shrink-0">
         <circle cx="70" cy="70" r={radius} fill="none" stroke="#eef2f7" strokeWidth="16" />
         {parts.map((part) => {
           const len = (part.value / total) * circ;
@@ -109,19 +153,14 @@ export function OutcomeDonut({
           offset += len;
           return el;
         })}
-        <text
-          x="70"
-          y="66"
-          textAnchor="middle"
-          className="fill-tis-navy text-xl font-bold"
-        >
-          {total === 1 && success + gaps + fixed + errors === 0 ? "0" : success + gaps + fixed + errors}
+        <text x="70" y="66" textAnchor="middle" className="fill-tis-navy text-xl font-bold">
+          {rawTotal}
         </text>
-        <text x="70" y="84" textAnchor="middle" className="fill-slate-400 text-[10px]">
-          questions
+        <text x="70" y="84" textAnchor="middle" className="fill-slate-400 text-[10px] font-medium">
+          Total
         </text>
       </svg>
-      <ul className="w-full space-y-2 text-sm">
+      <ul className="w-full space-y-2.5 text-sm">
         {parts.map((part) => (
           <li key={part.label} className="flex items-center justify-between gap-3">
             <span className="inline-flex items-center gap-2 text-tis-muted">
@@ -131,7 +170,7 @@ export function OutcomeDonut({
             <span className="font-semibold text-tis-navy">
               {part.value}
               <span className="ml-1 text-xs font-medium text-slate-400">
-                ({Math.round((part.value / total) * 100)}%)
+                ({rawTotal === 0 ? 0 : Math.round((part.value / total) * 100)}%)
               </span>
             </span>
           </li>
