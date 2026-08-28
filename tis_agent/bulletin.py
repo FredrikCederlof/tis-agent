@@ -74,8 +74,16 @@ GRADE_6_RE = re.compile(
     re.IGNORECASE,
 )
 MULTI_GRADE_RE = re.compile(
-    r"\b(?:grades?|years?)\s+\d+\s*[-–&,]\s*(?:and\s+)?\d+",
+    r"\b(?:grades?|years?)\s+\d+\s*[-–&,]\s*(?:and\s+)?\d+"
+    r"|\b(?:kindergarten|kindergarden|kg)\s+to\s+grade\s+\d+"
+    r"|\bgrade\s+\d+\s+to\s+grade\s+\d+",
     re.IGNORECASE,
+)
+
+TODDLE_CHROME_RE = re.compile(
+    r"(?is)(?:^|\n)\s*(?:Related students?\b|View announcement on Toddle\b|"
+    r"Stay connected, informed and involved\b|"
+    r"Toddle,\s*East Cheery Lynn Road\b).*$"
 )
 
 FROM_LINE_RE = re.compile(r"^From:\s*(.+)$", re.IGNORECASE | re.MULTILINE)
@@ -128,7 +136,7 @@ def sanitize_bulletin(raw: str, *, week_label: str | None = None) -> BulletinRes
             dropped_reasons.append("personal_sender")
             continue
         subject = _header_value(SUBJECT_LINE_RE, message)
-        body = _strip_headers(message)
+        body = _strip_toddle_chrome(_strip_headers(message))
         for block in _split_blocks(body, subject=subject):
             cleaned, n = strip_child_names(block)
             names_removed += n
@@ -199,6 +207,11 @@ def _split_blocks(body: str, *, subject: str | None) -> list[str]:
         if subject.lower() not in first.lower():
             paragraphs[0] = f"{subject}\n{first}"
     return paragraphs or ([body.strip()] if body.strip() else [])
+
+
+def _strip_toddle_chrome(text: str) -> str:
+    """Drop Toddle related-student footers so Grade 3/6 labels do not sink school-wide mail."""
+    return TODDLE_CHROME_RE.sub("", text).strip()
 
 
 def _strip_headers(message: str) -> str:

@@ -156,6 +156,43 @@ Can Eldor come over after school on Tuesday?
     assert "Playdate" not in result.markdown
 
 
+def test_strips_toddle_related_student_footer_and_keeps_school_wide() -> None:
+    raw = """
+From: no-reply@toddleapp.com
+Subject: School announcement: Arrival and Dismissal
+
+Dear TIS Community, updated arrival details are in the document.
+
+Related students
+MS
+Malte Sterner Cederlöf
+Grade 3
+
+View announcement on Toddle
+Stay connected, informed and involved, everywhere!
+Toddle, East Cheery Lynn Road, Phoenix, AZ 85018, United States
+"""
+    result = sanitize_bulletin(raw)
+    assert result.kept_blocks == 1
+    assert "arrival details" in result.markdown
+    assert "Related student" not in result.markdown
+    assert not contains_child_names(result.markdown)
+
+
+def test_keeps_kindergarten_to_grade_range() -> None:
+    raw = """
+From: office@tokyois.com
+Subject: New Family Orientation
+
+1:00 - 2:00 PM Lower School Orientation (Kindergarten to Grade 5)
+2:30 - 3:30 PM Upper School Orientation (Grade 6 to Grade 11)
+"""
+    result = sanitize_bulletin(raw)
+    assert result.kept_blocks == 1
+    assert "Lower School Orientation" in result.markdown
+    assert "Upper School Orientation" in result.markdown
+
+
 def test_refuses_to_emit_if_names_cannot_be_stripped() -> None:
     # Safety: output must never include a child name.
     result = sanitize_bulletin(
