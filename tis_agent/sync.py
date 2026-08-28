@@ -127,7 +127,46 @@ def main(argv: list[str] | None = None) -> None:
 
     sub.add_parser("local-handbook", help="Re-sync the local handbook PDF (legacy).")
 
+    bulletin_cmd = sub.add_parser(
+        "bulletin",
+        help="Sanitize a school-mail dump and ingest it as the weekly bulletin.",
+    )
+    bulletin_cmd.add_argument("path", type=Path)
+    bulletin_cmd.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Print the JSON summary and write sanitized markdown without ingesting.",
+    )
+    bulletin_cmd.add_argument(
+        "--sanitized-out",
+        type=Path,
+        default=Path("/tmp/tis-bulletin-sanitized.md"),
+        help="Where to write sanitized markdown (default: /tmp/tis-bulletin-sanitized.md).",
+    )
+    bulletin_cmd.add_argument(
+        "--date",
+        help="Bulletin date YYYY-MM-DD (defaults to today in Asia/Tokyo).",
+    )
+
     args = parser.parse_args(argv)
+
+    if args.command == "bulletin":
+        from datetime import date as date_type
+
+        from tis_agent.bulletin import sync_bulletin_path
+
+        as_of = date_type.fromisoformat(args.date) if args.date else None
+        settings = None if args.dry_run else get_settings()
+        summary = sync_bulletin_path(
+            args.path,
+            settings=settings,
+            dry_run=args.dry_run,
+            as_of=as_of,
+            sanitized_out=args.sanitized_out,
+        )
+        print(json.dumps(summary, indent=2))
+        return
+
     settings = get_settings()
 
     if args.command == "state":

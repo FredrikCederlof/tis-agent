@@ -13,9 +13,11 @@ Short record of product intent. Change these only with a reason.
 
 ## Knowledge
 
+- **Weekly bulletin (Sunday):** Official school mail is sanitized into one whole-school document (`TIS Weekly Bulletin YYYY-MM-DD`, `source_type=bulletin`). This is not the family Sunday email. Kindergarten-only / Grade 3-only / Grade 6-only items are dropped; PYP / MYP / DP / community notices are kept. Repeated Toddle sends are stored once. Child names from the family inbox must never enter the shared corpus.
+
 - Shared knowledge base for all parents. No per-family email corpus.
-- Sources are generic school documents: handbook, policies, calendar, bus information, and similar.
-- Ingest formats: PDFs and Google Docs. Not Gmail.
+- Sources are generic school documents: handbook, policies, calendar, bus information, weekly bulletin, and similar.
+- Ingest formats: PDFs, Google Docs, public web/calendar, and a sanitized weekly school-mail bulletin. Raw Gmail is not stored.
 - Documents are uploaded to Supabase, then embedded for RAG.
 - Metadata (title, type, dates, grade/section, source) is first-class. Semantic similarity alone is not enough.
 

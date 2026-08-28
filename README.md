@@ -21,6 +21,7 @@ Milestone 3: WhatsApp test preview (Meta Cloud API test number).
 
 ```bash
 python -m tis_agent sync state
+python -m tis_agent sync bulletin /tmp/tis-bulletin-raw.md   # Sunday school-mail ingest
 python -m tis_agent ask "What does TIS say about reporting an absence?"
 python -m tis_agent chat
 python -m tis_agent whatsapp   # webhook on http://0.0.0.0:8080/webhook
