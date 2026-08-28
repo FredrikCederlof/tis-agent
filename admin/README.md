@@ -31,6 +31,10 @@ Open http://localhost:3000 — sign in with an email listed in `ADMIN_EMAILS`.
    - `ADMIN_SYNC_SECRET` (same secret as Railway `ADMIN_SYNC_SECRET`)
 3. Add the Vercel URL to Supabase Auth redirect URLs.
 
+On **Railway** (WhatsApp + admin sync API), also set `TIS_PORTAL_USERNAME` and `TIS_PORTAL_PASSWORD` so TIS Times can sync from the login-gated parent portal.
+
+For automatic updates, add a **second Railway service** with cron `30 18 * * 2,5` (Wed/Sat 03:30 JST) and start command `python -m tis_agent sync web`. See root `AGENTS.md`.
+
 WhatsApp webhook stays on Railway; admin is a separate app.
 
 ## Screens

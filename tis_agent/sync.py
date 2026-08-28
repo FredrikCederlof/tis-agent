@@ -177,6 +177,10 @@ def main(argv: list[str] | None = None) -> None:
             }
             if args.url.endswith(".ics"):
                 source["kind"] = "ics"
+            elif "portal.tokyois.com" in args.url:
+                source["kind"] = "portal_auth"
+                source["path_prefix"] = args.url.rstrip("/")
+                source["max_pages"] = 40
             results = [sync_web_source(settings, source)]
         else:
             results = sync_default_web_sources(settings)

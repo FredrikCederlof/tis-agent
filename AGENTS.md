@@ -59,9 +59,40 @@ Public URLs can be synced into Supabase (same vector pipeline as Drive files):
 python -m tis_agent sync web
 ```
 
-Default sources: TIS Tech Portal (Google Sites crawl), parent Google Calendar (iCal), school uniform page.
+Default sources: TIS Tech Portal (Google Sites crawl), parent Google Calendar (iCal), school uniform page, **TIS Times** on the parent portal (login required).
 
-Re-run after the school updates the calendar or web pages. Calendar feed uses events from 30 days ago through 1 year ahead.
+Re-run after the school updates the calendar or web pages. Calendar and TIS Times use a **3-week forward window** (today through +21 days in Asia/Tokyo; no past weeks).
+
+After `sql/007_temporal.sql`, calendar events are one chunk per event with `start_date` / `end_date`. Re-run `python -m tis_agent sync web` so the parent calendar is re-chunked. Date questions ("today", "this week", "next Thursday") resolve in Asia/Tokyo; school weeks are Monday–Friday.
+
+### Login-gated portal (TIS Times)
+
+`https://portal.tokyois.com/tis-times/` uses WordPress Ultimate Member login. Set these secrets (never commit):
+
+- `TIS_PORTAL_USERNAME`
+- `TIS_PORTAL_PASSWORD`
+
+On Railway, add the same vars so admin **Sync web & calendar** can ingest TIS Times. Without them, that source is skipped and other web sources still sync.
+
+Sync only the portal section:
+
+```bash
+python -m tis_agent sync web --url "https://portal.tokyois.com/tis-times/" --title "TIS Times (Parent Portal)"
+```
+
+## Bi-weekly web sync (Wed + Sat)
+
+Run `sync web` twice a week so TIS Times, calendar, and public pages stay fresh. Unchanged documents are **skipped** automatically (content hash) — only new or edited text is re-embedded.
+
+**Recommended: Railway cron service** (separate from the WhatsApp service):
+
+1. In Railway, add a new service from the same `tis-agent` repo.
+2. **Start command:** `python -m tis_agent sync web` (or `bash scripts/sync_web_sources.sh`)
+3. **Cron schedule** (UTC): `30 18 * * 2,5` → **Wed & Sat 03:30 JST**
+4. Copy the same secrets as production: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`, `TIS_PORTAL_USERNAME`, `TIS_PORTAL_PASSWORD`
+5. The service must **exit** when sync finishes (do not run the WhatsApp server on this service).
+
+Alternative: extend the nightly Cloud Agent procedure to run `sync web` after Drive sync on the same days.
 
 ## Idempotency
 

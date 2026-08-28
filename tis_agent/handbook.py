@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date
 
 from pypdf import PdfReader
 
@@ -19,6 +20,9 @@ class Chunk:
     page_start: int
     page_end: int
     chunk_index: int
+    start_date: date | None = None
+    end_date: date | None = None
+    event_type: str | None = None
 
 
 HEADING_RE = re.compile(r"^(?:[A-Z][A-Z0-9 /&'\-]{3,}|[0-9]+\.\s+\S.+)$")
