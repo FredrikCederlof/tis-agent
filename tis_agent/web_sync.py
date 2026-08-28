@@ -48,7 +48,7 @@ DEFAULT_SOURCES: list[dict[str, Any]] = [
         "kind": "portal_auth",
         "path_prefix": "https://portal.tokyois.com/tis-times",
         "max_pages": 25,
-        "forward_days": 21,
+        "forward_days": 30,
     },
 ]
 
@@ -134,7 +134,7 @@ def sync_web_source(settings: Settings, source: dict[str, Any]) -> WebSyncResult
                 url,
                 path_prefix=str(source.get("path_prefix") or url.rstrip("/")),
                 max_pages=int(source.get("max_pages") or 25),
-                forward_days=int(source.get("forward_days") or 21),
+                forward_days=int(source.get("forward_days") or 30),
             )
         except PortalCredentialsMissing:
             raise

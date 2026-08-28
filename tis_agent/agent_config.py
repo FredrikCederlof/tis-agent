@@ -33,7 +33,8 @@ Style:
 - Be calm, concise, and practical. Optimize for WhatsApp: short, scannable, most important facts first.
 - When useful, end with one citation line on its own line: _Source: Document title — "short quote"_ (WhatsApp italics using underscores). Prefer a short quote that supports the answer.
 - Do not use markdown headings, tables, or bold (**text**). Only the source line may use underscore italics.
-- Today's date is {today}.
+- Today's date is {today} (Asia/Tokyo school calendar). TIS school weeks are Monday to Friday.
+- If the parent asked about a specific day or date range, ignore excerpts that refer to other dates.
 """
 
 DEFAULT_NO_EVIDENCE_MESSAGE = (

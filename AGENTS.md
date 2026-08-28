@@ -61,7 +61,10 @@ python -m tis_agent sync web
 
 Default sources: TIS Tech Portal (Google Sites crawl), parent Google Calendar (iCal), school uniform page, **TIS Times** on the parent portal (login required).
 
-Re-run after the school updates the calendar or web pages. Calendar and TIS Times use a **3-week forward window** (today through +21 days in Asia/Tokyo; no past weeks).
+Re-run after the school updates the calendar or web pages.
+
+- **Parent calendar (ICS):** today through **1 year** ahead (Asia/Tokyo; no past events).
+- **TIS Times (portal):** today through the **upcoming month** (30 days, today included).
 
 After `sql/007_temporal.sql`, calendar events are one chunk per event with `start_date` / `end_date`. Re-run `python -m tis_agent sync web` so the parent calendar is re-chunked. Date questions ("today", "this week", "next Thursday") resolve in Asia/Tokyo; school weeks are Monday–Friday.
 
