@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 from tis_agent.handbook import Chunk
 
 DEFAULT_PAST_DAYS = 0
-DEFAULT_FUTURE_DAYS = 365
+DEFAULT_FUTURE_DAYS = 365  # parent calendar: today through 1 year ahead
 
 
 def _unfold_lines(raw: str) -> list[str]:
