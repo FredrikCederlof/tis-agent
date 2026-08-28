@@ -10,7 +10,7 @@ from zoneinfo import ZoneInfo
 from tis_agent.handbook import Chunk
 
 DEFAULT_PAST_DAYS = 0
-DEFAULT_FUTURE_DAYS = 21
+DEFAULT_FUTURE_DAYS = 365
 
 
 def _unfold_lines(raw: str) -> list[str]:

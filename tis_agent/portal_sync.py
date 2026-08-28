@@ -19,7 +19,7 @@ USER_AGENT = "TIS-Agent-KnowledgeSync/1.0 (+https://github.com/FredrikCederlof/t
 
 PORTAL_BASE = "https://portal.tokyois.com"
 DEFAULT_LOGIN_URL = f"{PORTAL_BASE}/"
-DEFAULT_FORWARD_DAYS = 21
+DEFAULT_FORWARD_DAYS = 30
 
 
 class PortalLoginError(RuntimeError):
