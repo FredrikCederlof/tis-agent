@@ -9,11 +9,13 @@ from tis_agent.ask import (
     _is_temporally_relevant,
     _passes_grounding,
     _rerank,
+    format_schedule_reply,
 )
 from tis_agent.ical_text import events_to_chunks, inclusive_end, parse_ics_events
 from tis_agent.temporal import (
     chunk_overlaps_range,
     is_sync_window_stub,
+    is_whats_on_question,
     parse_temporal,
     retrieval_queries,
     school_week,
@@ -52,6 +54,18 @@ def test_relative_days():
     assert _q("What's happening today?").date_range.start == TODAY
     assert _q("Anything special tomorrow?").date_range.start == date(2026, 8, 29)
     assert _q("Vad händer idag?").date_range.start == TODAY
+
+
+def test_greeting_today_is_date_anchored_whats_on():
+    question = "Hi. Is there anything special happening at school today?"
+    parsed = _q(question)
+    assert parsed.kind == "date_anchored"
+    assert parsed.date_range.start == TODAY
+    assert parsed.date_range.end == TODAY
+    assert is_whats_on_question(question)
+    assert is_whats_on_question("What's happening today?")
+    assert is_whats_on_question("Vad händer idag?")
+    assert not is_whats_on_question("When should I report an absence?")
 
 
 def test_weekend_is_saturday_sunday():
@@ -220,6 +234,48 @@ def test_tis_times_empty_window_is_not_today_evidence():
         end_date=item.end_date,
         document_title=item.document_title,
     )
+
+
+def test_empty_calendar_is_a_real_today_answer():
+    temporal = _q("Hi. Is there anything special happening at school today?")
+    reply = format_schedule_reply([], temporal, "en")
+    assert "doesn't list a special event" in reply
+    assert "Friday" in reply
+    assert "28" in reply
+    assert "TIS Parent Calendar" in reply
+    assert "couldn't find" not in reply.lower()
+
+
+def test_schedule_reply_lists_todays_events():
+    temporal = _q("What's happening today?")
+    events = [
+        Evidence(
+            content="Event: Hopes and Dreams\nStarts: 2026-08-28 (all day)",
+            section_title="Hopes and Dreams",
+            page_start=1,
+            page_end=1,
+            document_title="TIS Parent Calendar",
+            similarity=0.99,
+            source_type="calendar",
+            start_date=date(2026, 8, 28),
+            end_date=date(2026, 8, 28),
+        ),
+        Evidence(
+            content="Event: Assembly\nStarts: 2026-08-28 08:30 JST",
+            section_title="Assembly",
+            page_start=1,
+            page_end=1,
+            document_title="TIS Parent Calendar",
+            similarity=0.99,
+            source_type="calendar",
+            start_date=date(2026, 8, 28),
+            end_date=date(2026, 8, 28),
+        ),
+    ]
+    reply = format_schedule_reply(events, temporal, "en")
+    assert "Hopes and Dreams" in reply
+    assert "Assembly (08:30)" in reply
+    assert "Today on the TIS Parent Calendar" in reply
 
 
 def test_calendar_ranks_above_portal_for_date_questions():
