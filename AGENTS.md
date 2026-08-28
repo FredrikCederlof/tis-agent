@@ -137,7 +137,7 @@ from:seesaw newer_than:14d
 8. Confirm the JSON summary has `"status": "synced"` or `"skipped"`. If `"empty"`, report that and stop. Confirm child names are absent from any printed markdown (Eldor, Malte, Vega-Lo, Vega).
 9. Print a short summary: threads opened, kept vs dropped blocks, ingest status.
 
-The sanitizer strips Eldor / Malte / Vega-Lo / Vega, drops Kindergarten-only, Grade 3-only, and Grade 6-only paragraphs, keeps PYP/MYP/DP/whole-school items, and dedupes triple Toddle sends. Document title: `TIS Weekly Bulletin YYYY-MM-DD` with `source_type: bulletin`.
+The sanitizer strips Eldor / Malte / Vega-Lo / Vega, **keeps** Kindergarten / Grade 3 / Grade 6 class notices plus PYP/MYP/DP/whole-school items, **drops** personal teacher emails about one child and other single-grade mail (e.g. Grade 10 only), and dedupes triple Toddle sends. Document title: `TIS Weekly Bulletin YYYY-MM-DD` with `source_type: bulletin`.
 
 Only one Sunday bulletin automation should exist. After **TIS school mail bulletin** is saved, disable or delete the older **TIS Sunday weekly bulletin** job.
 
@@ -162,7 +162,7 @@ Procedure:
 5. Write /tmp/tis-bulletin-raw.md using === MESSAGE === separators with From / Date / Subject headers and the plain-text body.
 6. Run: .venv/bin/python -m tis_agent sync bulletin /tmp/tis-bulletin-raw.md
 7. Confirm JSON "status" is "synced" or "skipped". If "empty", report and stop.
-8. Confirm child names are absent from printed markdown (Eldor, Malte, Vega-Lo, Vega).
+8. Confirm child names are absent from printed markdown (Eldor, Malte, Vega-Lo, Vega). Personal teacher notes about one child must not appear.
 9. Print threads opened, kept vs dropped blocks, and ingest status.
 
 Document title is TIS Weekly Bulletin YYYY-MM-DD (Asia/Tokyo date of the run) with source type bulletin.

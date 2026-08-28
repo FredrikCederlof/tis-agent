@@ -11,6 +11,8 @@ from tis_agent.handbook import Chunk
 
 DEFAULT_PAST_DAYS = 0
 DEFAULT_FUTURE_DAYS = 365  # parent calendar: today through 1 year ahead
+# Bump when ICS window/chunking changes so an unchanged feed is re-ingested.
+ICAL_CHUNK_VERSION = "v2-tokyo-day-window"
 
 
 def _unfold_lines(raw: str) -> list[str]:

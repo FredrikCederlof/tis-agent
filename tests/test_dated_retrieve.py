@@ -7,6 +7,7 @@ from tis_agent.ask import (
     format_schedule_reply,
     has_non_calendar_context,
     is_rotation_day,
+    is_school_start_question,
     select_dated_evidence,
 )
 from tis_agent.temporal import parse_temporal
@@ -111,3 +112,24 @@ def test_undated_handbook_included_when_it_names_todays_event():
     selected = select_dated_evidence([calendar, handbook], temporal)
     assert any(item.source_type == "handbook" for item in selected)
     assert has_non_calendar_context(selected)
+
+
+def test_bulletin_with_todays_date_is_kept_without_calendar() -> None:
+    temporal = _q("What's happening today?")
+    bulletin = _ev(
+        content="Hopes and Dreams conferences are Friday 28 August in homeroom.",
+        document_title="TIS Weekly Bulletin 2026-08-28",
+        source_type="bulletin",
+        similarity=0.6,
+        start_date=TODAY,
+        end_date=TODAY,
+    )
+    selected = select_dated_evidence([bulletin], temporal)
+    assert selected
+    assert selected[0].source_type == "bulletin"
+    assert has_non_calendar_context(selected)
+
+
+def test_school_start_question_is_detected() -> None:
+    assert is_school_start_question("What time does school start?")
+    assert not is_school_start_question("What time is Hope and Dreams?")

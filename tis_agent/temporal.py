@@ -487,8 +487,9 @@ def grounding_instruction(temporal: TemporalQuery) -> str:
             "and the daily schedule. Also use the handbook and other excerpts if they "
             "mention that date. TIS Times is portal news only — a note that TIS Times "
             "has no posts in a date window does not mean nothing is happening at school, "
-            "and must not be the answer by itself. The weekly bulletin is school-wide "
-            "notices, not the calendar. "
+            "and must not be the answer by itself. The weekly bulletin is school parent "
+            "notices (including Kindergarten / Grade 3 / Grade 6 class mail with names "
+            "removed), not the calendar. "
             "Only use excerpts that refer to that date range. "
             "A similar event on a different date is not an answer."
         )

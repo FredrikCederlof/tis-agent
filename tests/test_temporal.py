@@ -330,3 +330,14 @@ def test_calendar_ranks_above_portal_for_date_questions():
     ranked = _rerank([portal, calendar], temporal)
     assert ranked[0].source_type == "calendar"
     assert ranked[0].section_title == "Assembly"
+
+
+def test_calendar_content_hash_changes_with_parser_version():
+    from tis_agent.ical_text import ICAL_CHUNK_VERSION
+    from tis_agent.ingest_document import content_hash
+
+    ics = b"BEGIN:VCALENDAR\nBEGIN:VEVENT\nEND:VEVENT\nEND:VCALENDAR"
+    plain = content_hash(ics)
+    salted = content_hash(ics, salt=ICAL_CHUNK_VERSION)
+    assert plain != salted
+    assert salted == content_hash(ics, salt=ICAL_CHUNK_VERSION)

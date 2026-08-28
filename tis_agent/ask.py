@@ -38,6 +38,12 @@ _STARTS_TIME_RE = re.compile(
 _ROTATION_DAY_RE = re.compile(r"^day\s*[1-6]$", re.IGNORECASE)
 
 
+_SCHOOL_START_RE = re.compile(
+    r"(?i)\b(?:what time does school start|when does school start|school start time|"
+    r"när börjar skolan|vad dags börjar skolan)\b"
+)
+
+
 def _normalize_retrieval_query(question: str) -> str:
     """Light spelling/spacing fixes so embeddings match handbook wording better."""
     text = question.strip()
@@ -50,6 +56,10 @@ def _normalize_retrieval_query(question: str) -> str:
     for pattern, repl in replacements:
         text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
     return text
+
+
+def is_school_start_question(question: str) -> bool:
+    return bool(_SCHOOL_START_RE.search(question or ""))
 
 
 def _reply_language(question: str) -> str:
@@ -588,10 +598,14 @@ def retrieve(
     today = today or tokyo_today()
     temporal = temporal or parse_temporal(question, today=today)
     queries = [_normalize_retrieval_query(q) for q in retrieval_queries(temporal)]
+    if is_school_start_question(question):
+        queries.append(
+            "official school start time 8:10 classes begin campus opening hours"
+        )
 
     if temporal.kind == "none":
         return Retrieval(
-            evidence=_vector_retrieve(settings, queries[:1], match_count=match_count),
+            evidence=_vector_retrieve(settings, queries[:2], match_count=match_count),
             used_vector=True,
         )
 
@@ -770,6 +784,8 @@ def answer_question(
         f"TIS document excerpts:\n{format_evidence(evidence)}\n\n"
         "Write the WhatsApp reply now.\n"
         "Use only facts explicitly stated in the excerpts above. "
+        "If the excerpts mention both when campus opens and when school or classes start, "
+        "answer with the official start time. "
         "If the excerpts do not clearly answer the question, say you cannot confirm it "
         "from official TIS sources — do not guess or agree with assumptions."
     )
