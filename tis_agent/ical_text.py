@@ -108,8 +108,10 @@ def parse_ics_events(
 ) -> tuple[list[CalendarEvent], date, date]:
     tz = ZoneInfo(timezone)
     now = now or datetime.now(tz)
-    window_start = now - timedelta(days=past_days)
-    window_end = now + timedelta(days=future_days)
+    # Keep the whole local calendar day, including all-day events that started at midnight.
+    day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    window_start = day_start - timedelta(days=past_days)
+    window_end = day_start + timedelta(days=future_days, hours=23, minutes=59, seconds=59)
 
     events: list[tuple[datetime, CalendarEvent]] = []
     for block in raw.split("BEGIN:VEVENT")[1:]:
