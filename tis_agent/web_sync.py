@@ -13,8 +13,9 @@ import httpx
 
 from tis_agent.config import Settings, get_settings
 from tis_agent.html_text import extract_same_site_links, html_to_text
-from tis_agent.ical_text import ics_to_text
+from tis_agent.ical_text import DEFAULT_FUTURE_DAYS, DEFAULT_PAST_DAYS, ics_to_text
 from tis_agent.ingest_document import ingest_bytes
+from tis_agent.portal_sync import PortalCredentialsMissing, PortalLoginError, fetch_portal_section_text
 from tis_agent.storage import upload_bytes
 from tis_agent.clients import make_supabase
 
@@ -39,6 +40,15 @@ DEFAULT_SOURCES: list[dict[str, Any]] = [
         "title": "TIS School Uniform (Top of the Class)",
         "url": "https://schooluniform.jp/tokyo-international-school-tis/",
         "source_type": "web",
+    },
+    {
+        "title": "TIS Times (Parent Portal)",
+        "url": "https://portal.tokyois.com/tis-times/",
+        "source_type": "web",
+        "kind": "portal_auth",
+        "path_prefix": "https://portal.tokyois.com/tis-times",
+        "max_pages": 25,
+        "forward_days": 21,
     },
 ]
 
@@ -117,11 +127,30 @@ def sync_web_source(settings: Settings, source: dict[str, Any]) -> WebSyncResult
     source_key = _source_id(url)
     modified_iso = datetime.now(timezone.utc).isoformat()
 
-    if source.get("kind") == "ics" or url.endswith(".ics"):
+    ingest_data: bytes | None = None
+    if source.get("kind") == "portal_auth":
+        try:
+            text, pages_fetched = fetch_portal_section_text(
+                url,
+                path_prefix=str(source.get("path_prefix") or url.rstrip("/")),
+                max_pages=int(source.get("max_pages") or 25),
+                forward_days=int(source.get("forward_days") or 21),
+            )
+        except PortalCredentialsMissing:
+            raise
+        except PortalLoginError:
+            raise
+        mime_type = "text/plain"
+    elif source.get("kind") == "ics" or url.endswith(".ics"):
         raw_bytes, _ = _fetch_url(url)
-        text = ics_to_text(raw_bytes.decode("utf-8", errors="replace"))
+        text = ics_to_text(
+            raw_bytes.decode("utf-8", errors="replace"),
+            past_days=DEFAULT_PAST_DAYS,
+            future_days=DEFAULT_FUTURE_DAYS,
+        )
         mime_type = "text/calendar"
         pages_fetched = 1
+        ingest_data = raw_bytes
     elif source.get("crawl"):
         text, pages_fetched = _crawl_site_text(
             url,
@@ -148,7 +177,7 @@ def sync_web_source(settings: Settings, source: dict[str, Any]) -> WebSyncResult
 
     result = ingest_bytes(
         settings,
-        data=data,
+        data=ingest_data or data,
         title=title,
         mime_type=mime_type,
         storage_path=storage_path,
@@ -174,6 +203,25 @@ def sync_default_web_sources(settings: Settings | None = None) -> list[WebSyncRe
     for source in DEFAULT_SOURCES:
         try:
             results.append(sync_web_source(settings, source))
+        except PortalCredentialsMissing as exc:
+            logger.warning("Skipping portal source %s: %s", source.get("title"), exc)
+            results.append(
+                WebSyncResult(
+                    title=str(source.get("title") or source.get("url")),
+                    url=str(source.get("url")),
+                    status="skipped",
+                    pages_fetched=0,
+                )
+            )
+        except (PortalLoginError, ValueError) as exc:
+            logger.exception("Failed to sync web source %s: %s", source.get("title"), exc)
+            results.append(
+                WebSyncResult(
+                    title=str(source.get("title") or source.get("url")),
+                    url=str(source.get("url")),
+                    status="failed",
+                )
+            )
         except Exception:
             logger.exception("Failed to sync web source %s", source.get("title"))
             results.append(

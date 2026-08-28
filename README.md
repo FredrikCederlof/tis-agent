@@ -13,7 +13,7 @@ Milestone 3: WhatsApp test preview (Meta Cloud API test number).
 ## Setup
 
 1. Copy `.env.example` to `.env` and set `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY` (`sk-...`), and WhatsApp vars.
-2. Run `sql/001_rag.sql` through `sql/006_whatsapp_dedup.sql` in the [Supabase SQL Editor](https://supabase.com/dashboard/project/ixjsiwedssgutrmegyzv/sql/new).
+2. Run `sql/001_rag.sql` through `sql/007_temporal.sql` in the [Supabase SQL Editor](https://supabase.com/dashboard/project/ixjsiwedssgutrmegyzv/sql/new).
 3. Install deps: `python3 -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
 4. Drop TIS PDFs/Docs in the [Google Drive knowledge folder](https://drive.google.com/drive/folders/1P0XZLFtIBivKEx55BjvUZH6_xsWZUDZa).
 

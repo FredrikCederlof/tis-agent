@@ -148,7 +148,7 @@ def _require_admin_sync_token(request: Request) -> None:
 
 @app.post("/admin/sync/web")
 async def admin_sync_web(request: Request) -> dict[str, object]:
-    """Sync public web/calendar sources into Supabase (admin manual trigger)."""
+    """Sync public web/calendar sources and login-gated portal sections into Supabase."""
     _require_admin_sync_token(request)
     from tis_agent.web_sync import sync_default_web_sources
 

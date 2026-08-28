@@ -1,0 +1,192 @@
+"""Tests for temporal query parsing, date overlap, and calendar event chunks."""
+
+from datetime import date, datetime
+from zoneinfo import ZoneInfo
+
+from tis_agent.ask import (
+    EVENT_LOOKUP_SIMILARITY_FLOOR,
+    Evidence,
+    _is_temporally_relevant,
+    _passes_grounding,
+)
+from tis_agent.ical_text import events_to_chunks, inclusive_end, parse_ics_events
+from tis_agent.temporal import (
+    chunk_overlaps_range,
+    parse_temporal,
+    retrieval_queries,
+    school_week,
+)
+
+
+TODAY = date(2026, 8, 28)  # Friday in Tokyo
+TOKYO = ZoneInfo("Asia/Tokyo")
+
+
+class _Config:
+    similarity_threshold = 0.40
+
+
+def _q(text: str):
+    return parse_temporal(text, today=TODAY)
+
+
+def test_this_week_is_monday_to_friday():
+    rng = school_week(TODAY)
+    assert rng.start == date(2026, 8, 24)
+    assert rng.end == date(2026, 8, 28)
+    parsed = _q("Are there any events this week?")
+    assert parsed.kind == "date_anchored"
+    assert parsed.date_range.start == date(2026, 8, 24)
+    assert parsed.date_range.end == date(2026, 8, 28)
+
+
+def test_next_week_is_following_monday_to_friday():
+    parsed = _q("Are there any events next week?")
+    assert parsed.date_range.start == date(2026, 8, 31)
+    assert parsed.date_range.end == date(2026, 9, 4)
+
+
+def test_relative_days():
+    assert _q("What's happening today?").date_range.start == TODAY
+    assert _q("Anything special tomorrow?").date_range.start == date(2026, 8, 29)
+    assert _q("Vad händer idag?").date_range.start == TODAY
+
+
+def test_weekend_is_saturday_sunday():
+    parsed = _q("What do we have this weekend?")
+    assert parsed.date_range.start == date(2026, 8, 29)
+    assert parsed.date_range.end == date(2026, 8, 30)
+
+
+def test_next_thursday():
+    parsed = _q("What's happening next Thursday?")
+    assert parsed.kind == "date_anchored"
+    assert parsed.date_range.start == date(2026, 9, 3)
+    assert parsed.date_range.end == date(2026, 9, 3)
+
+
+def test_absolute_date():
+    parsed = _q("What happens on September 17?")
+    assert parsed.kind == "date_anchored"
+    assert parsed.date_range.start == date(2026, 9, 17)
+
+
+def test_in_two_weeks_is_that_school_week():
+    parsed = _q("Anything in two weeks?")
+    # today + 14 days = 11 Sep 2026 (Friday) → that Mon–Fri
+    assert parsed.date_range.start == date(2026, 9, 7)
+    assert parsed.date_range.end == date(2026, 9, 11)
+
+
+def test_when_is_named_event():
+    parsed = _q("When is Sports Day?")
+    assert parsed.kind == "event_date_lookup"
+    assert parsed.date_range is None
+
+
+def test_procedural_when_is_not_temporal():
+    parsed = _q("When should I report an absence?")
+    assert parsed.kind == "none"
+
+
+def test_rewrite_includes_iso_date():
+    parsed = _q("What's happening tomorrow?")
+    queries = retrieval_queries(parsed)
+    assert any("2026-08-29" in q for q in queries)
+    assert queries[0] == "What's happening tomorrow?"
+
+
+def test_wrong_date_is_not_relevant():
+    rng = _q("What happens on September 17?").date_range
+    wrong = "Event: Sports Day\nStarts: 2026-09-16 (all day)"
+    right = "Event: Sports Day\nStarts: 2026-09-17 (all day)"
+    assert not chunk_overlaps_range(wrong, rng)
+    assert chunk_overlaps_range(right, rng)
+
+
+def test_metadata_overlap_preferred():
+    rng = _q("What happens on September 17?").date_range
+    content = "Event: Concert\nStarts: 2026-09-17 (all day)"
+    assert chunk_overlaps_range(
+        content, rng, start_date=date(2026, 9, 17), end_date=date(2026, 9, 17)
+    )
+    assert not chunk_overlaps_range(
+        content, rng, start_date=date(2026, 9, 16), end_date=date(2026, 9, 16)
+    )
+
+
+def test_evidence_filter_drops_wrong_day():
+    temporal = _q("What happens on September 17?")
+    wrong = Evidence(
+        content="Event: Assembly\nStarts: 2026-09-16 (all day)",
+        section_title="Assembly",
+        page_start=1,
+        page_end=1,
+        document_title="TIS Parent Calendar",
+        similarity=0.9,
+        source_type="calendar",
+        start_date=date(2026, 9, 16),
+        end_date=date(2026, 9, 16),
+    )
+    right = Evidence(
+        content="Event: Sports Day\nStarts: 2026-09-17 (all day)",
+        section_title="Sports Day",
+        page_start=1,
+        page_end=1,
+        document_title="TIS Parent Calendar",
+        similarity=0.35,
+        source_type="calendar",
+        start_date=date(2026, 9, 17),
+        end_date=date(2026, 9, 17),
+    )
+    assert not _is_temporally_relevant(wrong, temporal)
+    assert _is_temporally_relevant(right, temporal)
+    assert _passes_grounding([right], temporal, _Config())
+
+
+def test_low_cosine_calendar_lookup_can_pass():
+    temporal = _q("When is Sports Day?")
+    item = Evidence(
+        content="Event: Sports Day\nStarts: 2026-09-17 (all day)",
+        section_title="Sports Day",
+        page_start=1,
+        page_end=1,
+        document_title="TIS Parent Calendar",
+        similarity=EVENT_LOOKUP_SIMILARITY_FLOOR,
+        source_type="calendar",
+        start_date=date(2026, 9, 17),
+        end_date=date(2026, 9, 17),
+    )
+    assert _passes_grounding([item], temporal, _Config())
+
+
+def test_all_day_exclusive_dtend():
+    start = date(2026, 9, 17)
+    end = date(2026, 9, 18)
+    assert inclusive_end(start, end) == date(2026, 9, 17)
+
+
+def test_ics_one_chunk_per_event():
+    raw = """BEGIN:VCALENDAR
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20260917
+DTEND;VALUE=DATE:20260918
+SUMMARY:Sports Day
+DESCRIPTION:Whole school
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20260916
+DTEND;VALUE=DATE:20260917
+SUMMARY:Assembly
+END:VEVENT
+END:VCALENDAR
+"""
+    now = datetime(2026, 8, 28, 10, 0, tzinfo=TOKYO)
+    events, _, _ = parse_ics_events(raw, now=now)
+    assert [e.summary for e in events] == ["Assembly", "Sports Day"]
+    chunks = events_to_chunks(events)
+    sports = next(c for c in chunks if c.section_title == "Sports Day")
+    assert sports.start_date == date(2026, 9, 17)
+    assert sports.end_date == date(2026, 9, 17)
+    assert "2026-09-17" in sports.content
+    assert "Assembly" not in sports.content
