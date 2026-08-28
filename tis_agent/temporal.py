@@ -349,6 +349,26 @@ def _is_event_date_lookup(text: str) -> bool:
     return bool(_EVENT_WHEN_RE.search(text))
 
 
+_WHATS_ON_RE = re.compile(
+    r"\b("
+    r"happen(?:ing|s)?"
+    r"|anything\s+special"
+    r"|any(?:thing)?\s+(?:on|planned|scheduled)"
+    r"|what(?:'s|s| is)\s+on"
+    r"|going\s+on"
+    r"|any\s+events?"
+    r"|what\s+events?"
+    r"|något\s+speciellt|något\s+särskilt|vad\s+händer|något\s+på\s+gång"
+    r")\b",
+    re.IGNORECASE,
+)
+
+
+def is_whats_on_question(question: str) -> bool:
+    """True for 'anything happening today / this week' schedule questions."""
+    return bool(_WHATS_ON_RE.search(question or ""))
+
+
 def parse_temporal(question: str, *, today: date | None = None) -> TemporalQuery:
     """Detect temporal intent and resolve it against the Tokyo school calendar."""
     today = today or tokyo_today()
