@@ -97,6 +97,27 @@ Run `sync web` twice a week so TIS Times, calendar, and public pages stay fresh.
 
 Alternative: extend the nightly Cloud Agent procedure to run `sync web` after Drive sync on the same days.
 
+## Sunday weekly bulletin
+
+A **sanitized** school bulletin may be ingested into the same RAG store. This is not raw Gmail and not the family Sunday email.
+
+```bash
+python -m tis_agent sync bulletin /tmp/tis-bulletin-raw.md
+```
+
+`--dry-run` prints the sanitized markdown without uploading.
+
+The Sunday job should:
+
+1. Search Gmail for the last 14 days from school senders only (`tokyois.com`, Toddle, OpenApply, ManageBac, SchoolsBuddy, Seesaw). Do **not** search child names.
+2. Open matching threads as plain text. Skip personal Gmail/iCloud threads.
+3. Write a dump using `=== MESSAGE ===` separators with `From` / `Date` / `Subject` headers.
+4. Run `python -m tis_agent sync bulletin` on that dump (install deps first if needed). Secrets: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`.
+5. Confirm the JSON summary has `"status": "synced"` or `"skipped"`, and that child names are absent from any printed markdown.
+6. Do **not** send WhatsApp, email parents, or write the family briefing HTML.
+
+The sanitizer strips Eldor / Malte / Vega-Lo / Vega, drops Kindergarten-only, Grade 3-only, and Grade 6-only paragraphs, keeps PYP/MYP/DP/whole-school items, and dedupes triple Toddle sends. Document title: `TIS Weekly Bulletin YYYY-MM-DD` with `source_type: bulletin`.
+
 ## Idempotency
 
 Re-running sync on an unchanged file should print `"status": "skipped"`.

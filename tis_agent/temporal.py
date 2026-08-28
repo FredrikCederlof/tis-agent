@@ -422,6 +422,22 @@ def _dedupe(items: list[str]) -> list[str]:
     return out
 
 
+_WINDOW_STUB_RE = re.compile(
+    r"no posts dated between|no recent articles were found during this sync",
+    re.IGNORECASE,
+)
+
+
+def is_sync_window_stub(content: str, *, document_title: str | None = None) -> bool:
+    """True for TIS Times empty-window placeholders, which are not event evidence."""
+    if _WINDOW_STUB_RE.search(content or ""):
+        return True
+    title = (document_title or "").lower()
+    if "tis times" in title and "no posts" in (content or "").lower():
+        return True
+    return False
+
+
 def chunk_overlaps_range(
     content: str,
     rng: DateRange,
@@ -429,7 +445,10 @@ def chunk_overlaps_range(
     start_date: date | None = None,
     end_date: date | None = None,
     today: date | None = None,
+    document_title: str | None = None,
 ) -> bool:
+    if is_sync_window_stub(content, document_title=document_title):
+        return False
     if start_date is not None:
         return rng.overlaps(start_date, end_date or start_date)
     dates = extract_dates_from_text(content, today=today)
@@ -444,6 +463,12 @@ def grounding_instruction(temporal: TemporalQuery) -> str:
         return (
             f"The parent is asking about {rng.label()} "
             f"({rng.start.strftime('%A')} to {rng.end.strftime('%A')}, Asia/Tokyo). "
+            "The TIS Parent Calendar is the primary source for school events, holidays, "
+            "and the daily schedule. Also use the handbook and other excerpts if they "
+            "mention that date. TIS Times is portal news only — a note that TIS Times "
+            "has no posts in a date window does not mean nothing is happening at school, "
+            "and must not be the answer by itself. The weekly bulletin is school-wide "
+            "notices, not the calendar. "
             "Only use excerpts that refer to that date range. "
             "A similar event on a different date is not an answer."
         )

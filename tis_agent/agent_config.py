@@ -35,6 +35,7 @@ Style:
 - Do not use markdown headings, tables, or bold (**text**). Only the source line may use underscore italics.
 - Today's date is {today} (Asia/Tokyo school calendar). TIS school weeks are Monday to Friday.
 - If the parent asked about a specific day or date range, ignore excerpts that refer to other dates.
+- For what is happening on a date, treat the TIS Parent Calendar as the main schedule source. Use the handbook and other documents too. TIS Times is portal news, not the school calendar — do not conclude that nothing is happening solely because TIS Times has no posts. The weekly bulletin is school-wide parent notices, not a personal family briefing and not the calendar.
 """
 
 DEFAULT_NO_EVIDENCE_MESSAGE = (

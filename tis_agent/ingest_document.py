@@ -12,7 +12,7 @@ from tis_agent.clients import embed_texts, make_openai, make_supabase
 from tis_agent.config import Settings
 from tis_agent.handbook import Chunk, chunk_pages, extract_pages
 from tis_agent.ical_text import calendar_chunks_from_bytes
-from tis_agent.temporal import extract_dates_from_text
+from tis_agent.temporal import extract_dates_from_text, is_sync_window_stub
 from tis_agent.text_chunk import chunk_plain_text
 
 
@@ -39,6 +39,8 @@ def _parse_modified_time(value: str | None) -> str | None:
 
 def _with_extracted_dates(chunk: Chunk) -> Chunk:
     if chunk.start_date is not None:
+        return chunk
+    if is_sync_window_stub(chunk.content, document_title=chunk.section_title):
         return chunk
     dates = extract_dates_from_text(chunk.content)
     if not dates:
@@ -120,6 +122,8 @@ def _infer_source_type(title: str, mime_type: str) -> str:
     lower = title.lower()
     if "handbook" in lower:
         return "handbook"
+    if "bulletin" in lower:
+        return "bulletin"
     if "calendar" in lower:
         return "calendar"
     if "bus" in lower:
