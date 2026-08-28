@@ -19,6 +19,7 @@ Short record of product intent. Change these only with a reason.
 - The weekly bulletin keeps school-wide, PYP-wide, MYP-wide, and DP-wide facts. It drops Kindergarten-only, Grade 3-only, and Grade 6-only items, and strips the names Eldor, Malte, and Vega-Lo / Vega.
 - Documents are uploaded to Supabase, then embedded for RAG.
 - Metadata (title, type, dates, grade/section, source) is first-class. Semantic similarity alone is not enough.
+- Date and event questions search **all** official sources (parent calendar, handbook, bulletin, portal/web), not the calendar alone. The calendar remains the schedule list; other documents add context when they mention that date or event. TIS 6-day rotation labels (Day 1–6) are not treated as special events.
 
 ## Trust
 

@@ -35,6 +35,7 @@ _STARTS_TIME_RE = re.compile(
     r"^Starts:\s+(\d{4}-\d{2}-\d{2})(?:\s+(\d{2}:\d{2}))?",
     re.MULTILINE,
 )
+_ROTATION_DAY_RE = re.compile(r"^day\s*[1-6]$", re.IGNORECASE)
 
 
 def _normalize_retrieval_query(question: str) -> str:
@@ -320,7 +321,7 @@ def _calendar_retrieve(
             .or_(
                 f"end_date.gte.{rng.start.isoformat()},end_date.is.null"
             )
-            .limit(40)
+            .limit(80)
             .execute()
         )
         return _filter_overlapping(settings, response.data or [], rng, force_calendar=True), True
@@ -344,25 +345,45 @@ def _date_retrieve(
     settings: Settings,
     temporal: TemporalQuery,
 ) -> tuple[list[Evidence], bool]:
+    """Load any dated chunk (calendar, bulletin, handbook, web) overlapping the asked dates."""
     if temporal.kind != "date_anchored" or temporal.date_range is None:
         return [], False
     rng = temporal.date_range
+    supabase = make_supabase(settings)
     try:
         response = (
-            make_supabase(settings)
-            .rpc(
+            supabase.rpc(
                 "chunks_overlapping_dates",
                 {
                     "filter_start": rng.start.isoformat(),
                     "filter_end": rng.end.isoformat(),
-                    "match_count": 24,
+                    "match_count": 40,
                 },
             )
             .execute()
         )
+        return _filter_overlapping(settings, response.data or [], rng), True
+    except Exception:
+        pass
+
+    select_cols = (
+        "id, document_id, content, section_title, page_start, page_end, "
+        "chunk_index, start_date, end_date, event_type, "
+        "documents!inner(title, source_type)"
+    )
+    try:
+        response = (
+            supabase.table("chunks")
+            .select(select_cols)
+            .not_.is_("start_date", "null")
+            .lte("start_date", rng.end.isoformat())
+            .or_(f"end_date.gte.{rng.start.isoformat()},end_date.is.null")
+            .limit(80)
+            .execute()
+        )
+        return _filter_overlapping(settings, response.data or [], rng), True
     except Exception:
         return [], False
-    return _filter_overlapping(settings, response.data or [], rng), True
 
 
 def _merge_evidence(batches: list[list[Evidence]]) -> list[Evidence]:
@@ -391,10 +412,11 @@ def _is_temporally_relevant(item: Evidence, temporal: TemporalQuery) -> bool:
 
 
 def _rerank(evidence: list[Evidence], temporal: TemporalQuery) -> list[Evidence]:
-    def sort_key(item: Evidence) -> tuple[int, int, float]:
+    def sort_key(item: Evidence) -> tuple[int, int, int, float]:
         overlap = 1 if _is_temporally_relevant(item, temporal) else 0
         calendar = 1 if item.source_type == "calendar" else 0
-        return (overlap, calendar, item.similarity)
+        bulletin = 1 if item.source_type == "bulletin" else 0
+        return (overlap, calendar, bulletin, item.similarity)
 
     return sorted(evidence, key=sort_key, reverse=True)
 
@@ -408,6 +430,74 @@ def _event_label(item: Evidence) -> str:
     if starts and starts.group(2):
         return f"{title} ({starts.group(2)})"
     return title
+
+
+def is_rotation_day(item: Evidence) -> bool:
+    """True for TIS 6-day rotation labels (Day 1–6), which are not special events."""
+    label = _event_label(item)
+    if "(" in label:
+        label = label.split("(", 1)[0]
+    return bool(_ROTATION_DAY_RE.fullmatch(label.strip()))
+
+
+def _normalize_event_name(text: str) -> str:
+    text = (text or "").lower().replace("&", " and ")
+    text = re.sub(r"[^a-z0-9]+", " ", text)
+    return " ".join(text.split())
+
+
+def _event_name_keys(items: list[Evidence]) -> list[str]:
+    keys: list[str] = []
+    for item in items:
+        if is_rotation_day(item):
+            continue
+        label = _event_label(item).strip()
+        if "(" in label:
+            label = label.split("(", 1)[0].strip()
+        normalized = _normalize_event_name(label)
+        if len(normalized) < 6:
+            continue
+        keys.append(normalized)
+    return keys
+
+
+def _mentions_event(item: Evidence, names: list[str]) -> bool:
+    if not names:
+        return False
+    text = _normalize_event_name(f"{item.section_title or ''} {item.content}")
+    return any(name in text for name in names)
+
+
+def select_dated_evidence(
+    merged: list[Evidence],
+    temporal: TemporalQuery,
+) -> list[Evidence]:
+    """Calendar events for the asked dates, plus handbook/bulletin/web that support them."""
+    overlapping = [item for item in merged if _is_temporally_relevant(item, temporal)]
+    calendar_special = [
+        item
+        for item in overlapping
+        if item.source_type == "calendar" and not is_rotation_day(item)
+    ]
+    names = _event_name_keys(calendar_special)
+    supporting: list[Evidence] = []
+    seen: set[str] = set()
+    for item in merged:
+        if item.source_type == "calendar":
+            continue
+        keep = _is_temporally_relevant(item, temporal) or _mentions_event(item, names)
+        if not keep:
+            continue
+        key = item.chunk_id or f"{item.document_title}:{item.content[:80]}"
+        if key in seen:
+            continue
+        seen.add(key)
+        supporting.append(item)
+    return _rerank([*calendar_special, *supporting], temporal)
+
+
+def has_non_calendar_context(evidence: list[Evidence]) -> bool:
+    return any(item.source_type != "calendar" for item in evidence)
 
 
 def _format_range_label(rng: DateRange, language: str) -> str:
@@ -431,7 +521,11 @@ def format_schedule_reply(
     """Deterministic calendar answer — no LLM round-trip."""
     rng = temporal.date_range
     assert rng is not None
-    calendar_items = [item for item in evidence if item.source_type == "calendar"]
+    calendar_items = [
+        item
+        for item in evidence
+        if item.source_type == "calendar" and not is_rotation_day(item)
+    ]
     seen: set[str] = set()
     unique: list[Evidence] = []
     for item in calendar_items:
@@ -501,26 +595,6 @@ def retrieve(
             used_vector=True,
         )
 
-    if temporal.kind == "date_anchored" and is_whats_on_question(question):
-        calendar_hits, calendar_ok = _calendar_retrieve(settings, temporal)
-        date_hits, date_ok = [], False
-        if not calendar_ok:
-            date_hits, date_ok = _date_retrieve(settings, temporal)
-            date_hits = [
-                item
-                for item in date_hits
-                if item.source_type == "calendar"
-                or "calendar" in (item.document_title or "").lower()
-            ]
-        lookup_ok = calendar_ok or date_ok
-        if lookup_ok:
-            merged = _merge_evidence([calendar_hits, date_hits])
-            return Retrieval(
-                evidence=_rerank(merged, temporal)[: max(match_count, 12)],
-                date_lookup_ok=True,
-                used_vector=False,
-            )
-
     calendar_hits, calendar_ok = _calendar_retrieve(settings, temporal)
     date_hits, date_ok = _date_retrieve(settings, temporal)
     vector_hits = _vector_retrieve(settings, queries[:2], match_count=match_count)
@@ -533,17 +607,17 @@ def retrieve(
         for item in merged
         if not is_sync_window_stub(item.content, document_title=item.document_title)
     ]
-    filtered = [item for item in merged if _is_temporally_relevant(item, temporal)]
 
     if temporal.kind == "event_date_lookup":
         return Retrieval(
-            evidence=_rerank(merged, temporal)[:match_count],
+            evidence=_rerank(merged, temporal)[: max(match_count, 12)],
             date_lookup_ok=calendar_ok or date_ok,
             used_vector=True,
         )
 
+    selected = select_dated_evidence(merged, temporal)
     return Retrieval(
-        evidence=_rerank(filtered, temporal)[:match_count],
+        evidence=selected[: max(match_count, 12)],
         date_lookup_ok=calendar_ok or date_ok,
         used_vector=True,
     )
@@ -642,6 +716,7 @@ def answer_question(
         temporal.kind == "date_anchored"
         and is_whats_on_question(question)
         and retrieval.date_lookup_ok
+        and not has_non_calendar_context(evidence)
     ):
         reply = format_whatsapp_reply(
             format_schedule_reply(evidence, temporal, language),

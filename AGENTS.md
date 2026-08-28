@@ -177,4 +177,11 @@ Re-running sync on an unchanged file should print `"status": "skipped"`.
 ```bash
 python -m tis_agent sync state
 python -m tis_agent ask "What does TIS say about reporting an absence?"
+python -m tis_agent ask "Hi. Is there anything special happening at school today?"
+python -m tis_agent eval --list
+python -m tis_agent eval
 ```
+
+`eval` scores 20 gold questions drawn from the Drive corpus (handbook, fees, health, bus, BtB, calendar). It needs the same secrets as `ask`: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY` as Cloud Agent environment secrets. Unit tests (`pytest`) do not need those secrets.
+
+Date/event questions retrieve from the parent calendar **and** handbook/bulletin/web. Do not calendar-only short-circuit.
