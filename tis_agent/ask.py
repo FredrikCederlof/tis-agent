@@ -20,6 +20,7 @@ from tis_agent.temporal import (
     TemporalQuery,
     chunk_overlaps_range,
     grounding_instruction,
+    is_sync_window_stub,
     parse_temporal,
     retrieval_queries,
     tokyo_today,
@@ -86,6 +87,7 @@ class Evidence:
     document_title: str
     similarity: float
     chunk_id: str | None = None
+    document_id: str | None = None
     source_type: str | None = None
     start_date: date | None = None
     end_date: date | None = None
@@ -110,6 +112,7 @@ def _evidence_from_row(row: dict, *, handbook_title: str) -> Evidence:
         document_title=row.get("document_title") or handbook_title,
         similarity=float(row.get("similarity") or 0),
         chunk_id=str(row["id"]) if row.get("id") else None,
+        document_id=str(row["document_id"]) if row.get("document_id") else None,
         source_type=row.get("source_type"),
         start_date=_parse_date_field(row.get("start_date")),
         end_date=_parse_date_field(row.get("end_date")),
@@ -149,6 +152,111 @@ def _vector_retrieve(
     return evidence
 
 
+def _with_source_type(item: Evidence, source_type: str | None) -> Evidence:
+    if not source_type or item.source_type:
+        return item
+    return Evidence(
+        content=item.content,
+        section_title=item.section_title,
+        page_start=item.page_start,
+        page_end=item.page_end,
+        document_title=item.document_title,
+        similarity=item.similarity,
+        chunk_id=item.chunk_id,
+        document_id=item.document_id,
+        source_type=source_type,
+        start_date=item.start_date,
+        end_date=item.end_date,
+    )
+
+
+def _attach_source_types(settings: Settings, evidence: list[Evidence]) -> list[Evidence]:
+    """Fill source_type from documents when match_chunks does not return it."""
+    missing_ids = [
+        item.document_id
+        for item in evidence
+        if item.document_id and not item.source_type
+    ]
+    if not missing_ids:
+        return evidence
+    try:
+        response = (
+            make_supabase(settings)
+            .table("documents")
+            .select("id, source_type, title")
+            .in_("id", list(dict.fromkeys(missing_ids)))
+            .execute()
+        )
+    except Exception:
+        return evidence
+    by_id = {str(row["id"]): row for row in response.data or []}
+    out: list[Evidence] = []
+    for item in evidence:
+        row = by_id.get(item.document_id or "")
+        source_type = item.source_type or (row.get("source_type") if row else None)
+        if not source_type and (
+            "calendar" in item.document_title.lower()
+            or "parent calendar" in item.document_title.lower()
+        ):
+            source_type = "calendar"
+        out.append(_with_source_type(item, source_type))
+    return out
+
+
+def _calendar_retrieve(
+    settings: Settings,
+    temporal: TemporalQuery,
+) -> list[Evidence]:
+    """Always load parent-calendar events that overlap the asked dates."""
+    if temporal.kind != "date_anchored" or temporal.date_range is None:
+        return []
+    rng = temporal.date_range
+    try:
+        response = (
+            make_supabase(settings)
+            .table("chunks")
+            .select(
+                "id, document_id, content, section_title, page_start, page_end, "
+                "chunk_index, start_date, end_date, event_type, "
+                "documents!inner(title, source_type)"
+            )
+            .eq("documents.source_type", "calendar")
+            .execute()
+        )
+    except Exception:
+        return []
+
+    evidence: list[Evidence] = []
+    for row in response.data or []:
+        row = _nested_document_fields(row)
+        item = _evidence_from_row(row, handbook_title=settings.handbook_title)
+        if is_sync_window_stub(item.content, document_title=item.document_title):
+            continue
+        if chunk_overlaps_range(
+            item.content,
+            rng,
+            start_date=item.start_date,
+            end_date=item.end_date,
+            document_title=item.document_title,
+        ):
+            evidence.append(
+                Evidence(
+                    content=item.content,
+                    section_title=item.section_title,
+                    page_start=item.page_start,
+                    page_end=item.page_end,
+                    document_title=item.document_title,
+                    similarity=0.99,
+                    chunk_id=item.chunk_id,
+                    document_id=item.document_id,
+                    source_type="calendar",
+                    start_date=item.start_date,
+                    end_date=item.end_date,
+                )
+            )
+    return evidence
+
+
 def _date_retrieve(
     settings: Settings,
     temporal: TemporalQuery,
@@ -166,63 +274,21 @@ def _date_retrieve(
                 "match_count": 24,
             },
         ).execute()
-        return [
-            _evidence_from_row(row, handbook_title=settings.handbook_title)
-            for row in response.data or []
-        ]
     except Exception:
-        pass
-
-    try:
-        response = (
-            supabase.table("chunks")
-            .select(
-                "id, document_id, content, section_title, page_start, page_end, "
-                "chunk_index, start_date, end_date, event_type, "
-                "documents!inner(title, source_type)"
-            )
-            .eq("documents.source_type", "calendar")
-            .execute()
-        )
-    except Exception:
-        try:
-            response = (
-                supabase.table("chunks")
-                .select(
-                    "id, document_id, content, section_title, page_start, page_end, "
-                    "chunk_index, documents!inner(title, source_type)"
-                )
-                .eq("documents.source_type", "calendar")
-                .execute()
-            )
-        except Exception:
-            return []
-
+        return []
     evidence: list[Evidence] = []
     for row in response.data or []:
-        row = _nested_document_fields(row)
         item = _evidence_from_row(row, handbook_title=settings.handbook_title)
+        if is_sync_window_stub(item.content, document_title=item.document_title):
+            continue
         if chunk_overlaps_range(
             item.content,
             rng,
             start_date=item.start_date,
             end_date=item.end_date,
+            document_title=item.document_title,
         ):
-            similarity = 0.99 if item.source_type == "calendar" else 0.85
-            evidence.append(
-                Evidence(
-                    content=item.content,
-                    section_title=item.section_title,
-                    page_start=item.page_start,
-                    page_end=item.page_end,
-                    document_title=item.document_title,
-                    similarity=similarity,
-                    chunk_id=item.chunk_id,
-                    source_type=item.source_type,
-                    start_date=item.start_date,
-                    end_date=item.end_date,
-                )
-            )
+            evidence.append(item)
     return evidence
 
 
@@ -238,6 +304,8 @@ def _merge_evidence(batches: list[list[Evidence]]) -> list[Evidence]:
 
 
 def _is_temporally_relevant(item: Evidence, temporal: TemporalQuery) -> bool:
+    if is_sync_window_stub(item.content, document_title=item.document_title):
+        return False
     if temporal.kind != "date_anchored" or temporal.date_range is None:
         return True
     return chunk_overlaps_range(
@@ -245,6 +313,7 @@ def _is_temporally_relevant(item: Evidence, temporal: TemporalQuery) -> bool:
         temporal.date_range,
         start_date=item.start_date,
         end_date=item.end_date,
+        document_title=item.document_title,
     )
 
 
@@ -273,8 +342,17 @@ def retrieve(
         return _vector_retrieve(settings, queries, match_count=match_count)
 
     vector_hits = _vector_retrieve(settings, queries, match_count=match_count)
+    calendar_hits = _calendar_retrieve(settings, temporal)
     date_hits = _date_retrieve(settings, temporal)
-    merged = _merge_evidence([vector_hits, date_hits])
+    merged = _attach_source_types(
+        settings,
+        _merge_evidence([calendar_hits, date_hits, vector_hits]),
+    )
+    merged = [
+        item
+        for item in merged
+        if not is_sync_window_stub(item.content, document_title=item.document_title)
+    ]
     filtered = [item for item in merged if _is_temporally_relevant(item, temporal)]
 
     if temporal.kind == "event_date_lookup":
@@ -282,7 +360,15 @@ def retrieve(
 
     if not filtered:
         vector_hits = _vector_retrieve(settings, queries, match_count=max(match_count, 20))
-        merged = _merge_evidence([vector_hits, date_hits])
+        merged = _attach_source_types(
+            settings,
+            _merge_evidence([calendar_hits, date_hits, vector_hits]),
+        )
+        merged = [
+            item
+            for item in merged
+            if not is_sync_window_stub(item.content, document_title=item.document_title)
+        ]
         filtered = [item for item in merged if _is_temporally_relevant(item, temporal)]
 
     return _rerank(filtered, temporal)[:match_count]
@@ -299,6 +385,8 @@ def format_evidence(evidence: list[Evidence]) -> str:
                 else f"pp. {item.page_start}-{item.page_end}"
             )
         header = f"[{i}] {item.document_title}"
+        if item.source_type:
+            header += f" [{item.source_type}]"
         if item.section_title:
             header += f" — {item.section_title}"
         if pages:

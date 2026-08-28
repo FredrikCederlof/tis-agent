@@ -8,10 +8,12 @@ from tis_agent.ask import (
     Evidence,
     _is_temporally_relevant,
     _passes_grounding,
+    _rerank,
 )
 from tis_agent.ical_text import events_to_chunks, inclusive_end, parse_ics_events
 from tis_agent.temporal import (
     chunk_overlaps_range,
+    is_sync_window_stub,
     parse_temporal,
     retrieval_queries,
     school_week,
@@ -190,3 +192,60 @@ END:VCALENDAR
     assert sports.end_date == date(2026, 9, 17)
     assert "2026-09-17" in sports.content
     assert "Assembly" not in sports.content
+
+
+def test_tis_times_empty_window_is_not_today_evidence():
+    stub = (
+        "TIS Times (Parent Portal)\n"
+        "No posts dated between 2026-08-28 and 2026-09-27.\n"
+    )
+    temporal = _q("Anything special happening at school today?")
+    item = Evidence(
+        content=stub,
+        section_title=None,
+        page_start=1,
+        page_end=1,
+        document_title="TIS Times (Parent Portal)",
+        similarity=0.92,
+        source_type="web",
+        start_date=date(2026, 8, 28),
+        end_date=date(2026, 9, 27),
+    )
+    assert is_sync_window_stub(stub, document_title=item.document_title)
+    assert not _is_temporally_relevant(item, temporal)
+    assert not chunk_overlaps_range(
+        stub,
+        temporal.date_range,
+        start_date=item.start_date,
+        end_date=item.end_date,
+        document_title=item.document_title,
+    )
+
+
+def test_calendar_ranks_above_portal_for_date_questions():
+    temporal = _q("What's happening today?")
+    portal = Evidence(
+        content="TIS Times article about next month's bake sale.",
+        section_title="Bake sale",
+        page_start=1,
+        page_end=1,
+        document_title="TIS Times (Parent Portal)",
+        similarity=0.8,
+        source_type="web",
+        start_date=date(2026, 8, 28),
+        end_date=date(2026, 8, 28),
+    )
+    calendar = Evidence(
+        content="Event: Assembly\nStarts: 2026-08-28 (all day)",
+        section_title="Assembly",
+        page_start=1,
+        page_end=1,
+        document_title="TIS Parent Calendar",
+        similarity=0.4,
+        source_type="calendar",
+        start_date=date(2026, 8, 28),
+        end_date=date(2026, 8, 28),
+    )
+    ranked = _rerank([portal, calendar], temporal)
+    assert ranked[0].source_type == "calendar"
+    assert ranked[0].section_title == "Assembly"

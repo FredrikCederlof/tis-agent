@@ -221,11 +221,9 @@ def crawl_portal_section(
 
     combined = "\n\n".join(sections).strip()
     if not combined:
-        window_start, window_end = _forward_window(forward_days=forward_days)
         combined = (
-            f"TIS Times (Parent Portal)\n"
-            f"No posts dated between {window_start.date().isoformat()} and "
-            f"{window_end.date().isoformat()}.\n"
+            "TIS Times (Parent Portal)\n"
+            "No recent articles were found during this sync.\n"
         )
     return combined, len(seen)
 
