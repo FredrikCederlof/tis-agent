@@ -97,9 +97,17 @@ Run `sync web` twice a week so TIS Times, calendar, and public pages stay fresh.
 
 Alternative: extend the nightly Cloud Agent procedure to run `sync web` after Drive sync on the same days.
 
-## Sunday weekly bulletin
+## Sunday school-mail bulletin (standalone Cloud Agent)
 
-A **sanitized** school bulletin may be ingested into the same RAG store. This is not raw Gmail and not the family Sunday email.
+A **dedicated** Sunday Cursor Cloud Agent on this repo reads school Gmail and ingests a sanitized bulletin into the same RAG store. It is not the family Sunday email product, not a follow-on to that job, and not raw Gmail in the vector store.
+
+**Automation name:** TIS school mail bulletin  
+**Repo / branch:** GitHub `FredrikCederlof/tis-agent` / `main` (Automations must use GitHub, not Origin)  
+**Schedule:** Sunday **19:30 JST** (`30 10 * * 0` UTC)  
+**Tools:** Gmail + this repo checkout  
+**Inbox:** the connected parent Gmail. Search **school senders only**. Never search child names.
+
+Do **not** wait for any other agent. Do **not** open other repos. Do **not** send WhatsApp, email parents, or write a family briefing.
 
 ```bash
 python -m tis_agent sync bulletin /tmp/tis-bulletin-raw.md
@@ -107,16 +115,58 @@ python -m tis_agent sync bulletin /tmp/tis-bulletin-raw.md
 
 `--dry-run` prints the sanitized markdown without uploading.
 
-The Sunday job should:
+### Procedure every run
 
-1. Search Gmail for the last 14 days from school senders only (`tokyois.com`, Toddle, OpenApply, ManageBac, SchoolsBuddy, Seesaw). Do **not** search child names.
-2. Open matching threads as plain text. Skip personal Gmail/iCloud threads.
-3. Write a dump using `=== MESSAGE ===` separators with `From` / `Date` / `Subject` headers.
-4. Run `python -m tis_agent sync bulletin` on that dump (install deps first if needed). Secrets: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`.
-5. Confirm the JSON summary has `"status": "synced"` or `"skipped"`, and that child names are absent from any printed markdown.
-6. Do **not** send WhatsApp, email parents, or write the family briefing HTML.
+1. Checkout GitHub `FredrikCederlof/tis-agent` on `main`.
+2. Install deps if needed: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
+3. Load secrets: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`.
+4. Search Gmail for the last 14 days from school senders only (include trash if school mail was deleted):
+
+```
+from:tokyois.com newer_than:14d
+from:openapply.com newer_than:14d
+from:toddleapp.com OR from:toddle newer_than:14d
+from:managebac.com OR from:managebac newer_than:14d
+from:schoolsbuddy newer_than:14d
+from:seesaw newer_than:14d
+```
+
+5. Open matching threads as plain text. Skip personal Gmail/iCloud/Yahoo/Outlook senders and marketing-only mail.
+6. Write `/tmp/tis-bulletin-raw.md` using `=== MESSAGE ===` separators with `From` / `Date` / `Subject` headers and the plain-text body.
+7. Run `.venv/bin/python -m tis_agent sync bulletin /tmp/tis-bulletin-raw.md` (optional `--dry-run` first to inspect).
+8. Confirm the JSON summary has `"status": "synced"` or `"skipped"`. If `"empty"`, report that and stop. Confirm child names are absent from any printed markdown (Eldor, Malte, Vega-Lo, Vega).
+9. Print a short summary: threads opened, kept vs dropped blocks, ingest status.
 
 The sanitizer strips Eldor / Malte / Vega-Lo / Vega, drops Kindergarten-only, Grade 3-only, and Grade 6-only paragraphs, keeps PYP/MYP/DP/whole-school items, and dedupes triple Toddle sends. Document title: `TIS Weekly Bulletin YYYY-MM-DD` with `source_type: bulletin`.
+
+Only one Sunday bulletin automation should exist. After **TIS school mail bulletin** is saved, disable or delete the older **TIS Sunday weekly bulletin** job.
+
+### Cursor Automation prompt (paste into a new automation)
+
+```
+Ingest a sanitized weekly TIS school bulletin into Tina’s knowledge base.
+
+This job is standalone. Use Gmail on the connected account. Search school senders only. Do not search child names. Do not send WhatsApp, do not email anyone, and do not write a family briefing.
+
+Procedure:
+1. Install deps if needed: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+2. Load secrets: SUPABASE_URL, SUPABASE_SECRET_KEY, OPENAI_API_KEY.
+3. Search Gmail for the last 14 days (include trash if school mail was deleted):
+   - from:tokyois.com newer_than:14d
+   - from:openapply.com newer_than:14d
+   - from:toddleapp.com OR from:toddle newer_than:14d
+   - from:managebac.com OR from:managebac newer_than:14d
+   - from:schoolsbuddy newer_than:14d
+   - from:seesaw newer_than:14d
+4. Open matching threads as plain text. Skip personal Gmail/iCloud/Yahoo/Outlook senders.
+5. Write /tmp/tis-bulletin-raw.md using === MESSAGE === separators with From / Date / Subject headers and the plain-text body.
+6. Run: .venv/bin/python -m tis_agent sync bulletin /tmp/tis-bulletin-raw.md
+7. Confirm JSON "status" is "synced" or "skipped". If "empty", report and stop.
+8. Confirm child names are absent from printed markdown (Eldor, Malte, Vega-Lo, Vega).
+9. Print threads opened, kept vs dropped blocks, and ingest status.
+
+Document title is TIS Weekly Bulletin YYYY-MM-DD (Asia/Tokyo date of the run) with source type bulletin.
+```
 
 ## Idempotency
 
