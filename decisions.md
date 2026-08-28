@@ -9,13 +9,13 @@ Short record of product intent. Change these only with a reason.
 - **User:** Any TIS parent, Kindergarten through Grade 12. Not a family-specific assistant.
 - **Outcome:** A parent asks in natural language and gets a short, trustworthy answer from TIS source material.
 - **Interface:** WhatsApp is the only parent-facing interface. No parent web app.
-- **This project is not** the family Sunday email briefing (`TIS-Summary`). That product stays separate. Tina may ingest a **sanitized weekly school bulletin** derived from the same school mail, never the family HTML.
+- **This project is not** the family Sunday email briefing (`TIS-Summary`). That product stays separate and is never a dependency. Tina’s weekly bulletin is a **dedicated Sunday Cloud Agent** that searches school Gmail (tokyois / Toddle / OpenApply / ManageBac / SchoolsBuddy / Seesaw) and ingests a sanitized bulletin. Never raw Gmail. Never the family HTML.
 
 ## Knowledge
 
 - Shared knowledge base for all parents. No per-family email corpus and no child names in RAG.
 - Sources are generic school documents: handbook, policies, calendar, bus information, **sanitized weekly bulletin**, and similar.
-- Ingest formats: PDFs, Google Docs, public web/calendar pages, and a Sunday bulletin built from school mail after PII/grade filtering. Not raw Gmail. Not the family weekly briefing HTML.
+- Ingest formats: PDFs, Google Docs, public web/calendar pages, and a Sunday bulletin from a **standalone** school-Gmail Cloud Agent after PII/grade filtering. Not raw Gmail. Not the family weekly briefing HTML. Not a piggyback on any other agent.
 - The weekly bulletin keeps school-wide, PYP-wide, MYP-wide, and DP-wide facts. It drops Kindergarten-only, Grade 3-only, and Grade 6-only items, and strips the names Eldor, Malte, and Vega-Lo / Vega.
 - Documents are uploaded to Supabase, then embedded for RAG.
 - Metadata (title, type, dates, grade/section, source) is first-class. Semantic similarity alone is not enough.
