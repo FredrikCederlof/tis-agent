@@ -120,6 +120,8 @@ def _infer_source_type(title: str, mime_type: str) -> str:
     lower = title.lower()
     if "handbook" in lower:
         return "handbook"
+    if "bulletin" in lower:
+        return "bulletin"
     if "calendar" in lower:
         return "calendar"
     if "bus" in lower:
