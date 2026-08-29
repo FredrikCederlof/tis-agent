@@ -5,6 +5,8 @@ export type AgentConfigRow = {
   strict_grounding?: boolean;
   similarity_threshold?: number;
   no_evidence_message?: string;
+  no_evidence_messages?: string[] | { en?: string[] };
+  greeting_message?: string | null;
   updated_at: string;
   updated_by: string | null;
 };

@@ -42,6 +42,22 @@ DEFAULT_NO_EVIDENCE_MESSAGE = (
     "I couldn't find an official TIS source that answers that."
 )
 
+DEFAULT_NO_EVIDENCE_MESSAGES: tuple[str, ...] = (
+    "I don't have enough verified TIS information to answer that confidently.",
+    "I wasn't able to confirm that from the TIS information I have access to.",
+    "I can't find a clear answer to that in the available TIS information.",
+    "It looks like this isn't covered in the TIS information currently available to me.",
+    "I couldn't verify this from the available TIS information.",
+    "I don't have a reliable TIS source for that yet. Feel free to rephrase or add a bit more detail.",
+    "I'm not seeing anything in the TIS information that clearly answers this.",
+    "That one doesn't seem to be covered clearly in the information I have.",
+)
+
+DEFAULT_GREETING_MESSAGE = (
+    "Hi! I'm Tina. What can I help you with today?\n"
+    "I answer from official TIS information — calendar, absences, school times, and more."
+)
+
 # text-embedding-3-small scores for real TIS matches often land ~0.40–0.65;
 # 0.72 was only useful as a "strong success" analytics bar and blocked almost all answers.
 DEFAULT_SIMILARITY_THRESHOLD = 0.40
@@ -95,6 +111,8 @@ class AgentConfig:
     strict_grounding: bool = DEFAULT_STRICT_GROUNDING
     similarity_threshold: float = DEFAULT_SIMILARITY_THRESHOLD
     no_evidence_message: str = DEFAULT_NO_EVIDENCE_MESSAGE
+    no_evidence_messages: tuple[str, ...] = DEFAULT_NO_EVIDENCE_MESSAGES
+    greeting_message: str = DEFAULT_GREETING_MESSAGE
 
 
 _cache: AgentConfig | None = None
@@ -105,6 +123,62 @@ def invalidate_config_cache() -> None:
     global _cache, _cache_loaded_at
     _cache = None
     _cache_loaded_at = 0.0
+
+
+def _strip_legacy_source_suffix(text: str) -> str:
+    cleaned = re.sub(
+        r"\n\nSource:\s*none found\.?\s*$",
+        "",
+        (text or "").strip(),
+        flags=re.IGNORECASE,
+    )
+    return cleaned.strip()
+
+
+def _parse_no_evidence_messages(raw: Any, legacy: str) -> tuple[str, ...]:
+    """Build the fallback pool from jsonb, legacy text, or code defaults."""
+    messages: list[str] = []
+    if isinstance(raw, dict):
+        raw = raw.get("en") or raw.get("messages") or []
+    if isinstance(raw, list):
+        for item in raw:
+            text = _strip_legacy_source_suffix(str(item or ""))
+            if text and text not in messages:
+                messages.append(text)
+    if not messages:
+        legacy_clean = _strip_legacy_source_suffix(legacy)
+        if legacy_clean:
+            messages.append(legacy_clean)
+        for item in DEFAULT_NO_EVIDENCE_MESSAGES:
+            if item not in messages:
+                messages.append(item)
+    return tuple(messages)
+
+
+def pick_no_evidence_reply(
+    config: AgentConfig,
+    *,
+    question: str = "",
+    history: list[dict[str, str]] | None = None,
+) -> str:
+    """Choose a short fallback; avoid repeating the last assistant reply when possible."""
+    pool = [m.strip() for m in config.no_evidence_messages if m and m.strip()]
+    if not pool:
+        pool = [_strip_legacy_source_suffix(config.no_evidence_message) or DEFAULT_NO_EVIDENCE_MESSAGE]
+
+    last_assistant = ""
+    for item in reversed(history or []):
+        if (item.get("role") or "").lower() == "assistant":
+            last_assistant = (item.get("content") or "").strip()
+            break
+        if item.get("reply"):
+            last_assistant = str(item.get("reply") or "").strip()
+            break
+
+    candidates = [m for m in pool if m != last_assistant] or pool
+    seed = f"{last_assistant}\n{question.strip().lower()}"
+    idx = abs(hash(seed)) % len(candidates)
+    return candidates[idx]
 
 
 def _parse_fixed_answers(raw: Any) -> tuple[FixedAnswer, ...]:
@@ -152,6 +226,8 @@ def load_agent_config(settings: Settings | None = None) -> AgentConfig:
     strict = DEFAULT_STRICT_GROUNDING
     threshold = DEFAULT_SIMILARITY_THRESHOLD
     no_evidence = DEFAULT_NO_EVIDENCE_MESSAGE
+    no_evidence_pool: tuple[str, ...] = DEFAULT_NO_EVIDENCE_MESSAGES
+    greeting = DEFAULT_GREETING_MESSAGE
     try:
         sb = make_supabase(settings)
         try:
@@ -159,7 +235,8 @@ def load_agent_config(settings: Settings | None = None) -> AgentConfig:
                 sb.table("agent_config")
                 .select(
                     "system_prompt, fixed_answers, strict_grounding, "
-                    "similarity_threshold, no_evidence_message"
+                    "similarity_threshold, no_evidence_message, "
+                    "no_evidence_messages, greeting_message"
                 )
                 .eq("id", 1)
                 .single()
@@ -169,20 +246,33 @@ def load_agent_config(settings: Settings | None = None) -> AgentConfig:
             strict = bool(data.get("strict_grounding", DEFAULT_STRICT_GROUNDING))
             threshold = float(data.get("similarity_threshold") or DEFAULT_SIMILARITY_THRESHOLD)
             no_evidence = (
-                (data.get("no_evidence_message") or "").strip() or DEFAULT_NO_EVIDENCE_MESSAGE
+                _strip_legacy_source_suffix(data.get("no_evidence_message") or "")
+                or DEFAULT_NO_EVIDENCE_MESSAGE
+            )
+            no_evidence_pool = _parse_no_evidence_messages(
+                data.get("no_evidence_messages"),
+                no_evidence,
+            )
+            greeting = (
+                (data.get("greeting_message") or "").strip() or DEFAULT_GREETING_MESSAGE
             )
         except Exception as inner:
-            if "strict_grounding" not in str(inner):
+            err = str(inner)
+            if "strict_grounding" not in err and "no_evidence_messages" not in err and "greeting_message" not in err:
                 raise
-            logger.warning("agent_config policy columns missing — run sql/005_admin.sql")
+            logger.warning("agent_config policy columns missing — run sql/005_admin.sql / sql/008_fallback_messages.sql")
             row = (
                 sb.table("agent_config")
-                .select("system_prompt, fixed_answers")
+                .select("system_prompt, fixed_answers, no_evidence_message")
                 .eq("id", 1)
                 .single()
                 .execute()
             )
             data = row.data or {}
+            legacy = _strip_legacy_source_suffix(data.get("no_evidence_message") or "")
+            if legacy:
+                no_evidence = legacy
+            no_evidence_pool = _parse_no_evidence_messages(None, no_evidence)
         prompt = (data.get("system_prompt") or "").strip() or DEFAULT_SYSTEM_PROMPT
         fixed = _parse_fixed_answers(data.get("fixed_answers"))
     except Exception:
@@ -192,13 +282,17 @@ def load_agent_config(settings: Settings | None = None) -> AgentConfig:
         strict = DEFAULT_STRICT_GROUNDING
         threshold = DEFAULT_SIMILARITY_THRESHOLD
         no_evidence = DEFAULT_NO_EVIDENCE_MESSAGE
+        no_evidence_pool = DEFAULT_NO_EVIDENCE_MESSAGES
+        greeting = DEFAULT_GREETING_MESSAGE
 
     _cache = AgentConfig(
         system_prompt=prompt,
         fixed_answers=fixed,
         strict_grounding=strict,
         similarity_threshold=threshold,
-        no_evidence_message=no_evidence,
+        no_evidence_message=no_evidence_pool[0] if no_evidence_pool else no_evidence,
+        no_evidence_messages=no_evidence_pool,
+        greeting_message=greeting,
     )
     _cache_loaded_at = now
     return _cache

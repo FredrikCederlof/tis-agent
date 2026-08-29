@@ -4,7 +4,11 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
-from tis_agent.agent_config import load_agent_config, match_fixed_answer
+from tis_agent.agent_config import (
+    load_agent_config,
+    match_fixed_answer,
+    pick_no_evidence_reply,
+)
 from tis_agent.analytics import (
     OUTCOME_ERROR,
     OUTCOME_FIXED_ANSWER,
@@ -82,12 +86,6 @@ def _reply_language(question: str) -> str:
     if any(h in padded for h in swedish_hints):
         return "sv"
     return "en"
-
-
-def no_evidence_reply(question: str) -> str:
-    if _reply_language(question) == "sv":
-        return "Jag kunde inte hitta ett officiellt TIS-dokument som svarar på det."
-    return "I couldn't find an official TIS source that answers that."
 
 
 def _parse_date_field(value: object) -> date | None:
@@ -875,7 +873,7 @@ def answer_question(
 
     if is_greeting_or_thanks(question):
         return AnswerResult(
-            reply=greeting_reply(language),
+            reply=greeting_reply(language, config.greeting_message),
             language=language,
             outcome=OUTCOME_FIXED_ANSWER,
             evidence_count=0,
@@ -979,22 +977,18 @@ def answer_question(
 
     if not evidence:
         return AnswerResult(
-            reply=strip_empty_source_line(config.no_evidence_message),
+            reply=strip_empty_source_line(
+                pick_no_evidence_reply(config, question=question, history=history)
+            ),
             language=language,
             outcome=OUTCOME_NO_EVIDENCE,
             evidence_count=0,
             top_similarity=None,
         )
 
-    if config.strict_grounding and not _passes_grounding(evidence, temporal, config):
-        return AnswerResult(
-            reply=strip_empty_source_line(config.no_evidence_message),
-            language=language,
-            outcome=OUTCOME_LOW_CONFIDENCE,
-            evidence_count=len(evidence),
-            top_similarity=top_sim,
-            document_titles=titles,
-        )
+    weak_evidence = config.strict_grounding and not _passes_grounding(
+        evidence, temporal, config
+    )
 
     openai = make_openai(settings)
     messages = [
@@ -1014,19 +1008,34 @@ def answer_question(
             f"{question}\n\n"
             f"(Resolved for lookup: {retrieval_question.strip()})"
         )
+    if weak_evidence:
+        answer_rules = (
+            "Write the WhatsApp reply now.\n"
+            "Some related TIS excerpts were found, but they may not fully answer the question. "
+            "Briefly say what the excerpts clearly support. "
+            "Clearly say what you cannot confirm from them. "
+            "Do not invent missing details. "
+            "Do not mention databases, retrieval, embeddings, or other technical systems. "
+            "If useful, invite the parent to rephrase or add a bit more detail. "
+            "Keep the tone short, friendly, and parent-focused."
+        )
+    else:
+        answer_rules = (
+            "Write the WhatsApp reply now.\n"
+            "Use only facts explicitly stated in the excerpts above. "
+            "If the excerpts mention both when campus opens and when school or classes start, "
+            "answer with the official start time. "
+            "For school-day questions, prefer Parent Calendar labels: "
+            "'Students in session: no' means no school for students; "
+            "No Number Day is still a school day unless the calendar says otherwise. "
+            "If the excerpts do not clearly answer the question, say you cannot confirm it "
+            "from official TIS sources — do not guess or agree with assumptions."
+        )
     user_prompt = (
         f"Parent question:\n{parent_block}\n\n"
         f"{extra_block}"
         f"TIS document excerpts:\n{format_evidence(evidence)}\n\n"
-        "Write the WhatsApp reply now.\n"
-        "Use only facts explicitly stated in the excerpts above. "
-        "If the excerpts mention both when campus opens and when school or classes start, "
-        "answer with the official start time. "
-        "For school-day questions, prefer Parent Calendar labels: "
-        "'Students in session: no' means no school for students; "
-        "No Number Day is still a school day unless the calendar says otherwise. "
-        "If the excerpts do not clearly answer the question, say you cannot confirm it "
-        "from official TIS sources — do not guess or agree with assumptions."
+        f"{answer_rules}"
     )
     messages.append({"role": "user", "content": user_prompt})
 
@@ -1051,13 +1060,16 @@ def answer_question(
             document_titles=titles,
         )
 
-    outcome = classify_outcome(
-        evidence_count=len(evidence),
-        top_similarity=top_sim,
-        similarity_threshold=config.similarity_threshold,
-    )
-    if temporal.kind == "date_anchored" and evidence:
-        outcome = OUTCOME_SUCCESS
+    if weak_evidence:
+        outcome = OUTCOME_LOW_CONFIDENCE
+    else:
+        outcome = classify_outcome(
+            evidence_count=len(evidence),
+            top_similarity=top_sim,
+            similarity_threshold=config.similarity_threshold,
+        )
+        if temporal.kind == "date_anchored" and evidence:
+            outcome = OUTCOME_SUCCESS
 
     return AnswerResult(
         reply=reply,

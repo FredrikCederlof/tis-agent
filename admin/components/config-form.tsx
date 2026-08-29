@@ -5,6 +5,48 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import type { AgentConfigRow } from "@/lib/types";
 
+const DEFAULT_GREETING =
+  "Hi! I'm Tina. What can I help you with today?\n" +
+  "I answer from official TIS information — calendar, absences, school times, and more.";
+
+const DEFAULT_FALLBACKS = [
+  "I don't have enough verified TIS information to answer that confidently.",
+  "I wasn't able to confirm that from the TIS information I have access to.",
+  "I can't find a clear answer to that in the available TIS information.",
+  "It looks like this isn't covered in the TIS information currently available to me.",
+  "I couldn't verify this from the available TIS information.",
+  "I don't have a reliable TIS source for that yet. Feel free to rephrase or add a bit more detail.",
+  "I'm not seeing anything in the TIS information that clearly answers this.",
+  "That one doesn't seem to be covered clearly in the information I have.",
+];
+
+function messagesToTextarea(raw: unknown, legacy?: string | null): string {
+  const lines: string[] = [];
+  if (Array.isArray(raw)) {
+    for (const item of raw) {
+      const text = String(item ?? "")
+        .replace(/\n\nSource:\s*none found\.?\s*$/i, "")
+        .trim();
+      if (text) lines.push(text);
+    }
+  } else if (raw && typeof raw === "object" && Array.isArray((raw as { en?: unknown }).en)) {
+    return messagesToTextarea((raw as { en: unknown[] }).en, legacy);
+  }
+  if (!lines.length && legacy) {
+    const cleaned = legacy.replace(/\n\nSource:\s*none found\.?\s*$/i, "").trim();
+    if (cleaned) lines.push(cleaned);
+  }
+  if (!lines.length) return DEFAULT_FALLBACKS.join("\n");
+  return lines.join("\n");
+}
+
+function textareaToMessages(text: string): string[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+}
+
 export function ConfigForm({
   config,
   userEmail,
@@ -19,11 +61,13 @@ export function ConfigForm({
   );
   const [strictGrounding, setStrictGrounding] = useState(config.strict_grounding ?? true);
   const [similarityThreshold, setSimilarityThreshold] = useState(
-    String(config.similarity_threshold ?? 0.40),
+    String(config.similarity_threshold ?? 0.4),
   );
-  const [noEvidenceMessage, setNoEvidenceMessage] = useState(
-    config.no_evidence_message?.replace(/\n\nSource: none found\.?\s*$/i, "") ??
-      "I couldn't find an official TIS source that answers that.",
+  const [greetingMessage, setGreetingMessage] = useState(
+    (config.greeting_message || "").trim() || DEFAULT_GREETING,
+  );
+  const [noEvidenceMessages, setNoEvidenceMessages] = useState(
+    messagesToTextarea(config.no_evidence_messages, config.no_evidence_message),
   );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -51,6 +95,20 @@ export function ConfigForm({
       return;
     }
 
+    const fallbacks = textareaToMessages(noEvidenceMessages);
+    if (!fallbacks.length) {
+      setError("Add at least one fallback message (one per line).");
+      setSaving(false);
+      return;
+    }
+
+    const greeting = greetingMessage.trim();
+    if (!greeting) {
+      setError("Greeting reply cannot be empty.");
+      setSaving(false);
+      return;
+    }
+
     const supabase = createClient();
     const { error: updateError } = await supabase
       .from("agent_config")
@@ -59,7 +117,9 @@ export function ConfigForm({
         fixed_answers: fixedAnswers,
         strict_grounding: strictGrounding,
         similarity_threshold: threshold,
-        no_evidence_message: noEvidenceMessage,
+        greeting_message: greeting,
+        no_evidence_messages: fallbacks,
+        no_evidence_message: fallbacks[0],
         updated_at: new Date().toISOString(),
         updated_by: userEmail,
       })
@@ -81,8 +141,8 @@ export function ConfigForm({
         <p className="text-sm text-tis-muted">
           Control when Tina is allowed to answer. With strict grounding on, she only answers
           school questions when official TIS documents match above the threshold — otherwise
-          she sends the message below. The system prompt below further requires quote-backed
-          facts so she does not invent who attends meetings, fees, or other details.
+          she uses a fallback message from the list below. The system prompt further requires
+          quote-backed facts so she does not invent who attends meetings, fees, or other details.
         </p>
         <label className="flex items-center gap-3 text-sm">
           <input
@@ -106,20 +166,40 @@ export function ConfigForm({
             value={similarityThreshold}
             onChange={(e) => setSimilarityThreshold(e.target.value)}
           />
-          <p className="hint">Default 0.40. Higher = stricter (fewer answers). Real TIS matches often score 0.40–0.65.</p>
+          <p className="hint">
+            Default 0.40. Higher = stricter (fewer answers). Real TIS matches often score
+            0.40–0.65.
+          </p>
+        </div>
+        <div>
+          <label className="label" htmlFor="greeting">
+            Greeting reply (Hello / Hi)
+          </label>
+          <textarea
+            id="greeting"
+            rows={3}
+            value={greetingMessage}
+            onChange={(e) => setGreetingMessage(e.target.value)}
+          />
+          <p className="hint">
+            Used for short greetings and thanks. Does not search school documents.
+          </p>
         </div>
         <div>
           <label className="label" htmlFor="no-evidence">
-            Message when no official source found
+            Fallback messages when no official source found
           </label>
           <textarea
             id="no-evidence"
-            rows={3}
-            value={noEvidenceMessage}
-            onChange={(e) => setNoEvidenceMessage(e.target.value)}
+            rows={10}
+            value={noEvidenceMessages}
+            onChange={(e) => setNoEvidenceMessages(e.target.value)}
+            className="font-mono text-xs"
           />
           <p className="hint">
-            Do not add a source line — leave citations empty when nothing was found.
+            One message per line. Tina picks among these after normal search finishes, and
+            avoids repeating the same line twice in a row. Keep them short and parent-focused —
+            no technical jargon. Do not invent answers here.
           </p>
         </div>
       </section>

@@ -109,16 +109,17 @@ def history_to_chat_messages(
     return messages
 
 
-def greeting_reply(language: str) -> str:
-    if language == "sv":
-        return (
-            "Hej! Jag är Tina, TIS informationsassistent. "
-            "Fråga gärna om kalender, frånvaro, tider eller annat från officiella TIS-dokument."
-        )
-    return (
-        "Hi! I'm Tina, the TIS school information assistant. "
-        "Ask me about the calendar, absences, school times, or other official TIS info."
-    )
+DEFAULT_GREETING_REPLY = (
+    "Hi! I'm Tina. What can I help you with today?\n"
+    "I answer from official TIS information — calendar, absences, school times, and more."
+)
+
+
+def greeting_reply(language: str = "en", override: str | None = None) -> str:
+    """Return the fixed greeting. Optional override comes from agent_config."""
+    del language  # English-only greeting copy (admin may still customize via override).
+    text = (override or "").strip()
+    return text or DEFAULT_GREETING_REPLY
 
 
 def _as_turns(
