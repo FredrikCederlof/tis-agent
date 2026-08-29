@@ -208,6 +208,31 @@ END:VCALENDAR
     assert "Assembly" not in sports.content
 
 
+def test_all_day_today_is_kept_after_noon():
+    raw = """BEGIN:VCALENDAR
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20260828
+DTEND;VALUE=DATE:20260829
+SUMMARY:Hope and Dreams
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20260828
+DTEND;VALUE=DATE:20260829
+SUMMARY:No Number Day
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20260827
+DTEND;VALUE=DATE:20260828
+SUMMARY:Yesterday
+END:VEVENT
+END:VCALENDAR
+"""
+    now = datetime(2026, 8, 28, 18, 14, tzinfo=TOKYO)
+    events, window_start, _ = parse_ics_events(raw, now=now)
+    assert window_start == date(2026, 8, 28)
+    assert {e.summary for e in events} == {"Hope and Dreams", "No Number Day"}
+
+
 def test_tis_times_empty_window_is_not_today_evidence():
     stub = (
         "TIS Times (Parent Portal)\n"
@@ -305,3 +330,14 @@ def test_calendar_ranks_above_portal_for_date_questions():
     ranked = _rerank([portal, calendar], temporal)
     assert ranked[0].source_type == "calendar"
     assert ranked[0].section_title == "Assembly"
+
+
+def test_calendar_content_hash_changes_with_parser_version():
+    from tis_agent.ical_text import ICAL_CHUNK_VERSION
+    from tis_agent.ingest_document import content_hash
+
+    ics = b"BEGIN:VCALENDAR\nBEGIN:VEVENT\nEND:VEVENT\nEND:VCALENDAR"
+    plain = content_hash(ics)
+    salted = content_hash(ics, salt=ICAL_CHUNK_VERSION)
+    assert plain != salted
+    assert salted == content_hash(ics, salt=ICAL_CHUNK_VERSION)

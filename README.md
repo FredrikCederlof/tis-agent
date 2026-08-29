@@ -22,9 +22,12 @@ Milestone 3: WhatsApp test preview (Meta Cloud API test number).
 ```bash
 python -m tis_agent sync state
 python -m tis_agent ask "What does TIS say about reporting an absence?"
+python -m tis_agent eval
 python -m tis_agent chat
 python -m tis_agent whatsapp   # webhook on http://0.0.0.0:8080/webhook
 ```
+
+`python -m tis_agent eval` asks 20 gold questions from the trained TIS documents and scores the replies. It needs the same env vars as `ask`. Use `--list` to print the questions without calling the live RAG.
 
 ### WhatsApp test preview (local)
 

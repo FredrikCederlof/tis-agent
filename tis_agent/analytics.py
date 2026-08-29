@@ -117,6 +117,60 @@ def claim_whatsapp_message(
         return True
 
 
+def load_session_history(
+    settings: Settings,
+    session_id: str,
+    *,
+    limit: int = 5,
+) -> list[dict[str, str]]:
+    """Return prior Q&A turns for a session as OpenAI-style messages (oldest first)."""
+    if not session_id or limit <= 0:
+        return []
+    try:
+        sb = make_supabase(settings)
+        response = (
+            sb.table("interactions")
+            .select("question, reply, created_at")
+            .eq("session_id", session_id)
+            .order("created_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+    except Exception:
+        logger.exception("Failed to load history for session %s", session_id)
+        return []
+
+    rows = list(reversed(response.data or []))
+    messages: list[dict[str, str]] = []
+    for row in rows:
+        question = (row.get("question") or "").strip()
+        reply = (row.get("reply") or "").strip()
+        if question:
+            messages.append({"role": "user", "content": question})
+        if reply:
+            messages.append({"role": "assistant", "content": reply})
+    return messages
+
+
+def peek_session_id(settings: Settings, wa_from: str) -> str | None:
+    """Active session id without bumping message_count (for history load)."""
+    sb = make_supabase(settings)
+    cutoff = (
+        datetime.now(timezone.utc) - timedelta(minutes=SESSION_GAP_MINUTES)
+    ).isoformat()
+    existing = (
+        sb.table("chat_sessions")
+        .select("id")
+        .eq("wa_from", wa_from)
+        .gte("last_message_at", cutoff)
+        .order("last_message_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = existing.data or []
+    return str(rows[0]["id"]) if rows else None
+
+
 def log_interaction(
     *,
     session_id: str,

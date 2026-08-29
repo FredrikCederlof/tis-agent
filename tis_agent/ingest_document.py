@@ -11,7 +11,7 @@ from pypdf import PdfReader
 from tis_agent.clients import embed_texts, make_openai, make_supabase
 from tis_agent.config import Settings
 from tis_agent.handbook import Chunk, chunk_pages, extract_pages
-from tis_agent.ical_text import calendar_chunks_from_bytes
+from tis_agent.ical_text import ICAL_CHUNK_VERSION, calendar_chunks_from_bytes
 from tis_agent.temporal import extract_dates_from_text, is_sync_window_stub
 from tis_agent.text_chunk import chunk_plain_text
 
@@ -26,8 +26,16 @@ class IngestResult:
     skipped: bool = False
 
 
-def content_hash(data: bytes) -> str:
-    return hashlib.sha256(data).hexdigest()
+def content_hash(data: bytes, *, salt: str = "") -> str:
+    payload = data if not salt else data + b"\0" + salt.encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def _is_calendar_payload(data: bytes, mime_type: str) -> bool:
+    if mime_type in {"text/calendar", "application/ics"}:
+        return True
+    sample = data.lstrip()[:32]
+    return sample.startswith(b"BEGIN:VCALENDAR") or sample.startswith(b"BEGIN:VEVENT")
 
 
 def _parse_modified_time(value: str | None) -> str | None:
@@ -151,7 +159,10 @@ def ingest_bytes(
 ) -> IngestResult:
     openai = make_openai(settings)
     supabase = make_supabase(settings)
-    digest = content_hash(data)
+    digest = content_hash(
+        data,
+        salt=ICAL_CHUNK_VERSION if _is_calendar_payload(data, mime_type) else "",
+    )
     source_type = source_type or _infer_source_type(title, mime_type)
     modified_iso = _parse_modified_time(drive_modified_time)
 

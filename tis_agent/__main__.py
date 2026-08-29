@@ -13,6 +13,8 @@ def main() -> None:
             "  python -m tis_agent sync web\n"
             "  python -m tis_agent sync bulletin PATH\n"
             "  python -m tis_agent ask \"When should I report an absence?\"\n"
+            "  python -m tis_agent eval\n"
+            "  python -m tis_agent eval --list\n"
             "  python -m tis_agent chat\n"
             "  python -m tis_agent whatsapp"
         )
@@ -33,6 +35,11 @@ def main() -> None:
         from tis_agent.ask import main as ask_main
 
         ask_main(sys.argv[2:])
+        return
+    if command == "eval":
+        from tis_agent.eval_rag import main as eval_main
+
+        eval_main(sys.argv[2:])
         return
     if command == "chat":
         from tis_agent.ask import answer_question

@@ -1,4 +1,4 @@
-"""Tests for weekly bulletin sanitization (child names and grade-band filters)."""
+"""Tests for weekly bulletin sanitization (child names and grade filters)."""
 
 from tis_agent.bulletin import contains_child_names, sanitize_bulletin, strip_child_names
 
@@ -37,7 +37,7 @@ def test_strips_eldor_malte_vega_variants() -> None:
     assert "Vega" not in cleaned
 
 
-def test_drops_kindergarten_only() -> None:
+def test_keeps_kindergarten_class_notice() -> None:
     raw = """
 From: pyp@tokyois.com
 Subject: Kindergarten bag list
@@ -45,11 +45,11 @@ Subject: Kindergarten bag list
 Kindergarten families should send a spare set of clothes on Monday.
 """
     result = sanitize_bulletin(raw)
-    assert result.kept_blocks == 0
-    assert "spare set of clothes" not in result.markdown
+    assert result.kept_blocks == 1
+    assert "spare set of clothes" in result.markdown
 
 
-def test_drops_grade_3_only() -> None:
+def test_keeps_grade_3_class_notice() -> None:
     raw = """
 From: pyp@tokyois.com
 Subject: Grade 3 excursion
@@ -57,11 +57,12 @@ Subject: Grade 3 excursion
 Grade 3 will visit the museum on 3 September. G3 parents must sign the form.
 """
     result = sanitize_bulletin(raw)
-    assert result.kept_blocks == 0
-    assert "museum" not in result.markdown
+    assert result.kept_blocks == 1
+    assert "museum" in result.markdown
+    assert not contains_child_names(result.markdown)
 
 
-def test_drops_grade_6_only() -> None:
+def test_keeps_grade_6_class_notice() -> None:
     raw = """
 From: myp@tokyois.com
 Subject: Grade 6 camp
@@ -69,8 +70,50 @@ Subject: Grade 6 camp
 Grade 6 MYP students leave for camp on 8 September. G6 only.
 """
     result = sanitize_bulletin(raw)
+    assert result.kept_blocks == 1
+    assert "camp" in result.markdown
+
+
+def test_keeps_homeroom_hopes_and_dreams_after_name_strip() -> None:
+    raw = """
+From: no-reply@toddleapp.com
+Subject: School announcement: Welcome to 6B - Hopes and Dreams Conference
+
+21 August 2026 Dear Eldor and Family, Welcome to the new school year.
+Hopes & Dreams Parent Teacher Conference is Friday, August 28th, at 9:15 a.m.
+"""
+    result = sanitize_bulletin(raw)
+    assert result.kept_blocks >= 1
+    assert "Hopes" in result.markdown or "Dreams" in result.markdown
+    assert "August 28" in result.markdown
+    assert "Eldor" not in result.markdown
+    assert not contains_child_names(result.markdown)
+
+
+def test_drops_grade_10_only() -> None:
+    raw = """
+From: no-reply@toddleapp.com
+Subject: School announcement: G10 PP Proposal Panel - Parent Volunteers
+
+Dear TIS Parents and Carers, Our G10 students will present Personal Project
+proposals starting Thursday September 10th. Please email if you can volunteer.
+"""
+    result = sanitize_bulletin(raw)
+    assert "Personal Project" not in result.markdown
     assert result.kept_blocks == 0
-    assert "camp" not in result.markdown
+
+
+def test_keeps_swimming_list_that_includes_grade_6() -> None:
+    raw = """
+From: no-reply@toddleapp.com
+Subject: School announcement: Swimming: 6,8,10
+
+Dear families, Next week we start aquatics in Grades 6, 8, and 10.
+Wednesday: 6B - 1:40 - 3:20. Bring a swim cap and goggles.
+"""
+    result = sanitize_bulletin(raw)
+    assert result.kept_blocks >= 1
+    assert "goggles" in result.markdown or "6B" in result.markdown
 
 
 def test_keeps_pyp_wide() -> None:
@@ -156,6 +199,63 @@ Can Eldor come over after school on Tuesday?
     assert "Playdate" not in result.markdown
 
 
+def test_drops_personal_teacher_email_about_one_child() -> None:
+    raw = """
+=== MESSAGE ===
+From: yukihi@tokyois.com
+Date: 2026-08-28
+Subject: Re: Japanese class belonging - Eldor
+
+Dear Fredrik,
+We understand Eldor's feelings about Japanese class placement.
+Based on last year's assessments, Eldor has been placed in his current class for now.
+"""
+    result = sanitize_bulletin(raw)
+    assert result.kept_blocks == 0
+    assert "Japanese class" not in result.markdown
+    assert "personal_teacher_to_child" in result.dropped_reasons
+
+
+def test_drops_teacher_reply_on_class_announcement_thread() -> None:
+    raw = """
+=== MESSAGE ===
+From: jaredba@tokyois.com
+Subject: Re: School announcement: Hopes & Dreams - Welcome to 3B!
+
+Hi Fredrik, I have corrected the form. I am looking forward to meeting Malte next week.
+"""
+    result = sanitize_bulletin(raw)
+    assert result.kept_blocks == 0
+    assert "Malte" not in result.markdown
+
+
+def test_drops_openapply_one_child_admissions_mail() -> None:
+    raw = """
+=== MESSAGE ===
+From: noreply@openapply.com
+Subject: [Tokyo International School] Thank you for your interest in TIS !
+
+You submitted information for your child Vega-Lo. Please click
+https://tokyois.openapply.com/parents/password/edit?reset_password_token=SECRET
+"""
+    result = sanitize_bulletin(raw)
+    assert result.kept_blocks == 0
+    assert "SECRET" not in result.markdown
+    assert "Vega" not in result.markdown
+
+
+def test_keeps_staff_operational_mail_without_child_names() -> None:
+    raw = """
+From: nanaim@tokyois.com
+Subject: [Action Required] Emergency Contact Registration
+
+Dear Parents, please complete the Emergency Contact section on OpenApply by Sunday the 23rd.
+"""
+    result = sanitize_bulletin(raw)
+    assert result.kept_blocks == 1
+    assert "Emergency Contact" in result.markdown
+
+
 def test_strips_toddle_related_student_footer_and_keeps_school_wide() -> None:
     raw = """
 From: no-reply@toddleapp.com
@@ -194,7 +294,6 @@ Subject: New Family Orientation
 
 
 def test_refuses_to_emit_if_names_cannot_be_stripped() -> None:
-    # Safety: output must never include a child name.
     result = sanitize_bulletin(
         "From: office@tokyois.com\n\nThe whole school picnic is on Saturday."
     )

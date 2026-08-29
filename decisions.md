@@ -13,12 +13,15 @@ Short record of product intent. Change these only with a reason.
 
 ## Knowledge
 
-- Shared knowledge base for all parents. No per-family email corpus and no child names in RAG.
+- Shared knowledge base for parents. No child names in RAG.
 - Sources are generic school documents: handbook, policies, calendar, bus information, **sanitized weekly bulletin**, and similar.
-- Ingest formats: PDFs, Google Docs, public web/calendar pages, and a Sunday bulletin from a **standalone** school-Gmail Cloud Agent after PII/grade filtering. Not raw Gmail. Not the family weekly briefing HTML. Not a piggyback on any other agent.
-- The weekly bulletin keeps school-wide, PYP-wide, MYP-wide, and DP-wide facts. It drops Kindergarten-only, Grade 3-only, and Grade 6-only items, and strips the names Eldor, Malte, and Vega-Lo / Vega.
+- Ingest formats: PDFs, Google Docs, public web/calendar pages, and a Sunday bulletin from a **standalone** school-Gmail Cloud Agent after name stripping. Not raw Gmail. Not the family weekly briefing HTML. Not a piggyback on any other agent.
+- The weekly bulletin **strips** the names Eldor, Malte, and Vega-Lo / Vega, then **keeps** Kindergarten, Grade 3, and Grade 6 class notices plus school-wide / PYP / MYP / DP facts. It **drops** personal teacher emails directed at one child (and parent Gmail/iCloud threads). Other single-grade mail (e.g. Grade 10 only) is dropped.
 - Documents are uploaded to Supabase, then embedded for RAG.
 - Metadata (title, type, dates, grade/section, source) is first-class. Semantic similarity alone is not enough.
+- Date and event questions search **all** official sources (parent calendar, handbook, bulletin, portal/web), not the calendar alone. The calendar remains the schedule list; other documents add context when they mention that date or event. TIS 6-day rotation labels (Day 1–6) are not treated as special events.
+- Calendar events are labeled for student attendance (`holiday` / `no_student_day` / `special_event`). “Is it school on X?” and “list student-free days” use those labels. No Number Day is still a school day unless the calendar says otherwise.
+- WhatsApp sessions load recent Q&A history so follow-ups (“Are you sure?”, “What about the 22nd?”) rewrite into standalone lookups. Greetings skip RAG.
 
 ## Trust
 

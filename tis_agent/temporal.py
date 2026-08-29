@@ -17,6 +17,7 @@ from zoneinfo import ZoneInfo
 SCHOOL_TZ = ZoneInfo("Asia/Tokyo")
 
 TemporalKind = Literal["none", "date_anchored", "event_date_lookup"]
+ScheduleIntent = Literal["none", "whats_on", "is_school_day", "list_no_school_days"]
 
 _WEEKDAYS = {
     "monday": 0,
@@ -80,7 +81,7 @@ _WRITTEN_MDY_RE = re.compile(
     re.IGNORECASE,
 )
 _WRITTEN_DMY_RE = re.compile(
-    rf"\b(\d{{1,2}})(?:st|nd|rd|th)?\s+({_MONTH_ALT})(?:,?\s*(20\d{{2}}))?\b",
+    rf"\b(\d{{1,2}})(?:st|nd|rd|th)?\s+(?:of\s+)?({_MONTH_ALT})(?:,?\s*(20\d{{2}}))?\b",
     re.IGNORECASE,
 )
 
@@ -156,6 +157,7 @@ class TemporalQuery:
     original: str
     date_range: DateRange | None = None
     label: str = ""
+    schedule_intent: ScheduleIntent = "none"
 
     @property
     def is_temporal(self) -> bool:
@@ -286,6 +288,32 @@ def parse_absolute_range(text: str, *, today: date) -> DateRange | None:
     return DateRange(min(dates), max(dates))
 
 
+def _month_name_range(text: str, today: date) -> DateRange | None:
+    """Resolve 'in September' / 'September 2026' to a full month — not '22 September'."""
+    match = re.search(
+        rf"\b(?:in|for|during)\s+({_MONTH_ALT})(?:\s+(20\d{{2}}))?\b",
+        text,
+        re.IGNORECASE,
+    )
+    if not match:
+        match = re.search(
+            rf"\b({_MONTH_ALT})\s+(20\d{{2}})\b",
+            text,
+            re.IGNORECASE,
+        )
+    if not match:
+        return None
+    month = _MONTHS[match.group(1).lower()]
+    year_raw = match.group(2) if match.lastindex and match.lastindex >= 2 else None
+    year = int(year_raw) if year_raw else today.year
+    if not year_raw and month < today.month - 1:
+        year = today.year + 1
+    specific = extract_dates_from_text(text, today=today)
+    if any(d.month == month and d.year == year for d in specific):
+        return None
+    return _month_range(year, month)
+
+
 def _match_relative(text: str, today: date) -> DateRange | None:
     lower = text.lower()
 
@@ -313,6 +341,10 @@ def _match_relative(text: str, today: date) -> DateRange | None:
         return _month_range(nxt.year, nxt.month)
     if re.search(r"\b(this month|den här månaden|i månaden)\b", lower):
         return _month_range(today.year, today.month)
+
+    named_month = _month_name_range(text, today)
+    if named_month is not None:
+        return named_month
 
     unit_match = _RELATIVE_UNITS.search(lower)
     if unit_match:
@@ -363,10 +395,73 @@ _WHATS_ON_RE = re.compile(
     re.IGNORECASE,
 )
 
+_IS_SCHOOL_DAY_RE = re.compile(
+    r"(?i)\b(?:"
+    r"is\s+it\s+school|"
+    r"is\s+school\s+(?:on|tomorrow|today)|"
+    r"do\s+(?:we|kids|children|students)\s+have\s+school|"
+    r"are\s+(?:kids|children|students)\s+(?:off|in\s+school)|"
+    r"school\s+day\b|"
+    r"är\s+det\s+skola|"
+    r"har\s+(?:vi|barnen)\s+skola"
+    r")\b"
+)
+
+_LIST_NO_SCHOOL_RE = re.compile(
+    r"(?i)\b(?:"
+    r"student[- ]?free|"
+    r"no\s+student\s+day|"
+    r"kids\s+are\s+off|"
+    r"children\s+are\s+off|"
+    r"no\s+school\s+day|"
+    r"days?\s+off\s+from\s+school|"
+    r"off\s+from\s+school|"
+    r"no\s+school\b|"
+    r"skolfria|"
+    r"lovdagar|"
+    r"ingen\s+skola"
+    r")\b"
+)
+
+_EMPTY_SCHEDULE_RE = re.compile(
+    r"(?i)\b(?:"
+    r"nothing\s+is\s+scheduled|"
+    r"no\s+events?\s+scheduled|"
+    r"days?\s+where\s+nothing|"
+    r"empty\s+(?:days?|calendar)|"
+    r"ingenting\s+inbokat"
+    r")\b"
+)
+
 
 def is_whats_on_question(question: str) -> bool:
     """True for 'anything happening today / this week' schedule questions."""
     return bool(_WHATS_ON_RE.search(question or ""))
+
+
+def is_school_day_question(question: str) -> bool:
+    return bool(_IS_SCHOOL_DAY_RE.search(question or ""))
+
+
+def is_list_no_school_days_question(question: str) -> bool:
+    text = question or ""
+    if _EMPTY_SCHEDULE_RE.search(text):
+        return False
+    return bool(_LIST_NO_SCHOOL_RE.search(text))
+
+
+def is_empty_schedule_question(question: str) -> bool:
+    return bool(_EMPTY_SCHEDULE_RE.search(question or ""))
+
+
+def detect_schedule_intent(question: str) -> ScheduleIntent:
+    if is_list_no_school_days_question(question):
+        return "list_no_school_days"
+    if is_school_day_question(question):
+        return "is_school_day"
+    if is_whats_on_question(question):
+        return "whats_on"
+    return "none"
 
 
 def parse_temporal(question: str, *, today: date | None = None) -> TemporalQuery:
@@ -376,13 +471,22 @@ def parse_temporal(question: str, *, today: date | None = None) -> TemporalQuery
     if not original:
         return TemporalQuery(kind="none", original=original)
 
+    intent = detect_schedule_intent(original)
     date_range = _match_relative(original, today)
+
+    # School-day / no-school list questions need a date range; default sensibly.
+    if date_range is None and intent == "is_school_day":
+        date_range = DateRange(today, today)
+    if date_range is None and intent == "list_no_school_days":
+        date_range = _month_range(today.year, today.month)
+
     if date_range is not None:
         return TemporalQuery(
             kind="date_anchored",
             original=original,
             date_range=date_range,
             label=date_range.label(),
+            schedule_intent=intent if intent != "none" else detect_schedule_intent(original),
         )
 
     if _is_event_date_lookup(original):
@@ -390,9 +494,10 @@ def parse_temporal(question: str, *, today: date | None = None) -> TemporalQuery
             kind="event_date_lookup",
             original=original,
             label="event date",
+            schedule_intent=intent,
         )
 
-    return TemporalQuery(kind="none", original=original)
+    return TemporalQuery(kind="none", original=original, schedule_intent=intent)
 
 
 def retrieval_queries(temporal: TemporalQuery) -> list[str]:
@@ -487,10 +592,13 @@ def grounding_instruction(temporal: TemporalQuery) -> str:
             "and the daily schedule. Also use the handbook and other excerpts if they "
             "mention that date. TIS Times is portal news only — a note that TIS Times "
             "has no posts in a date window does not mean nothing is happening at school, "
-            "and must not be the answer by itself. The weekly bulletin is school-wide "
-            "notices, not the calendar. "
+            "and must not be the answer by itself. The weekly bulletin is school parent "
+            "notices (including Kindergarten / Grade 3 / Grade 6 class mail with names "
+            "removed), not the calendar. "
             "Only use excerpts that refer to that date range. "
-            "A similar event on a different date is not an answer."
+            "A similar event on a different date is not an answer. "
+            "No Number Day and similar special events are still school days for students "
+            "unless the calendar says No Student Day or School Holiday."
         )
     if temporal.kind == "event_date_lookup":
         return (

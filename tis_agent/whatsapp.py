@@ -15,7 +15,9 @@ from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, Res
 from tis_agent.analytics import (
     OUTCOME_ERROR,
     claim_whatsapp_message,
+    load_session_history,
     log_interaction,
+    peek_session_id,
     resolve_session_id,
 )
 from tis_agent.ask import AnswerResult, _reply_language, answer_question
@@ -183,9 +185,16 @@ def _reply_to_inbound(
 
     logger.info("Inbound from %s: %s", sender, text[:80])
     app_settings = get_settings()
+    history: list[dict[str, str]] = []
+    try:
+        prior_session = peek_session_id(app_settings, sender)
+        if prior_session:
+            history = load_session_history(app_settings, prior_session, limit=5)
+    except Exception:
+        logger.exception("Failed to load chat history for %s", sender)
 
     try:
-        result = answer_question(text, settings=app_settings)
+        result = answer_question(text, settings=app_settings, history=history)
     except Exception:
         logger.exception("Tina failed to answer")
         result = AnswerResult(
