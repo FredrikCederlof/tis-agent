@@ -20,6 +20,8 @@ Short record of product intent. Change these only with a reason.
 - Documents are uploaded to Supabase, then embedded for RAG.
 - Metadata (title, type, dates, grade/section, source) is first-class. Semantic similarity alone is not enough.
 - Date and event questions search **all** official sources (parent calendar, handbook, bulletin, portal/web), not the calendar alone. The calendar remains the schedule list; other documents add context when they mention that date or event. TIS 6-day rotation labels (Day 1–6) are not treated as special events.
+- Calendar events are labeled for student attendance (`holiday` / `no_student_day` / `special_event`). “Is it school on X?” and “list student-free days” use those labels. No Number Day is still a school day unless the calendar says otherwise.
+- WhatsApp sessions load recent Q&A history so follow-ups (“Are you sure?”, “What about the 22nd?”) rewrite into standalone lookups. Greetings skip RAG.
 
 ## Trust
 

@@ -15,6 +15,12 @@ from tis_agent.analytics import (
 )
 from tis_agent.clients import embed_texts, make_openai, make_supabase
 from tis_agent.config import Settings, get_settings
+from tis_agent.conversation import (
+    greeting_reply,
+    is_greeting_or_thanks,
+    rewrite_followup,
+)
+from tis_agent.day_kind import impact_from_evidence_text
 from tis_agent.reply_format import format_whatsapp_reply, strip_empty_source_line
 from tis_agent.ical_text import chunks_from_formatted_calendar
 from tis_agent.temporal import (
@@ -22,6 +28,7 @@ from tis_agent.temporal import (
     TemporalQuery,
     chunk_overlaps_range,
     grounding_instruction,
+    is_empty_schedule_question,
     is_sync_window_stub,
     is_whats_on_question,
     parse_temporal,
@@ -110,6 +117,7 @@ class Evidence:
     source_type: str | None = None
     start_date: date | None = None
     end_date: date | None = None
+    event_type: str | None = None
 
 
 @dataclass(frozen=True)
@@ -142,6 +150,7 @@ def _evidence_from_row(row: dict, *, handbook_title: str) -> Evidence:
         source_type=row.get("source_type"),
         start_date=_parse_date_field(row.get("start_date")),
         end_date=_parse_date_field(row.get("end_date")),
+        event_type=row.get("event_type"),
     )
 
 
@@ -193,6 +202,7 @@ def _with_source_type(item: Evidence, source_type: str | None) -> Evidence:
         source_type=source_type,
         start_date=item.start_date,
         end_date=item.end_date,
+        event_type=item.event_type,
     )
 
 
@@ -242,6 +252,7 @@ def _as_calendar_hit(item: Evidence) -> Evidence:
         source_type="calendar",
         start_date=item.start_date,
         end_date=item.end_date,
+        event_type=item.event_type,
     )
 
 
@@ -275,6 +286,7 @@ def _expand_calendar_blobs(items: list[Evidence], rng: DateRange) -> list[Eviden
                     source_type="calendar",
                     start_date=chunk.start_date,
                     end_date=chunk.end_date,
+                    event_type=chunk.event_type,
                 )
             )
     return expanded
@@ -587,6 +599,171 @@ def format_schedule_reply(
     return f"{heading}\n\n{bullets}\n\n{source}"
 
 
+def _calendar_items_for_range(evidence: list[Evidence], rng: DateRange) -> list[Evidence]:
+    items: list[Evidence] = []
+    seen: set[str] = set()
+    for item in evidence:
+        if item.source_type != "calendar" or is_rotation_day(item):
+            continue
+        if item.start_date and not rng.overlaps(item.start_date, item.end_date or item.start_date):
+            continue
+        key = (item.section_title or "") + "|" + (item.start_date.isoformat() if item.start_date else "")
+        if key in seen:
+            continue
+        seen.add(key)
+        items.append(item)
+    items.sort(key=lambda item: (item.start_date or rng.start, _event_label(item)))
+    return items
+
+
+def format_is_school_day_reply(
+    evidence: list[Evidence],
+    temporal: TemporalQuery,
+    language: str,
+) -> str:
+    """Answer whether students have school on a given day from calendar day-kind labels."""
+    rng = temporal.date_range
+    assert rng is not None
+    day = rng.start
+    label = _format_range_label(DateRange(day, day), language)
+    source = "_Source: TIS Parent Calendar_"
+    if language == "sv":
+        source = "_Källa: TIS Parent Calendar_"
+
+    if day.weekday() >= 5:
+        if language == "sv":
+            return (
+                f"Nej — {label} är en helgdag, så det är ingen skola för elever.\n\n{source}"
+            )
+        return (
+            f"No — {label} is a weekend, so students do not have school.\n\n{source}"
+        )
+
+    calendar_items = _calendar_items_for_range(evidence, DateRange(day, day))
+    off_items = []
+    special_items = []
+    for item in calendar_items:
+        impact = impact_from_evidence_text(
+            section_title=item.section_title,
+            content=item.content,
+            event_type=item.event_type,
+        )
+        # Prefer content labels (Students in session) via classify on title+content.
+        if impact.students_in_session is False:
+            off_items.append(item)
+        else:
+            special_items.append(item)
+
+    if off_items:
+        reasons = ", ".join(_event_label(item) for item in off_items[:4])
+        if language == "sv":
+            return (
+                f"Nej — elever har inte skola {label}. "
+                f"På TIS-föräldrakalendern: {reasons}.\n\n{source}"
+            )
+        return (
+            f"No — students do not have school on {label}. "
+            f"On the TIS Parent Calendar: {reasons}.\n\n{source}"
+        )
+
+    if special_items:
+        extras = ", ".join(_event_label(item) for item in special_items[:4])
+        if language == "sv":
+            return (
+                f"Ja — elever har skola {label}. "
+                f"Kalendern listar också: {extras}.\n\n{source}"
+            )
+        return (
+            f"Yes — students have school on {label}. "
+            f"The calendar also lists: {extras}.\n\n{source}"
+        )
+
+    if language == "sv":
+        return (
+            f"Ja — {label} är en vanlig skoldag. "
+            f"TIS-föräldrakalendern listar inget lov eller elevfri dag då.\n\n{source}"
+        )
+    return (
+        f"Yes — {label} is a normal school day. "
+        f"The TIS Parent Calendar does not list a holiday or no-student day then.\n\n{source}"
+    )
+
+
+def format_no_school_days_reply(
+    evidence: list[Evidence],
+    temporal: TemporalQuery,
+    language: str,
+) -> str:
+    """List calendar days in range where students are off (holiday / no-student day)."""
+    rng = temporal.date_range
+    assert rng is not None
+    label = _format_range_label(rng, language)
+    source = "_Source: TIS Parent Calendar_"
+    if language == "sv":
+        source = "_Källa: TIS Parent Calendar_"
+
+    calendar_items = _calendar_items_for_range(evidence, rng)
+    off_rows: list[tuple[date, str]] = []
+    for item in calendar_items:
+        impact = impact_from_evidence_text(
+            section_title=item.section_title,
+            content=item.content,
+            event_type=item.event_type,
+        )
+        if impact.students_in_session is not False:
+            continue
+        day = item.start_date or rng.start
+        off_rows.append((day, _event_label(item)))
+
+    # Dedupe same day+label
+    seen: set[tuple[str, str]] = set()
+    unique: list[tuple[date, str]] = []
+    for day, name in off_rows:
+        key = (day.isoformat(), name.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        unique.append((day, name))
+    unique.sort(key=lambda row: (row[0], row[1]))
+
+    if not unique:
+        if language == "sv":
+            return (
+                f"På TIS-föräldrakalendern finns inga markerade elevfria dagar "
+                f"eller lov {label}.\n\n{source}"
+            )
+        return (
+            f"The TIS Parent Calendar does not list any student-free days or holidays "
+            f"for {label}.\n\n{source}"
+        )
+
+    bullets = "\n".join(
+        f"• {day.strftime('%Y-%m-%d')} ({day.strftime('%A')}): {name}"
+        for day, name in unique[:20]
+    )
+    if language == "sv":
+        heading = f"Elevfria dagar / lov enligt TIS-föräldrakalendern {label}:"
+    else:
+        heading = f"Student-free / no-school days on the TIS Parent Calendar for {label}:"
+    return f"{heading}\n\n{bullets}\n\n{source}"
+
+
+def format_empty_schedule_reply(language: str) -> str:
+    if language == "sv":
+        return (
+            "TIS-föräldrakalendern listar evenemang och markerade lov/elevfria dagar — "
+            "den lagrar inte en lista över dagar utan något inbokat. "
+            "Fråga gärna efter elevfria dagar eller vad som händer ett visst datum.\n\n"
+            "_Källa: TIS Parent Calendar_"
+        )
+    return (
+        "The TIS Parent Calendar lists events and marked holidays / no-student days — "
+        "it does not store a list of days with nothing scheduled. "
+        "Ask for student-free days in a month, or what is on a specific date.\n\n"
+        "_Source: TIS Parent Calendar_"
+    )
+
+
 def retrieve(
     settings: Settings,
     question: str,
@@ -695,7 +872,15 @@ def answer_question(
     language = _reply_language(question)
     config = load_agent_config(settings)
     today = tokyo_today()
-    temporal = parse_temporal(question, today=today)
+
+    if is_greeting_or_thanks(question):
+        return AnswerResult(
+            reply=greeting_reply(language),
+            language=language,
+            outcome=OUTCOME_FIXED_ANSWER,
+            evidence_count=0,
+            top_similarity=None,
+        )
 
     fixed = match_fixed_answer(question, config)
     if fixed:
@@ -708,8 +893,27 @@ def answer_question(
             top_similarity=None,
         )
 
+    if is_empty_schedule_question(question):
+        reply = format_whatsapp_reply(format_empty_schedule_reply(language), has_evidence=True)
+        return AnswerResult(
+            reply=reply,
+            language=language,
+            outcome=OUTCOME_SUCCESS,
+            evidence_count=1,
+            top_similarity=1.0,
+            document_titles=["TIS Parent Calendar"],
+        )
+
+    retrieval_question = rewrite_followup(question, history)
+    temporal = parse_temporal(retrieval_question, today=today)
+
     try:
-        retrieval = retrieve(settings, question, temporal=temporal, today=today)
+        retrieval = retrieve(
+            settings,
+            retrieval_question,
+            temporal=temporal,
+            today=today,
+        )
     except Exception:
         return AnswerResult(
             reply=(
@@ -726,26 +930,52 @@ def answer_question(
     titles = list(dict.fromkeys(e.document_title for e in evidence))
     top_sim = max((e.similarity for e in evidence), default=None)
 
-    if (
-        temporal.kind == "date_anchored"
-        and is_whats_on_question(question)
-        and retrieval.date_lookup_ok
-        and not has_non_calendar_context(evidence)
-    ):
-        reply = format_whatsapp_reply(
-            format_schedule_reply(evidence, temporal, language),
-            has_evidence=True,
-        )
-        if "TIS Parent Calendar" not in titles:
-            titles = ["TIS Parent Calendar", *titles]
-        return AnswerResult(
-            reply=reply,
-            language=language,
-            outcome=OUTCOME_SUCCESS,
-            evidence_count=len(evidence),
-            top_similarity=top_sim,
-            document_titles=titles,
-        )
+    if temporal.kind == "date_anchored" and retrieval.date_lookup_ok:
+        intent = temporal.schedule_intent
+        if intent == "is_school_day":
+            reply = format_whatsapp_reply(
+                format_is_school_day_reply(evidence, temporal, language),
+                has_evidence=True,
+            )
+            return AnswerResult(
+                reply=reply,
+                language=language,
+                outcome=OUTCOME_SUCCESS,
+                evidence_count=len(evidence),
+                top_similarity=top_sim,
+                document_titles=["TIS Parent Calendar", *[t for t in titles if t != "TIS Parent Calendar"]],
+            )
+        if intent == "list_no_school_days":
+            reply = format_whatsapp_reply(
+                format_no_school_days_reply(evidence, temporal, language),
+                has_evidence=True,
+            )
+            return AnswerResult(
+                reply=reply,
+                language=language,
+                outcome=OUTCOME_SUCCESS,
+                evidence_count=len(evidence),
+                top_similarity=top_sim,
+                document_titles=["TIS Parent Calendar", *[t for t in titles if t != "TIS Parent Calendar"]],
+            )
+        if (
+            is_whats_on_question(retrieval_question)
+            and not has_non_calendar_context(evidence)
+        ):
+            reply = format_whatsapp_reply(
+                format_schedule_reply(evidence, temporal, language),
+                has_evidence=True,
+            )
+            if "TIS Parent Calendar" not in titles:
+                titles = ["TIS Parent Calendar", *titles]
+            return AnswerResult(
+                reply=reply,
+                language=language,
+                outcome=OUTCOME_SUCCESS,
+                evidence_count=len(evidence),
+                top_similarity=top_sim,
+                document_titles=titles,
+            )
 
     if not evidence:
         return AnswerResult(
@@ -778,14 +1008,23 @@ def answer_question(
 
     extra = grounding_instruction(temporal)
     extra_block = f"{extra}\n\n" if extra else ""
+    parent_block = question
+    if retrieval_question.strip() != question.strip():
+        parent_block = (
+            f"{question}\n\n"
+            f"(Resolved for lookup: {retrieval_question.strip()})"
+        )
     user_prompt = (
-        f"Parent question:\n{question}\n\n"
+        f"Parent question:\n{parent_block}\n\n"
         f"{extra_block}"
         f"TIS document excerpts:\n{format_evidence(evidence)}\n\n"
         "Write the WhatsApp reply now.\n"
         "Use only facts explicitly stated in the excerpts above. "
         "If the excerpts mention both when campus opens and when school or classes start, "
         "answer with the official start time. "
+        "For school-day questions, prefer Parent Calendar labels: "
+        "'Students in session: no' means no school for students; "
+        "No Number Day is still a school day unless the calendar says otherwise. "
         "If the excerpts do not clearly answer the question, say you cannot confirm it "
         "from official TIS sources — do not guess or agree with assumptions."
     )

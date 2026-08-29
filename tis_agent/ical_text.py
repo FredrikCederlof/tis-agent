@@ -7,12 +7,13 @@ from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 from zoneinfo import ZoneInfo
 
+from tis_agent.day_kind import classify_calendar_event, enrich_event_text
 from tis_agent.handbook import Chunk
 
 DEFAULT_PAST_DAYS = 0
 DEFAULT_FUTURE_DAYS = 365  # parent calendar: today through 1 year ahead
-# Bump when ICS window/chunking changes so an unchanged feed is re-ingested.
-ICAL_CHUNK_VERSION = "v2-tokyo-day-window"
+# Bump when ICS window/chunking or day-kind labels change so an unchanged feed is re-ingested.
+ICAL_CHUNK_VERSION = "v3-day-kind-students-in-session"
 
 
 def _unfold_lines(raw: str) -> list[str]:
@@ -82,7 +83,12 @@ def _format_event(
     if description.strip():
         desc = re.sub(r"\\n", "\n", description).replace("\\,", ",").strip()
         lines.append(f"Details: {desc}")
-    return "\n".join(lines)
+    impact = classify_calendar_event(summary, description)
+    return enrich_event_text(
+        "\n".join(lines),
+        day_kind=impact.day_kind,
+        students_in_session=impact.students_in_session,
+    )
 
 
 @dataclass(frozen=True)
@@ -165,6 +171,7 @@ def events_to_chunks(
     chunks: list[Chunk] = []
     for i, event in enumerate(events):
         start_d, end_d = event.date_span(tz)
+        impact = classify_calendar_event(event.summary, event.text)
         chunks.append(
             Chunk(
                 content=event.text,
@@ -174,7 +181,7 @@ def events_to_chunks(
                 chunk_index=i,
                 start_date=start_d,
                 end_date=end_d,
-                event_type="calendar_event",
+                event_type=impact.day_kind,
             )
         )
     return chunks
@@ -211,16 +218,25 @@ def chunks_from_formatted_calendar(text: str) -> list[Chunk]:
         title_match = _EVENT_RE.search(block)
         start_d = date.fromisoformat(start_match.group(1)) if start_match else None
         end_d = date.fromisoformat(end_match.group(1)) if end_match else start_d
+        title = title_match.group(1).strip() if title_match else None
+        impact = classify_calendar_event(title or "", block)
+        content = block.strip()
+        if "Day kind:" not in content:
+            content = enrich_event_text(
+                content,
+                day_kind=impact.day_kind,
+                students_in_session=impact.students_in_session,
+            )
         chunks.append(
             Chunk(
-                content=block.strip(),
-                section_title=(title_match.group(1).strip() if title_match else None),
+                content=content,
+                section_title=title,
                 page_start=1,
                 page_end=1,
                 chunk_index=i,
                 start_date=start_d,
                 end_date=end_d,
-                event_type="calendar_event",
+                event_type=impact.day_kind,
             )
         )
     return chunks
