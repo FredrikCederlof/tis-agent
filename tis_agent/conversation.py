@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
+from tis_agent.agent_config import DEFAULT_GREETING_MESSAGE
+
 _GREETING_RE = re.compile(
     r"(?is)^\s*(?:hi|hii+|hello|hey|yo|good\s+(?:morning|afternoon|evening)|"
     r"hej|tjena|hallå|hola|thanks|thank\s+you|tack|ok|okay|cheers|bye|goodbye)"
@@ -109,10 +111,7 @@ def history_to_chat_messages(
     return messages
 
 
-DEFAULT_GREETING_REPLY = (
-    "Hi! I'm Tina. What can I help you with today?\n"
-    "I answer from official TIS information — calendar, absences, school times, and more."
-)
+DEFAULT_GREETING_REPLY = DEFAULT_GREETING_MESSAGE
 
 
 def greeting_reply(language: str = "en", override: str | None = None) -> str:

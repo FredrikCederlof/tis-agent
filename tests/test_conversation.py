@@ -47,7 +47,7 @@ def test_rewrite_what_about_keeps_prior_context():
 def test_greeting_reply_english():
     reply = greeting_reply("en")
     assert "Tina" in reply
-    assert "help you" in reply.lower()
+    assert "calendar" in reply.lower()
     assert reply == DEFAULT_GREETING_REPLY
 
 

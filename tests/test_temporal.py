@@ -264,7 +264,7 @@ def test_tis_times_empty_window_is_not_today_evidence():
 def test_empty_calendar_is_a_real_today_answer():
     temporal = _q("Hi. Is there anything special happening at school today?")
     reply = format_schedule_reply([], temporal, "en")
-    assert "doesn't list a special event" in reply
+    assert "Nothing special on the parent calendar" in reply
     assert "Friday" in reply
     assert "28" in reply
     assert "TIS Parent Calendar" in reply
@@ -300,7 +300,7 @@ def test_schedule_reply_lists_todays_events():
     reply = format_schedule_reply(events, temporal, "en")
     assert "Hopes and Dreams" in reply
     assert "Assembly (08:30)" in reply
-    assert "Today on the TIS Parent Calendar" in reply
+    assert "Here's what's on today" in reply
 
 
 def test_calendar_ranks_above_portal_for_date_questions():
