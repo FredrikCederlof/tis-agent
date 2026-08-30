@@ -92,6 +92,44 @@ def send_text(settings: WhatsAppSettings, to: str, body: str) -> None:
         response.raise_for_status()
 
 
+def send_typing_indicator(
+    settings: WhatsAppSettings,
+    *,
+    message_id: str | None,
+) -> None:
+    """Mark inbound as read and show the WhatsApp typing indicator (Cloud API)."""
+    if not message_id:
+        return
+    url = (
+        f"https://graph.facebook.com/{GRAPH_API_VERSION}/"
+        f"{settings.phone_number_id}/messages"
+    )
+    payload = {
+        "messaging_product": "whatsapp",
+        "status": "read",
+        "message_id": message_id,
+        "typing_indicator": {"type": "text"},
+    }
+    try:
+        response = httpx.post(
+            url,
+            headers={
+                "Authorization": f"Bearer {settings.token}",
+                "Content-Type": "application/json",
+            },
+            json=payload,
+            timeout=10.0,
+        )
+        if response.status_code >= 400:
+            logger.warning(
+                "Typing indicator failed: %s %s",
+                response.status_code,
+                response.text[:200],
+            )
+    except Exception:
+        logger.exception("Typing indicator request failed")
+
+
 def _extract_inbound_messages(payload: dict[str, Any]) -> list[tuple[str, str, str]]:
     """Return list of (message_id, wa_id, text) for inbound user text messages."""
     if payload.get("object") != "whatsapp_business_account":
@@ -184,6 +222,7 @@ def _reply_to_inbound(
         return
 
     logger.info("Inbound from %s: %s", sender, text[:80])
+    send_typing_indicator(settings, message_id=wa_message_id)
     app_settings = get_settings()
     history: list[dict[str, str]] = []
     try:
@@ -193,6 +232,7 @@ def _reply_to_inbound(
     except Exception:
         logger.exception("Failed to load chat history for %s", sender)
 
+    started = time.perf_counter()
     try:
         result = answer_question(text, settings=app_settings, history=history)
     except Exception:
@@ -207,6 +247,13 @@ def _reply_to_inbound(
             evidence_count=0,
             top_similarity=None,
         )
+    logger.info(
+        "Answered %s outcome=%s evidence=%d elapsed=%.2fs",
+        sender,
+        result.outcome,
+        result.evidence_count,
+        time.perf_counter() - started,
+    )
 
     try:
         send_text(settings, sender, result.reply)
