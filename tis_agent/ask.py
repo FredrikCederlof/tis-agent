@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import logging
 import re
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from datetime import date, datetime
 
@@ -40,7 +43,12 @@ from tis_agent.temporal import (
     tokyo_today,
 )
 
+logger = logging.getLogger("tis_agent.ask")
+
 EVENT_LOOKUP_SIMILARITY_FLOOR = 0.32
+# Expand to a second embedding query only when the first pass is weak.
+VECTOR_EXPAND_SIMILARITY = 0.45
+_CALENDAR_FAST_INTENTS = frozenset({"whats_on", "is_school_day", "list_no_school_days"})
 _EVENT_TITLE_RE = re.compile(r"^Event:\s+(.+)$", re.MULTILINE)
 _STARTS_TIME_RE = re.compile(
     r"^Starts:\s+(\d{4}-\d{2}-\d{2})(?:\s+(\d{2}:\d{2}))?",
@@ -162,27 +170,85 @@ def _nested_document_fields(row: dict) -> dict:
     return row
 
 
-def _vector_retrieve(
+def _match_chunks_for_embedding(
     settings: Settings,
-    queries: list[str],
+    embedding: list[float],
     *,
     match_count: int,
 ) -> list[Evidence]:
-    openai = make_openai(settings)
-    supabase = make_supabase(settings)
-    embeddings = embed_texts(openai, settings.embedding_model, queries)
-    evidence: list[Evidence] = []
-    for embedding in embeddings:
-        response = supabase.rpc(
+    response = (
+        make_supabase(settings)
+        .rpc(
             "match_chunks",
             {
                 "query_embedding": embedding,
                 "match_count": match_count,
             },
-        ).execute()
-        for row in response.data or []:
-            evidence.append(_evidence_from_row(row, handbook_title=settings.handbook_title))
+        )
+        .execute()
+    )
+    return [
+        _evidence_from_row(row, handbook_title=settings.handbook_title)
+        for row in (response.data or [])
+    ]
+
+
+def _vector_retrieve_once(
+    settings: Settings,
+    queries: list[str],
+    *,
+    match_count: int,
+) -> list[Evidence]:
+    if not queries:
+        return []
+    openai = make_openai(settings)
+    embeddings = embed_texts(openai, settings.embedding_model, queries)
+    if not embeddings:
+        return []
+    if len(embeddings) == 1:
+        return _match_chunks_for_embedding(settings, embeddings[0], match_count=match_count)
+
+    evidence: list[Evidence] = []
+    with ThreadPoolExecutor(max_workers=len(embeddings)) as pool:
+        futures = [
+            pool.submit(
+                _match_chunks_for_embedding,
+                settings,
+                embedding,
+                match_count=match_count,
+            )
+            for embedding in embeddings
+        ]
+        for future in as_completed(futures):
+            evidence.extend(future.result())
     return evidence
+
+
+def _vector_retrieve(
+    settings: Settings,
+    queries: list[str],
+    *,
+    match_count: int,
+    expand_if_weak: bool = True,
+) -> list[Evidence]:
+    """Embed and search. Prefer one query; expand only when the first pass is weak."""
+    if not queries:
+        return []
+    primary = queries[:1]
+    evidence = _vector_retrieve_once(settings, primary, match_count=match_count)
+    top = max((item.similarity for item in evidence), default=0.0)
+    if expand_if_weak and len(queries) > 1 and top < VECTOR_EXPAND_SIMILARITY:
+        extra = _vector_retrieve_once(settings, queries[1:2], match_count=match_count)
+        evidence = _merge_evidence([evidence, extra])
+    return evidence
+
+
+def use_calendar_fast_path(temporal: TemporalQuery) -> bool:
+    """Schedule intents can answer from dated calendar/web chunks without embeddings."""
+    return (
+        temporal.kind == "date_anchored"
+        and temporal.schedule_intent in _CALENDAR_FAST_INTENTS
+    )
 
 
 def _with_source_type(item: Evidence, source_type: str | None) -> Evidence:
@@ -803,6 +869,7 @@ def retrieve(
     temporal: TemporalQuery | None = None,
     today: date | None = None,
 ) -> Retrieval:
+    started = time.perf_counter()
     today = today or tokyo_today()
     temporal = temporal or parse_temporal(question, today=today)
     queries = [_normalize_retrieval_query(q) for q in retrieval_queries(temporal)]
@@ -812,14 +879,60 @@ def retrieve(
         )
 
     if temporal.kind == "none":
+        evidence = _vector_retrieve(settings, queries[:2], match_count=match_count)
+        logger.info(
+            "retrieve kind=none vector=%d elapsed=%.2fs",
+            len(evidence),
+            time.perf_counter() - started,
+        )
+        return Retrieval(evidence=evidence, used_vector=True)
+
+    # Common parent schedule questions: skip embeddings entirely.
+    if use_calendar_fast_path(temporal):
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            fut_cal = pool.submit(_calendar_retrieve, settings, temporal)
+            fut_date = pool.submit(_date_retrieve, settings, temporal)
+            calendar_hits, calendar_ok = fut_cal.result()
+            date_hits, date_ok = fut_date.result()
+        merged = _attach_source_types(
+            settings,
+            _merge_evidence([calendar_hits, date_hits]),
+        )
+        merged = [
+            item
+            for item in merged
+            if not is_sync_window_stub(item.content, document_title=item.document_title)
+        ]
+        selected = select_dated_evidence(merged, temporal)
+        logger.info(
+            "retrieve kind=%s intent=%s fast_path cal=%d date=%d selected=%d elapsed=%.2fs",
+            temporal.kind,
+            temporal.schedule_intent,
+            len(calendar_hits),
+            len(date_hits),
+            len(selected),
+            time.perf_counter() - started,
+        )
         return Retrieval(
-            evidence=_vector_retrieve(settings, queries[:2], match_count=match_count),
-            used_vector=True,
+            evidence=selected[: max(match_count, 12)],
+            date_lookup_ok=calendar_ok or date_ok,
+            used_vector=False,
         )
 
-    calendar_hits, calendar_ok = _calendar_retrieve(settings, temporal)
-    date_hits, date_ok = _date_retrieve(settings, temporal)
-    vector_hits = _vector_retrieve(settings, queries[:2], match_count=match_count)
+    # Mixed / event lookup: calendar + dated chunks + vector in parallel.
+    with ThreadPoolExecutor(max_workers=3) as pool:
+        fut_cal = pool.submit(_calendar_retrieve, settings, temporal)
+        fut_date = pool.submit(_date_retrieve, settings, temporal)
+        fut_vec = pool.submit(
+            _vector_retrieve,
+            settings,
+            queries[:2],
+            match_count=match_count,
+        )
+        calendar_hits, calendar_ok = fut_cal.result()
+        date_hits, date_ok = fut_date.result()
+        vector_hits = fut_vec.result()
+
     merged = _attach_source_types(
         settings,
         _merge_evidence([calendar_hits, date_hits, vector_hits]),
@@ -831,13 +944,29 @@ def retrieve(
     ]
 
     if temporal.kind == "event_date_lookup":
+        evidence = _rerank(merged, temporal)[: max(match_count, 12)]
+        logger.info(
+            "retrieve kind=event_date_lookup selected=%d elapsed=%.2fs",
+            len(evidence),
+            time.perf_counter() - started,
+        )
         return Retrieval(
-            evidence=_rerank(merged, temporal)[: max(match_count, 12)],
+            evidence=evidence,
             date_lookup_ok=calendar_ok or date_ok,
             used_vector=True,
         )
 
     selected = select_dated_evidence(merged, temporal)
+    logger.info(
+        "retrieve kind=%s intent=%s cal=%d date=%d vec=%d selected=%d elapsed=%.2fs",
+        temporal.kind,
+        temporal.schedule_intent,
+        len(calendar_hits),
+        len(date_hits),
+        len(vector_hits),
+        len(selected),
+        time.perf_counter() - started,
+    )
     return Retrieval(
         evidence=selected[: max(match_count, 12)],
         date_lookup_ok=calendar_ok or date_ok,
