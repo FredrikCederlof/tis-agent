@@ -147,5 +147,33 @@ def test_is_school_day_pd():
         )
     ]
     reply = format_is_school_day_reply(evidence, temporal, "en")
-    assert reply.startswith("No")
-    assert "Professional Development" in reply
+    assert reply.startswith("No school on")
+    assert "professional development" in reply.lower()
+    assert "students do not have school" not in reply
+    assert "long weekend" not in reply
+
+
+def test_is_school_day_monday_pd_is_a_long_weekend():
+    temporal = parse_temporal("Is it school on the 7th of September?", today=TODAY)
+    assert temporal.schedule_intent == "is_school_day"
+    assert temporal.date_range is not None
+    assert temporal.date_range.start == date(2026, 9, 7)
+    evidence = [
+        Evidence(
+            content="Event: Professional Development For Staff (No Student Day)\nStudents in session: no",
+            section_title="Professional Development For Staff (No Student Day)",
+            page_start=1,
+            page_end=1,
+            document_title="TIS Parent Calendar",
+            similarity=0.99,
+            source_type="calendar",
+            start_date=date(2026, 9, 7),
+            end_date=date(2026, 9, 7),
+            event_type=DAY_KIND_NO_STUDENT,
+        )
+    ]
+    reply = format_is_school_day_reply(evidence, temporal, "en")
+    assert "No school on Monday, September 7" in reply
+    assert "professional development day" in reply
+    assert "long weekend" in reply
+    assert reply.count("😊") == 1

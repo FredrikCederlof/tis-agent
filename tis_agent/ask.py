@@ -525,12 +525,48 @@ def _format_range_label(rng: DateRange, language: str) -> str:
         if language == "sv":
             return f"{rng.start.isoformat()} till {rng.end.isoformat()}"
         return rng.label()
-    day = rng.start
+    return _friendly_day_label(rng.start, language)
+
+
+def _friendly_day_label(day: date, language: str) -> str:
     weekday = day.strftime("%A")
     month = day.strftime("%B")
     if language == "sv":
-        return f"{weekday} {day.day} {month} {day.year}"
-    return f"{weekday} {day.day} {month} {day.year}"
+        return f"{weekday} {day.day} {month}"
+    return f"{weekday}, {month} {day.day}"
+
+
+def _friendly_off_reason(items: list[Evidence], language: str) -> str:
+    parts: list[str] = []
+    for item in items[:4]:
+        label = _event_label(item)
+        lower = label.lower()
+        if "professional development" in lower:
+            parts.append(
+                "en studiedag / professional development day"
+                if language == "sv"
+                else "a professional development day"
+            )
+        elif "no student" in lower:
+            parts.append("en elevfri dag" if language == "sv" else "a student-free day")
+        elif "holiday" in lower:
+            parts.append("ett lov" if language == "sv" else "a school holiday")
+        else:
+            parts.append(label)
+    if not parts:
+        return "en elevfri dag" if language == "sv" else "a student-free day"
+    if len(parts) == 1:
+        return parts[0]
+    return " / ".join(parts)
+
+
+def _long_weekend_note(day: date, language: str) -> str:
+    """Light closer only when a weekday off sits next to the weekend."""
+    if day.weekday() not in (0, 4):
+        return ""
+    if language == "sv":
+        return " Så barnen får en långhelg 😊"
+    return " So the kids get a long weekend 😊"
 
 
 def format_schedule_reply(
@@ -564,35 +600,35 @@ def format_schedule_reply(
         if language == "sv":
             if rng.start == rng.end:
                 return (
-                    f"På TIS-föräldrakalendern står inget särskilt evenemang idag, {label}.\n\n"
+                    f"Inget särskilt på föräldrakalendern idag, {label}.\n\n"
                     f"{source}"
                 )
             return (
-                f"På TIS-föräldrakalendern står inget särskilt evenemang {label}.\n\n"
+                f"Inget särskilt på föräldrakalendern {label}.\n\n"
                 f"{source}"
             )
         if rng.start == rng.end:
             return (
-                f"The TIS Parent Calendar doesn't list a special event for today, {label}.\n\n"
+                f"Nothing special on the parent calendar for today, {label}.\n\n"
                 f"{source}"
             )
         return (
-            f"The TIS Parent Calendar doesn't list a special event for {label}.\n\n"
+            f"Nothing special on the parent calendar for {label}.\n\n"
             f"{source}"
         )
 
     bullets = "\n".join(f"• {_event_label(item)}" for item in unique[:12])
     if language == "sv":
         heading = (
-            f"På TIS-föräldrakalendern idag ({label}):"
+            f"Så här ser idag ut ({label}):"
             if rng.start == rng.end
-            else f"På TIS-föräldrakalendern {label}:"
+            else f"Så här ser {label} ut:"
         )
     else:
         heading = (
-            f"Today on the TIS Parent Calendar ({label}):"
+            f"Here's what's on today ({label}):"
             if rng.start == rng.end
-            else f"On the TIS Parent Calendar for {label}:"
+            else f"Here's what's on for {label}:"
         )
     return f"{heading}\n\n{bullets}\n\n{source}"
 
@@ -631,10 +667,10 @@ def format_is_school_day_reply(
     if day.weekday() >= 5:
         if language == "sv":
             return (
-                f"Nej — {label} är en helgdag, så det är ingen skola för elever.\n\n{source}"
+                f"Ingen skola {label} — det är helg.\n\n{source}"
             )
         return (
-            f"No — {label} is a weekend, so students do not have school.\n\n{source}"
+            f"No school on {label} — it's the weekend.\n\n{source}"
         )
 
     calendar_items = _calendar_items_for_range(evidence, DateRange(day, day))
@@ -653,37 +689,36 @@ def format_is_school_day_reply(
             special_items.append(item)
 
     if off_items:
-        reasons = ", ".join(_event_label(item) for item in off_items[:4])
+        reason = _friendly_off_reason(off_items, language)
+        note = _long_weekend_note(day, language)
         if language == "sv":
             return (
-                f"Nej — elever har inte skola {label}. "
-                f"På TIS-föräldrakalendern: {reasons}.\n\n{source}"
+                f"Ingen skola {label} — det är {reason}.{note}\n\n{source}"
             )
         return (
-            f"No — students do not have school on {label}. "
-            f"On the TIS Parent Calendar: {reasons}.\n\n{source}"
+            f"No school on {label} — it's {reason}.{note}\n\n{source}"
         )
 
     if special_items:
         extras = ", ".join(_event_label(item) for item in special_items[:4])
         if language == "sv":
             return (
-                f"Ja — elever har skola {label}. "
-                f"Kalendern listar också: {extras}.\n\n{source}"
+                f"Ja — skola som vanligt {label}. "
+                f"Kalendern har också: {extras}.\n\n{source}"
             )
         return (
-            f"Yes — students have school on {label}. "
-            f"The calendar also lists: {extras}.\n\n{source}"
+            f"Yes — school as usual on {label}. "
+            f"The calendar also has: {extras}.\n\n{source}"
         )
 
     if language == "sv":
         return (
             f"Ja — {label} är en vanlig skoldag. "
-            f"TIS-föräldrakalendern listar inget lov eller elevfri dag då.\n\n{source}"
+            f"Inget lov eller elevfri dag markerat.\n\n{source}"
         )
     return (
         f"Yes — {label} is a normal school day. "
-        f"The TIS Parent Calendar does not list a holiday or no-student day then.\n\n{source}"
+        f"Nothing marked as a holiday or student-free day.\n\n{source}"
     )
 
 
@@ -727,12 +762,10 @@ def format_no_school_days_reply(
     if not unique:
         if language == "sv":
             return (
-                f"På TIS-föräldrakalendern finns inga markerade elevfria dagar "
-                f"eller lov {label}.\n\n{source}"
+                f"Inga elevfria dagar eller lov markerade {label}.\n\n{source}"
             )
         return (
-            f"The TIS Parent Calendar does not list any student-free days or holidays "
-            f"for {label}.\n\n{source}"
+            f"No student-free days or holidays marked for {label}.\n\n{source}"
         )
 
     bullets = "\n".join(
@@ -740,24 +773,24 @@ def format_no_school_days_reply(
         for day, name in unique[:20]
     )
     if language == "sv":
-        heading = f"Elevfria dagar / lov enligt TIS-föräldrakalendern {label}:"
+        heading = f"Dagar ledigt / lov {label}:"
     else:
-        heading = f"Student-free / no-school days on the TIS Parent Calendar for {label}:"
+        heading = f"Days off / holidays for {label}:"
     return f"{heading}\n\n{bullets}\n\n{source}"
 
 
 def format_empty_schedule_reply(language: str) -> str:
     if language == "sv":
         return (
-            "TIS-föräldrakalendern listar evenemang och markerade lov/elevfria dagar — "
-            "den lagrar inte en lista över dagar utan något inbokat. "
-            "Fråga gärna efter elevfria dagar eller vad som händer ett visst datum.\n\n"
+            "Föräldrakalendern visar evenemang och markerade lov — "
+            "den har ingen lista över helt vanliga dagar. "
+            "Fråga gärna efter elevfria dagar en månad, eller vad som händer ett visst datum.\n\n"
             "_Källa: TIS Parent Calendar_"
         )
     return (
-        "The TIS Parent Calendar lists events and marked holidays / no-student days — "
-        "it does not store a list of days with nothing scheduled. "
-        "Ask for student-free days in a month, or what is on a specific date.\n\n"
+        "The parent calendar lists events and marked days off — "
+        "it doesn't keep a list of quiet days. "
+        "Ask about days off in a month, or what's on a specific date.\n\n"
         "_Source: TIS Parent Calendar_"
     )
 
@@ -1017,7 +1050,7 @@ def answer_question(
             "Do not invent missing details. "
             "Do not mention databases, retrieval, embeddings, or other technical systems. "
             "If useful, invite the parent to rephrase or add a bit more detail. "
-            "Keep the tone short, friendly, and parent-focused."
+            "Keep the tone short, warm, and parent-focused — fellow parent, not a helpdesk."
         )
     else:
         answer_rules = (
@@ -1028,8 +1061,9 @@ def answer_question(
             "For school-day questions, prefer Parent Calendar labels: "
             "'Students in session: no' means no school for students; "
             "No Number Day is still a school day unless the calendar says otherwise. "
-            "If the excerpts do not clearly answer the question, say you cannot confirm it "
-            "from official TIS sources — do not guess or agree with assumptions."
+            "If the excerpts do not clearly answer the question, say you don't have "
+            "that detail — do not guess or agree with assumptions. "
+            "Write like a well-informed fellow parent: useful first, short, everyday English."
         )
     user_prompt = (
         f"Parent question:\n{parent_block}\n\n"

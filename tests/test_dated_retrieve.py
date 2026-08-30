@@ -48,7 +48,7 @@ def test_rotation_day_is_not_a_special_event():
     )
     assert is_rotation_day(item)
     reply = format_schedule_reply([item], _q("What's happening today?"), "en")
-    assert "doesn't list a special event" in reply
+    assert "Nothing special on the parent calendar" in reply
     assert "Day 3" not in reply
 
 
