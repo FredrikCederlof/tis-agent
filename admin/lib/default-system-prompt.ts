@@ -37,3 +37,11 @@ Answering:
 - If related excerpts do not fully answer the question, say what they clearly support and what you cannot confirm. Invite a rephrase if useful.
 - Do not mention databases, retrieval, embeddings, or other technical systems.
 `;
+
+export function isCurrentSystemPrompt(text: string): boolean {
+  return text.includes("Answering:") && text.includes("Tone (fellow parent");
+}
+
+export function visibleSystemPrompt(stored: string): string {
+  return isCurrentSystemPrompt(stored) ? stored : DEFAULT_SYSTEM_PROMPT;
+}

@@ -2,7 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { DEFAULT_SYSTEM_PROMPT } from "@/lib/default-system-prompt";
+import {
+  DEFAULT_SYSTEM_PROMPT,
+  isCurrentSystemPrompt,
+  visibleSystemPrompt,
+} from "@/lib/default-system-prompt";
 import { createClient } from "@/lib/supabase/client";
 import type { AgentConfigRow } from "@/lib/types";
 
@@ -56,7 +60,9 @@ export function ConfigForm({
   userEmail: string;
 }) {
   const router = useRouter();
-  const [systemPrompt, setSystemPrompt] = useState(config.system_prompt);
+  const [systemPrompt, setSystemPrompt] = useState(
+    visibleSystemPrompt(config.system_prompt || ""),
+  );
   const [fixedAnswersJson, setFixedAnswersJson] = useState(
     JSON.stringify(config.fixed_answers, null, 2),
   );
@@ -211,41 +217,30 @@ export function ConfigForm({
           Full instructions for how Tina answers and behaves: grounding, style, tone, and
           answering rules. This is the complete stored prompt — keep the {"{today}"} placeholder.
         </p>
-        {(!systemPrompt.includes("Answering:") ||
-          !systemPrompt.includes("Tone (fellow parent")) && (
+        {!isCurrentSystemPrompt(config.system_prompt || "") && (
           <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            This saved prompt is older than the current default (Tone / Answering). Load the
-            latest default to put the full behaviour text here, then Save.
+            The saved prompt was older, so the latest default is shown below. Scroll the box
+            to read Tone and Answering, then Save.
           </p>
         )}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="hint !mt-0">
+            {systemPrompt.length.toLocaleString()} characters. The box shows the full prompt.
+          </p>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setSystemPrompt(DEFAULT_SYSTEM_PROMPT)}
+          >
+            Load latest default
+          </button>
+        </div>
         <textarea
           rows={40}
           value={systemPrompt}
           onChange={(e) => setSystemPrompt(e.target.value)}
           className="min-h-[36rem] resize-y font-mono text-xs leading-relaxed"
         />
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="hint !mt-0">
-            {systemPrompt.length.toLocaleString()} characters. Scroll or drag the corner to
-            see the whole prompt.
-          </p>
-          <button
-            type="button"
-            className="secondary"
-            onClick={() => {
-              if (
-                systemPrompt.trim() &&
-                systemPrompt.trim() !== DEFAULT_SYSTEM_PROMPT.trim() &&
-                !window.confirm("Replace the system prompt with the latest default?")
-              ) {
-                return;
-              }
-              setSystemPrompt(DEFAULT_SYSTEM_PROMPT);
-            }}
-          >
-            Load latest default
-          </button>
-        </div>
       </section>
 
       <section className="card space-y-4">
