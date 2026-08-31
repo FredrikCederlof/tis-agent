@@ -56,7 +56,26 @@ def _with_extracted_dates(chunk: Chunk) -> Chunk:
     return replace(chunk, start_date=min(dates), end_date=max(dates))
 
 
-def _chunks_from_bytes(data: bytes, mime_type: str) -> tuple[list[Chunk], int | None]:
+def _chunks_from_bytes(
+    data: bytes,
+    mime_type: str,
+    *,
+    source_type: str | None = None,
+) -> tuple[list[Chunk], int | None]:
+    if source_type == "knowledge":
+        text = data.decode("utf-8", errors="replace").strip()
+        if not text:
+            raise ValueError("No text extracted from document.")
+        return [
+            Chunk(
+                content=text,
+                section_title="Knowledge Hub",
+                page_start=1,
+                page_end=1,
+                chunk_index=0,
+            )
+        ], None
+
     if mime_type == "application/pdf" or data[:4] == b"%PDF":
         reader = PdfReader(io.BytesIO(data))
         pages = []
@@ -187,7 +206,7 @@ def ingest_bytes(
             )
         supabase.table("documents").delete().eq("id", existing_row["id"]).execute()
 
-    chunks, page_count = _chunks_from_bytes(data, mime_type)
+    chunks, page_count = _chunks_from_bytes(data, mime_type, source_type=source_type)
     embeddings = embed_texts(
         openai,
         settings.embedding_model,

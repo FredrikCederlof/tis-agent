@@ -23,6 +23,27 @@ export type UnansweredRow = {
   created_at: string;
   reviewed_at: string | null;
   reviewed_by: string | null;
+  knowledge_entry_id?: string | null;
+};
+
+export type KnowledgeOrigin = "manual" | "inbox";
+export type KnowledgeStatus = "active" | "archived";
+
+export type KnowledgeEntry = {
+  id: string;
+  primary_question: string;
+  similar_questions: string[];
+  answer: string;
+  category: string | null;
+  tags: string[];
+  source_note: string | null;
+  origin: KnowledgeOrigin;
+  origin_interaction_id: string | null;
+  status: KnowledgeStatus;
+  document_id: string | null;
+  created_at: string;
+  updated_at: string;
+  updated_by: string | null;
 };
 
 export type StatsRow = {

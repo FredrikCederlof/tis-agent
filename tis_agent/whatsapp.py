@@ -11,6 +11,7 @@ from typing import Any
 
 import httpx
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, Response
+from fastapi.middleware.cors import CORSMiddleware
 
 from tis_agent.analytics import (
     OUTCOME_ERROR,
@@ -33,6 +34,13 @@ logging.basicConfig(level=logging.INFO)
 GRAPH_API_VERSION = "v21.0"
 
 app = FastAPI(title="Tina WhatsApp webhook", docs_url=None, redoc_url=None)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=False,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Meta may retry webhooks; in-memory dedup is a fast path (DB dedup survives redeploys).
 _STALE_MESSAGE_MAX_AGE_S = 24 * 3600
@@ -194,6 +202,66 @@ async def admin_sync_web(request: Request) -> dict[str, object]:
 
     results = sync_default_web_sources()
     return {"results": [asdict(r) for r in results]}
+
+
+def _knowledge_http_error(exc: Exception) -> HTTPException:
+    if isinstance(exc, ValueError):
+        return HTTPException(status_code=400, detail=str(exc))
+    if isinstance(exc, KeyError):
+        return HTTPException(status_code=404, detail=str(exc))
+    raise exc
+
+
+@app.post("/admin/knowledge")
+async def admin_create_knowledge(request: Request) -> dict[str, object]:
+    """Create a Knowledge Hub entry and ingest it into the existing RAG store."""
+    _require_admin_sync_token(request)
+    from tis_agent.knowledge import save_knowledge_entry
+
+    try:
+        return save_knowledge_entry(await request.json())
+    except (ValueError, KeyError) as exc:
+        raise _knowledge_http_error(exc) from exc
+
+
+@app.patch("/admin/knowledge/{entry_id}")
+async def admin_update_knowledge(entry_id: str, request: Request) -> dict[str, object]:
+    """Update a Knowledge Hub entry and re-ingest the RAG document."""
+    _require_admin_sync_token(request)
+    from tis_agent.knowledge import save_knowledge_entry
+
+    try:
+        return save_knowledge_entry(await request.json(), entry_id=entry_id)
+    except (ValueError, KeyError) as exc:
+        raise _knowledge_http_error(exc) from exc
+
+
+@app.post("/admin/knowledge/{entry_id}/archive")
+async def admin_archive_knowledge(entry_id: str, request: Request) -> dict[str, object]:
+    """Archive a Hub row and delete its RAG document (chunks cascade)."""
+    _require_admin_sync_token(request)
+    from tis_agent.knowledge import archive_knowledge_entry
+
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    try:
+        return archive_knowledge_entry(
+            entry_id,
+            updated_by=str((body or {}).get("updated_by") or "").strip() or None,
+        )
+    except (ValueError, KeyError) as exc:
+        raise _knowledge_http_error(exc) from exc
+
+
+@app.get("/admin/knowledge/related")
+async def admin_related_knowledge(request: Request, q: str = "") -> dict[str, object]:
+    """Warn before create when a similar Knowledge Hub entry already exists."""
+    _require_admin_sync_token(request)
+    from tis_agent.knowledge import related_knowledge_entries
+
+    return {"results": related_knowledge_entries(q)}
 
 
 @app.get("/webhook")

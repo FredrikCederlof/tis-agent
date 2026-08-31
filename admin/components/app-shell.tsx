@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   BarChart3,
+  BookOpen,
   Inbox,
   LayoutDashboard,
   Menu,
@@ -17,6 +18,7 @@ import {
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/inbox", label: "Unanswered", icon: Inbox },
+  { href: "/knowledge", label: "Knowledge Hub", icon: BookOpen },
   { href: "/sync", label: "Knowledge sync", icon: RefreshCw },
   { href: "/config", label: "Tina config", icon: Settings2 },
 ];

@@ -498,11 +498,14 @@ def _is_temporally_relevant(item: Evidence, temporal: TemporalQuery) -> bool:
 
 
 def _rerank(evidence: list[Evidence], temporal: TemporalQuery) -> list[Evidence]:
-    def sort_key(item: Evidence) -> tuple[int, int, int, float]:
+    def sort_key(item: Evidence) -> tuple[int, int, int, int, float]:
         overlap = 1 if _is_temporally_relevant(item, temporal) else 0
         calendar = 1 if item.source_type == "calendar" else 0
         bulletin = 1 if item.source_type == "bulletin" else 0
-        return (overlap, calendar, bulletin, item.similarity)
+        # Curated Knowledge Hub answers should surface on policy/time FAQs,
+        # but never outrank an overlapping calendar event.
+        knowledge = 1 if item.source_type == "knowledge" else 0
+        return (overlap, calendar, bulletin, knowledge, item.similarity)
 
     return sorted(evidence, key=sort_key, reverse=True)
 
@@ -571,7 +574,11 @@ def select_dated_evidence(
     for item in merged:
         if item.source_type == "calendar":
             continue
-        keep = _is_temporally_relevant(item, temporal) or _mentions_event(item, names)
+        keep = (
+            item.source_type == "knowledge"
+            or _is_temporally_relevant(item, temporal)
+            or _mentions_event(item, names)
+        )
         if not keep:
             continue
         key = item.chunk_id or f"{item.document_title}:{item.content[:80]}"
