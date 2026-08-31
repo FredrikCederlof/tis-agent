@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  PAGE_SIZE,
+  pageCount,
+  paginate,
+} from "@/lib/knowledge-hub";
 import type { KnowledgeEntry, KnowledgeOrigin, KnowledgeStatus } from "@/lib/types";
 
 function formatWhen(iso: string): string {
@@ -12,11 +17,18 @@ function formatWhen(iso: string): string {
   });
 }
 
-export function KnowledgeList({ rows }: { rows: KnowledgeEntry[] }) {
+export function KnowledgeList({
+  rows,
+  emptyLabel = "No Knowledge Hub entries match these filters.",
+}: {
+  rows: KnowledgeEntry[];
+  emptyLabel?: string;
+}) {
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("");
   const [origin, setOrigin] = useState<"" | KnowledgeOrigin>("");
   const [status, setStatus] = useState<"" | KnowledgeStatus>("active");
+  const [page, setPage] = useState(1);
 
   const tags = useMemo(() => {
     const found = new Set<string>();
@@ -38,6 +50,7 @@ export function KnowledgeList({ rows }: { rows: KnowledgeEntry[] }) {
       const haystack = [
         row.primary_question,
         row.answer,
+        row.category || "",
         ...(row.similar_questions || []),
         ...(row.tags || []),
         row.source_note || "",
@@ -47,6 +60,14 @@ export function KnowledgeList({ rows }: { rows: KnowledgeEntry[] }) {
       return haystack.includes(needle);
     });
   }, [origin, query, rows, status, tag]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [query, tag, origin, status]);
+
+  const pages = pageCount(filtered.length);
+  const safePage = Math.min(page, pages);
+  const visible = paginate(filtered, safePage);
 
   return (
     <div className="space-y-4">
@@ -96,61 +117,94 @@ export function KnowledgeList({ rows }: { rows: KnowledgeEntry[] }) {
       </div>
 
       {filtered.length === 0 ? (
-        <div className="card text-sm text-tis-muted">
-          No Knowledge Hub entries match these filters.
-        </div>
+        <div className="card text-sm text-tis-muted">{emptyLabel}</div>
       ) : (
-        <ul className="space-y-3">
-          {filtered.map((row) => (
-            <li key={row.id}>
-              <Link
-                href={`/knowledge/${row.id}`}
-                className="card block transition hover:border-tis-sky/40 hover:shadow-md"
-              >
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0">
-                    <p className="font-semibold text-tis-navy">{row.primary_question}</p>
-                    <p className="mt-1 line-clamp-2 text-sm text-tis-muted">{row.answer}</p>
-                    <p className="mt-2 text-xs text-slate-500">
-                      Updated {formatWhen(row.updated_at)}
-                      {row.created_at !== row.updated_at
-                        ? ` · created ${formatWhen(row.created_at)}`
-                        : ""}
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                        row.origin === "inbox"
-                          ? "bg-amber-50 text-amber-700"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {row.origin === "inbox" ? "Inbox" : "Manual"}
-                    </span>
-                    <span
-                      className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                        row.status === "archived"
-                          ? "bg-rose-50 text-tis-danger"
-                          : "bg-emerald-50 text-tis-success"
-                      }`}
-                    >
-                      {row.status}
-                    </span>
-                    {(row.tags || []).slice(0, 3).map((item) => (
+        <>
+          <ul className="space-y-3">
+            {visible.map((row) => (
+              <li key={row.id}>
+                <Link
+                  href={`/knowledge/${row.id}`}
+                  className="card block transition hover:border-tis-sky/40 hover:shadow-md"
+                >
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-tis-navy">{row.primary_question}</p>
+                      <p className="mt-1 line-clamp-2 text-sm text-tis-muted">{row.answer}</p>
+                      <p className="mt-2 text-xs text-slate-500">
+                        Updated {formatWhen(row.updated_at)}
+                        {row.created_at !== row.updated_at
+                          ? ` · created ${formatWhen(row.created_at)}`
+                          : ""}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 flex-nowrap gap-1.5">
                       <span
-                        key={item}
-                        className="rounded-full bg-tis-mist px-2.5 py-0.5 text-xs font-semibold text-tis-sky"
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          row.origin === "inbox"
+                            ? "bg-amber-50 text-amber-700"
+                            : "bg-slate-100 text-slate-600"
+                        }`}
                       >
-                        {item}
+                        {row.origin === "inbox" ? "Inbox" : "Manual"}
                       </span>
-                    ))}
+                      <span
+                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                          row.status === "archived"
+                            ? "bg-rose-50 text-tis-danger"
+                            : "bg-emerald-50 text-tis-success"
+                        }`}
+                      >
+                        {row.status}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
+                  {(row.tags || []).length > 0 && (
+                    <div className="mt-3 flex flex-nowrap gap-1.5 overflow-x-auto">
+                      {(row.tags || []).map((item) => (
+                        <span
+                          key={item}
+                          className="shrink-0 rounded-full bg-tis-mist px-2.5 py-0.5 text-xs font-semibold text-tis-sky"
+                        >
+                          {item}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {pages > 1 && (
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-tis-muted">
+                Showing {(safePage - 1) * PAGE_SIZE + 1}–
+                {Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={safePage <= 1}
+                  onClick={() => setPage((current) => Math.max(1, current - 1))}
+                >
+                  Previous
+                </button>
+                <span className="text-sm font-semibold text-tis-navy">
+                  {safePage} / {pages}
+                </span>
+                <button
+                  type="button"
+                  className="secondary"
+                  disabled={safePage >= pages}
+                  onClick={() => setPage((current) => Math.min(pages, current + 1))}
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );
