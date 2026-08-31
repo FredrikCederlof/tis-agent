@@ -31,8 +31,9 @@ body {
     @apply mt-1.5 text-xs leading-relaxed text-tis-muted;
   }
 
+  a.primary,
   button.primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-tis-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-tis-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-sky disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-tis-navy px-4 py-2.5 text-sm font-semibold text-white no-underline shadow-sm transition hover:bg-tis-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-sky disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   button.secondary {
@@ -40,6 +41,7 @@ body {
   }
 
   textarea,
+  select,
   input[type="text"],
   input[type="email"],
   input[type="number"] {

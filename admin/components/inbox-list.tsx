@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -66,14 +67,22 @@ export function InboxList({
                 </div>
               </dl>
             </div>
-            <button
-              type="button"
-              className="primary shrink-0"
-              disabled={busyId === row.id}
-              onClick={() => markReviewed(row.id)}
-            >
-              {busyId === row.id ? "Saving…" : "Mark reviewed"}
-            </button>
+            <div className="flex shrink-0 flex-col gap-2">
+              <Link
+                href={`/knowledge/new?from=${row.id}`}
+                className="primary !no-underline"
+              >
+                Add to Knowledge Hub
+              </Link>
+              <button
+                type="button"
+                className="secondary"
+                disabled={busyId === row.id}
+                onClick={() => markReviewed(row.id)}
+              >
+                {busyId === row.id ? "Saving…" : "Mark reviewed"}
+              </button>
+            </div>
           </div>
         </li>
       ))}
