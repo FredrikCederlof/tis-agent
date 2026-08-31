@@ -42,7 +42,7 @@ WhatsApp webhook stays on Railway; admin is a separate app.
 | Route | Purpose |
 |-------|---------|
 | `/` | Analytics — sessions, success rate, gaps (7 days) |
-| `/config` | System prompt, fixed answers, strict grounding policy |
+| `/config` | Full system prompt (grounding, style, tone, answering), fixed answers, policy |
 | `/sync` | Manual web & calendar sync + document list |
 | `/knowledge` | Knowledge Hub — curated Q&A ingested into the RAG store |
 | `/inbox` | Unanswered questions — mark reviewed or add to Knowledge Hub |

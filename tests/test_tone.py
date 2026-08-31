@@ -22,6 +22,19 @@ def test_prompt_forbids_formulaic_openers():
     assert "According to the information available" in DEFAULT_SYSTEM_PROMPT
     assert "fellow TIS parent" in DEFAULT_SYSTEM_PROMPT
     assert BANNED in DEFAULT_SYSTEM_PROMPT  # listed as a phrase to never use
+    assert "Answering:" in DEFAULT_SYSTEM_PROMPT
+    assert "official start time" in DEFAULT_SYSTEM_PROMPT
+
+
+def test_admin_default_prompt_matches_python():
+    from pathlib import Path
+
+    ts = Path("admin/lib/default-system-prompt.ts").read_text()
+    start = ts.find("`")
+    end = ts.rfind("`")
+    assert start != -1 and end > start
+    extracted = ts[start + 1 : end].strip()
+    assert extracted == DEFAULT_SYSTEM_PROMPT.strip()
 
 
 def test_greeting_is_short_and_human():

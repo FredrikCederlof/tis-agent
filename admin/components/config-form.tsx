@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { DEFAULT_SYSTEM_PROMPT } from "@/lib/default-system-prompt";
 import { createClient } from "@/lib/supabase/client";
 import type { AgentConfigRow } from "@/lib/types";
 
@@ -207,14 +208,44 @@ export function ConfigForm({
       <section className="card space-y-4">
         <h3 className="text-lg font-bold text-tis-navy">System prompt</h3>
         <p className="text-sm text-tis-muted">
-          Instructions for RAG answers. Keep the {"{today}"} placeholder for the current date.
+          Full instructions for how Tina answers and behaves: grounding, style, tone, and
+          answering rules. This is the complete stored prompt — keep the {"{today}"} placeholder.
         </p>
+        {(!systemPrompt.includes("Answering:") ||
+          !systemPrompt.includes("Tone (fellow parent")) && (
+          <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            This saved prompt is older than the current default (Tone / Answering). Load the
+            latest default to put the full behaviour text here, then Save.
+          </p>
+        )}
         <textarea
-          rows={14}
+          rows={40}
           value={systemPrompt}
           onChange={(e) => setSystemPrompt(e.target.value)}
-          className="font-mono text-xs"
+          className="min-h-[36rem] resize-y font-mono text-xs leading-relaxed"
         />
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="hint !mt-0">
+            {systemPrompt.length.toLocaleString()} characters. Scroll or drag the corner to
+            see the whole prompt.
+          </p>
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => {
+              if (
+                systemPrompt.trim() &&
+                systemPrompt.trim() !== DEFAULT_SYSTEM_PROMPT.trim() &&
+                !window.confirm("Replace the system prompt with the latest default?")
+              ) {
+                return;
+              }
+              setSystemPrompt(DEFAULT_SYSTEM_PROMPT);
+            }}
+          >
+            Load latest default
+          </button>
+        </div>
       </section>
 
       <section className="card space-y-4">

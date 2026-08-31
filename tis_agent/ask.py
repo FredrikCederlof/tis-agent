@@ -1179,27 +1179,14 @@ def answer_question(
         )
     if weak_evidence:
         answer_rules = (
-            "Write the WhatsApp reply now.\n"
-            "Some related TIS excerpts were found, but they may not fully answer the question. "
-            "Briefly say what the excerpts clearly support. "
-            "Clearly say what you cannot confirm from them. "
-            "Do not invent missing details. "
-            "Do not mention databases, retrieval, embeddings, or other technical systems. "
-            "If useful, invite the parent to rephrase or add a bit more detail. "
-            "Keep the tone short, warm, and parent-focused — fellow parent, not a helpdesk."
+            "Write the WhatsApp reply now. Follow the system prompt (Answering + Tone). "
+            "Related excerpts may not fully answer the question — say what they support "
+            "and what you cannot confirm."
         )
     else:
         answer_rules = (
-            "Write the WhatsApp reply now.\n"
-            "Use only facts explicitly stated in the excerpts above. "
-            "If the excerpts mention both when campus opens and when school or classes start, "
-            "answer with the official start time. "
-            "For school-day questions, prefer Parent Calendar labels: "
-            "'Students in session: no' means no school for students; "
-            "No Number Day is still a school day unless the calendar says otherwise. "
-            "If the excerpts do not clearly answer the question, say you don't have "
-            "that detail — do not guess or agree with assumptions. "
-            "Write like a well-informed fellow parent: useful first, short, everyday English."
+            "Write the WhatsApp reply now. Follow the system prompt (Answering + Tone). "
+            "Use only the excerpts above."
         )
     user_prompt = (
         f"Parent question:\n{parent_block}\n\n"
