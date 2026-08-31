@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { createSuccessPath } from "@/lib/knowledge-hub";
 import type { KnowledgeEntry } from "@/lib/types";
 
 type RelatedHit = {
@@ -38,6 +39,7 @@ export function KnowledgeEditor({
   );
   const [answer, setAnswer] = useState(entry?.answer || "");
   const [tags, setTags] = useState((entry?.tags || []).join(", "));
+  const [category, setCategory] = useState(entry?.category || "");
   const [sourceNote, setSourceNote] = useState(entry?.source_note || "");
   const [saving, setSaving] = useState(false);
   const [archiving, setArchiving] = useState(false);
@@ -99,6 +101,7 @@ export function KnowledgeEditor({
         primary_question: primaryQuestion.trim(),
         similar_questions: similarQuestions.map((q) => q.trim()).filter(Boolean),
         answer: answer.trim(),
+        category: category.trim(),
         tags,
         source_note: sourceNote.trim(),
         origin,
@@ -120,8 +123,10 @@ export function KnowledgeEditor({
       if (!response.ok) {
         throw new Error(body.detail || `Save failed (${response.status})`);
       }
-      const savedId = body.entry?.id || entry?.id;
-      router.push(savedId ? `/knowledge/${savedId}` : "/knowledge");
+      const next = createSuccessPath(isNew);
+      if (next) {
+        router.push(next);
+      }
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Save failed");
@@ -235,6 +240,20 @@ export function KnowledgeEditor({
           onChange={(e) => setAnswer(e.target.value)}
           placeholder="Grade 6 finishes at 2:30pm on Fridays."
         />
+      </label>
+
+      <label className="block">
+        <span className="label">Category</span>
+        <input
+          type="text"
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          placeholder="School hours"
+        />
+        <p className="hint">
+          Optional. When the Hub has more than 100 active entries, the start page groups by
+          category.
+        </p>
       </label>
 
       <label className="block">

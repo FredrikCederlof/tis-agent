@@ -36,6 +36,7 @@ body {
     @apply inline-flex items-center justify-center gap-2 rounded-xl bg-tis-navy px-4 py-2.5 text-sm font-semibold text-white no-underline shadow-sm transition hover:bg-tis-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-sky disabled:cursor-not-allowed disabled:opacity-50;
   }
 
+  a.secondary,
   button.secondary {
     @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-tis-navy shadow-sm transition hover:bg-tis-mist focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-sky disabled:opacity-50;
   }
