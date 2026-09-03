@@ -46,6 +46,20 @@ export type KnowledgeEntry = {
   updated_by: string | null;
 };
 
+export type ChatSessionRow = {
+  id: string;
+  wa_from: string;
+  started_at: string;
+  last_message_at: string;
+  message_count: number;
+  primary_language: string | null;
+  admin_read_at: string | null;
+  unread: boolean;
+  last_question: string | null;
+  last_reply: string | null;
+  last_outcome: string | null;
+};
+
 export type StatsRow = {
   sessions: number;
   questions: number;

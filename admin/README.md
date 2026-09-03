@@ -4,7 +4,7 @@ Web admin for Tina — edit prompts, answer policy, review gaps, view analytics.
 
 ## Setup
 
-1. Run `sql/005_admin.sql` and `sql/010_knowledge_hub.sql` in [Supabase SQL Editor](https://supabase.com/dashboard/project/ixjsiwedssgutrmegyzv/sql/new).
+1. Run `sql/005_admin.sql`, `sql/010_knowledge_hub.sql`, and `sql/012_chat_sessions_admin.sql` in [Supabase SQL Editor](https://supabase.com/dashboard/project/ixjsiwedssgutrmegyzv/sql/new).
 2. In Supabase → Authentication → Providers: enable **Email** (magic link).
 3. In Supabase → Authentication → URL configuration, add redirect URL:
    - Local: `http://localhost:3000/auth/callback`
@@ -42,6 +42,7 @@ WhatsApp webhook stays on Railway; admin is a separate app.
 | Route | Purpose |
 |-------|---------|
 | `/` | Analytics — sessions, success rate, gaps (7 days) |
+| `/chats` | Chat sessions — parent ↔ Tina transcripts |
 | `/config` | Full system prompt (grounding, style, tone, answering), fixed answers, policy |
 | `/sync` | Manual web & calendar sync + document list |
 | `/knowledge` | Knowledge Hub — curated Q&A ingested into the RAG store |
