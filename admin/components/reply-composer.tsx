@@ -123,7 +123,8 @@ export function ReplyComposer({
       ) : (
         <>
           <textarea
-            rows={compact ? 3 : 4}
+            rows={compact ? 2 : 4}
+            className={compact ? "!rounded-2xl !border-slate-100 !bg-slate-50" : ""}
             value={body}
             onChange={(e) => updateBody(e.target.value)}
             placeholder={`Answer “${question.slice(0, 60)}${question.length > 60 ? "…" : ""}”`}

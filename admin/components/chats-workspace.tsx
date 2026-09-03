@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
+  BookPlus,
   ChevronLeft,
-  Info,
   MoreHorizontal,
+  PanelRight,
   Search,
+  SlidersHorizontal,
   Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
@@ -60,6 +62,38 @@ function ParentAvatar({ waFrom, size = 40 }: { waFrom: string; size?: number }) 
   );
 }
 
+function IconButton({
+  label,
+  onClick,
+  active,
+  disabled,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  active?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      title={label}
+      aria-pressed={active}
+      disabled={disabled}
+      onClick={onClick}
+      className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border transition disabled:opacity-50 ${
+        active
+          ? "border-tis-sky bg-tis-mist text-tis-navy"
+          : "border-slate-200 bg-white text-tis-muted hover:bg-slate-50 hover:text-tis-navy"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
 function timeOnly(iso: string): string {
   return new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
 }
@@ -89,7 +123,8 @@ export function ChatsWorkspace({
     to: "",
   });
   const [page, setPage] = useState(1);
-  const [showInfo, setShowInfo] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [showInfo, setShowInfo] = useState(true);
 
   function setFilter<K extends keyof SessionFilters>(key: K, value: SessionFilters[K]) {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -119,48 +154,46 @@ export function ChatsWorkspace({
   const safePage = Math.min(page, pages);
   const visible = paginate(filtered, safePage);
   const selected = sessions.find((row) => row.id === selectedId) || null;
-  const filtersOn = Boolean(
-    filters.query || filters.read || filters.language || filters.outcome || filters.from || filters.to,
-  );
+  const advancedOn = Boolean(filters.language || filters.outcome || filters.from || filters.to);
 
   function resetFilters() {
     setFilters({ query: "", read: "", language: "", outcome: "", from: "", to: "" });
   }
 
   return (
-    <div className="grid min-h-[78vh] overflow-hidden rounded-2xl border border-white/80 bg-white/95 shadow-card lg:grid-cols-[300px_1fr]">
+    <div className="grid min-h-[78vh] overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card lg:grid-cols-[296px_1fr]">
       <aside
-        className={`flex min-h-0 flex-col border-slate-100 lg:border-r ${
+        className={`flex min-h-0 flex-col border-slate-100 bg-white lg:border-r ${
           selectedId ? "hidden lg:flex" : "flex"
         }`}
       >
-        <div className="space-y-3 border-b border-slate-100 p-4">
+        <div className="space-y-3 p-4">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
               type="text"
-              className="!pl-9"
+              className="!rounded-2xl !bg-slate-50 !pl-9"
               value={filters.query}
               onChange={(e) => setFilter("query", e.target.value)}
-              placeholder="Search questions or number"
+              placeholder="Search"
             />
           </div>
 
-          <div className="flex flex-wrap gap-1.5">
-            <FilterPill
+          <div className="flex items-center gap-1.5 rounded-2xl bg-slate-100 p-1">
+            <SegmentButton
               label="All"
               count={sessions.length}
               active={filters.read === ""}
               onClick={() => setFilter("read", "")}
             />
-            <FilterPill
+            <SegmentButton
               label="Unread"
               count={unreadTotal}
               active={filters.read === "unread"}
               onClick={() => setFilter("read", "unread")}
             />
-            <FilterPill
-              label="Needs attention"
+            <SegmentButton
+              label="Attention"
               count={attentionTotal}
               tone="amber"
               active={filters.read === "attention"}
@@ -168,11 +201,27 @@ export function ChatsWorkspace({
             />
           </div>
 
-          <details className="group">
-            <summary className="cursor-pointer list-none text-xs font-semibold text-tis-muted hover:text-tis-navy">
-              More filters {filtersOn ? "· on" : ""}
-            </summary>
-            <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+              Conversations
+            </p>
+            <button
+              type="button"
+              className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-bold transition ${
+                advancedOn || showFilters
+                  ? "bg-tis-mist text-tis-navy"
+                  : "text-tis-muted hover:bg-slate-50 hover:text-tis-navy"
+              }`}
+              aria-expanded={showFilters}
+              onClick={() => setShowFilters((v) => !v)}
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5" />
+              Filters{advancedOn ? " · on" : ""}
+            </button>
+          </div>
+
+          {showFilters && (
+            <div className="grid grid-cols-2 gap-2 rounded-2xl border border-slate-100 bg-slate-50/70 p-2.5">
               <select
                 value={filters.language}
                 onChange={(e) => setFilter("language", e.target.value)}
@@ -212,38 +261,43 @@ export function ChatsWorkspace({
                 type="button"
                 className="secondary col-span-2 !py-2 text-xs"
                 onClick={resetFilters}
-                disabled={!filtersOn}
               >
                 Reset filters
               </button>
             </div>
-          </details>
+          )}
         </div>
 
         {loadError ? (
-          <p className="p-4 text-sm text-tis-danger">
+          <p className="px-4 pb-4 text-sm text-tis-danger">
             Could not load chats. Run <code>sql/012_chat_sessions_admin.sql</code> and{" "}
             <code>sql/013_human_reply.sql</code> in Supabase. {loadError}
           </p>
         ) : sessions.length === 0 ? (
-          <p className="p-4 text-sm text-tis-muted">
+          <p className="px-4 pb-4 text-sm text-tis-muted">
             No chat sessions yet. Tina’s WhatsApp conversations appear here.
           </p>
         ) : filtered.length === 0 ? (
-          <p className="p-4 text-sm text-tis-muted">No sessions match these filters.</p>
+          <p className="px-4 pb-4 text-sm text-tis-muted">No sessions match these filters.</p>
         ) : (
-          <ul className="min-h-0 flex-1 overflow-y-auto">
+          <ul className="min-h-0 flex-1 overflow-y-auto px-2">
             {visible.map((row) => {
               const active = row.id === selectedId;
               return (
                 <li key={row.id}>
                   <Link
                     href={`/chats/${row.id}`}
-                    className={`flex gap-3 border-b border-slate-50 px-4 py-3 transition hover:bg-tis-mist/70 ${
-                      active ? "bg-tis-mist" : ""
+                    className={`relative flex items-start gap-3 rounded-2xl px-2.5 py-3 transition ${
+                      active ? "bg-slate-100" : "hover:bg-slate-50"
                     }`}
                   >
-                    <ParentAvatar waFrom={row.wa_from} size={38} />
+                    {row.unread && (
+                      <span
+                        className="absolute left-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-tis-sky"
+                        aria-label="Unread"
+                      />
+                    )}
+                    <ParentAvatar waFrom={row.wa_from} size={40} />
                     <div className="min-w-0 flex-1">
                       <div className="flex items-baseline justify-between gap-2">
                         <p
@@ -258,7 +312,7 @@ export function ChatsWorkspace({
                         </span>
                       </div>
                       <p
-                        className={`mt-0.5 truncate text-sm ${
+                        className={`mt-0.5 truncate text-[13px] ${
                           row.unread ? "font-medium text-tis-ink" : "text-tis-muted"
                         }`}
                       >
@@ -271,12 +325,6 @@ export function ChatsWorkspace({
                         </span>
                       )}
                     </div>
-                    {row.unread && (
-                      <span
-                        className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-tis-sky"
-                        aria-label="Unread"
-                      />
-                    )}
                   </Link>
                 </li>
               );
@@ -315,9 +363,7 @@ export function ChatsWorkspace({
         )}
       </aside>
 
-      <section
-        className={`${selectedId ? "flex" : "hidden lg:flex"} min-h-0 min-w-0 flex-col`}
-      >
+      <section className={`${selectedId ? "flex" : "hidden lg:flex"} min-h-0 min-w-0 flex-col`}>
         {!selectedId ? (
           <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-tis-muted">
             Select a session to read the parent ↔ Tina conversation.
@@ -348,33 +394,34 @@ export function ChatsWorkspace({
   );
 }
 
-function FilterPill({
+function SegmentButton({
   label,
   count,
   active,
-  tone = "slate",
+  tone = "sky",
   onClick,
 }: {
   label: string;
   count: number;
   active: boolean;
-  tone?: "slate" | "amber";
+  tone?: "sky" | "amber";
   onClick: () => void;
 }) {
-  const badgeTone =
-    tone === "amber" && count > 0 ? "bg-amber-100 text-amber-800" : "bg-slate-200 text-tis-navy";
+  const badge = active
+    ? tone === "amber" && count > 0
+      ? "bg-amber-100 text-amber-800"
+      : "bg-tis-sky text-white"
+    : "bg-slate-200 text-tis-muted";
   return (
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
-        active
-          ? "border-tis-sky bg-tis-mist text-tis-navy"
-          : "border-slate-200 bg-white text-tis-muted hover:text-tis-navy"
+      className={`inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl px-2 py-1.5 text-xs font-bold transition ${
+        active ? "bg-white text-tis-navy shadow-sm" : "text-tis-muted hover:text-tis-navy"
       }`}
     >
       {label}
-      <span className={`rounded-full px-1.5 text-[10px] font-bold ${badgeTone}`}>{count}</span>
+      <span className={`rounded-full px-1.5 text-[10px] font-bold ${badge}`}>{count}</span>
     </button>
   );
 }
@@ -449,7 +496,7 @@ function ChatThread({
   }
 
   return (
-    <div className="grid min-h-0 flex-1 lg:grid-cols-[1fr_auto]">
+    <div className={`grid min-h-0 flex-1 ${showInfo ? "lg:grid-cols-[1fr_auto]" : ""}`}>
       <div className="flex min-h-0 min-w-0 flex-col">
         <header className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
           <div className="flex min-w-0 items-center gap-3">
@@ -471,29 +518,17 @@ function ChatThread({
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {session.needs_attention && (
-              <span className="hidden items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 sm:inline-flex">
+              <span className="mr-1 hidden items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 sm:inline-flex">
                 <AlertCircle className="h-3.5 w-3.5" />
                 {session.needs_attention_count} needs attention
               </span>
             )}
-            <button
-              type="button"
-              className="secondary !px-2.5 !py-2"
-              aria-label="Session information"
-              aria-pressed={showInfo}
-              onClick={onToggleInfo}
-            >
-              <Info className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              className="secondary !px-2.5 !py-2"
-              aria-label="Delete session"
-              disabled={deleting}
-              onClick={() => void onDelete()}
-            >
+            <IconButton label="Delete session" disabled={deleting} onClick={() => void onDelete()}>
               <Trash2 className="h-4 w-4" />
-            </button>
+            </IconButton>
+            <IconButton label="Session information" active={showInfo} onClick={onToggleInfo}>
+              <PanelRight className="h-4 w-4" />
+            </IconButton>
           </div>
         </header>
 
@@ -503,16 +538,20 @@ function ChatThread({
           </p>
         )}
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-tis-cream/40 px-4 py-5 sm:px-6">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50/60 px-4 py-5 sm:px-6">
           {timeline.length === 0 ? (
             <p className="text-sm text-tis-muted">No messages in this session.</p>
           ) : (
             timeline.map((message, index) => (
               <div key={message.id} className="space-y-4">
                 {(index === 0 || dayLabel(timeline[index - 1].at) !== dayLabel(message.at)) && (
-                  <p className="text-center text-[11px] font-semibold uppercase tracking-wide text-slate-400">
-                    {dayLabel(message.at)}
-                  </p>
+                  <div className="flex items-center gap-3">
+                    <span className="h-px flex-1 bg-slate-200" />
+                    <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                      {dayLabel(message.at)}
+                    </span>
+                    <span className="h-px flex-1 bg-slate-200" />
+                  </div>
                 )}
                 <Bubble
                   message={message}
@@ -529,9 +568,9 @@ function ChatThread({
 
         <footer className="border-t border-slate-100 bg-white px-4 py-3 sm:px-5">
           {target ? (
-            <>
+            <div className="rounded-2xl border border-slate-200 bg-white p-3">
               <p className="mb-2 truncate text-xs text-tis-muted">
-                Replying to: <span className="font-semibold text-tis-navy">{target.question}</span>
+                Replying to <span className="font-semibold text-tis-navy">{target.question}</span>
               </p>
               <ReplyComposer
                 interactionId={target.id}
@@ -541,7 +580,7 @@ function ChatThread({
                 answeredBy={target.human_replied_by}
                 compact
               />
-            </>
+            </div>
           ) : (
             <p className="text-xs text-tis-muted">
               No parent question in this session to reply to.
@@ -570,23 +609,21 @@ function Bubble({
 }) {
   if (message.kind === "parent") {
     return (
-      <div className="flex items-end gap-2">
-        <ParentAvatar waFrom={waFrom} size={28} />
-        <div className="max-w-[85%] sm:max-w-[70%]">
-          <div className="rounded-2xl rounded-bl-md border border-slate-200/80 bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm">
-            <WaMessage text={message.text} />
-          </div>
-          <div className="mt-1 flex items-center gap-2 text-[11px] text-slate-400">
-            <span>Parent · {timeOnly(message.at)}</span>
+      <div className="flex items-start gap-2.5">
+        <ParentAvatar waFrom={waFrom} size={32} />
+        <div className="min-w-0 max-w-[85%] sm:max-w-[68%]">
+          <div className="mb-1 flex items-center gap-2">
+            <span className="text-[13px] font-bold text-tis-navy">Parent</span>
+            <span className="text-[11px] text-slate-400">{timeOnly(message.at)}</span>
             {message.needsAttention && (
-              <span className="font-semibold text-amber-700">
+              <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
                 {OUTCOME_LABELS[message.outcome || ""] || "Needs attention"}
               </span>
             )}
             <div className="relative">
               <button
                 type="button"
-                className="rounded p-0.5 hover:bg-slate-100"
+                className="rounded p-0.5 text-slate-400 hover:bg-slate-200/70 hover:text-tis-navy"
                 aria-label="Parent message actions"
                 onClick={onToggleMenu}
               >
@@ -604,52 +641,56 @@ function Bubble({
               )}
             </div>
           </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (message.kind === "admin") {
-    const failed = message.status === "failed";
-    return (
-      <div className="flex items-end justify-end gap-2">
-        <div className="max-w-[85%] text-right sm:max-w-[70%]">
-          <div
-            className={`rounded-2xl rounded-br-md px-3.5 py-2.5 text-left text-sm ${
-              failed
-                ? "border border-rose-200 bg-rose-50 text-rose-900"
-                : "bg-tis-gold/90 text-tis-ink"
-            }`}
-          >
+          <div className="rounded-2xl rounded-tl-md border border-slate-200/70 bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm">
             <WaMessage text={message.text} />
           </div>
-          <p className="mt-1 text-[11px] text-slate-400">
-            {failed ? "Not delivered · " : ""}
-            School team{message.sentBy ? ` (${message.sentBy})` : ""} · {timeOnly(message.at)}
-          </p>
         </div>
-        <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-tis-gold text-[11px] font-bold text-white">
-          TIS
-        </span>
       </div>
     );
   }
 
+  const isAdmin = message.kind === "admin";
+  const failed = isAdmin && message.status === "failed";
+
   return (
-    <div className="flex items-end justify-end gap-2">
-      <div className="max-w-[85%] text-right sm:max-w-[70%]">
-        <div className="rounded-2xl rounded-br-md bg-tis-navy px-3.5 py-2.5 text-left text-sm text-white">
+    <div className="flex items-start justify-end gap-2.5">
+      <div className="min-w-0 max-w-[85%] sm:max-w-[68%]">
+        <div className="mb-1 flex items-center justify-end gap-2">
+          <span className="text-[11px] text-slate-400">{timeOnly(message.at)}</span>
+          <span className="text-[13px] font-bold text-tis-navy">
+            {isAdmin ? `School team${message.sentBy ? ` · ${message.sentBy}` : ""}` : "Tina"}
+          </span>
+          {failed && (
+            <span className="rounded-full bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-tis-danger">
+              Not delivered
+            </span>
+          )}
+        </div>
+        <div
+          className={`rounded-2xl rounded-tr-md px-3.5 py-2.5 text-sm ${
+            failed
+              ? "border border-rose-200 bg-rose-50 text-rose-900"
+              : isAdmin
+                ? "bg-tis-gold/90 text-tis-ink"
+                : "bg-tis-navy text-white"
+          }`}
+        >
           <WaMessage text={message.text} />
         </div>
-        <p className="mt-1 text-[11px] text-slate-400">Tina · {timeOnly(message.at)}</p>
       </div>
-      <Image
-        src="/tina.png"
-        alt="Tina"
-        width={28}
-        height={28}
-        className="shrink-0 rounded-full object-cover ring-2 ring-tis-sky/30"
-      />
+      {isAdmin ? (
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tis-gold text-[11px] font-bold text-white">
+          TIS
+        </span>
+      ) : (
+        <Image
+          src="/tina.png"
+          alt="Tina"
+          width={32}
+          height={32}
+          className="shrink-0 rounded-full object-cover ring-2 ring-tis-sky/30"
+        />
+      )}
     </div>
   );
 }
@@ -670,27 +711,41 @@ function InfoPanel({
   }, {});
 
   return (
-    <aside className="w-full border-t border-slate-100 bg-white p-4 lg:w-[264px] lg:border-l lg:border-t-0">
+    <aside className="w-full border-t border-slate-100 bg-white p-4 lg:w-[268px] lg:border-l lg:border-t-0">
+      <p className="mb-3 text-sm font-bold text-tis-navy">Session information</p>
+
       <div className="flex flex-col items-center gap-2 border-b border-slate-100 pb-4 text-center">
-        <ParentAvatar waFrom={session.wa_from} size={56} />
+        <ParentAvatar waFrom={session.wa_from} size={64} />
         <div>
           <p className="font-bold text-tis-navy">{parentLabel(session.wa_from)}</p>
-          <p className="text-xs text-tis-muted">WhatsApp parent</p>
+          <p className="text-xs text-tis-muted">
+            WhatsApp parent · {session.message_count} question
+            {session.message_count === 1 ? "" : "s"}
+          </p>
         </div>
         {lastQuestion && (
-          <Link
-            href={`/knowledge/new?from=${lastQuestion.id}`}
-            className="secondary !px-3 !py-1.5 text-xs !no-underline"
-          >
-            Add last question to Hub
-          </Link>
+          <div className="mt-1 grid w-full grid-cols-2 gap-2">
+            <Link
+              href={`/knowledge/new?from=${lastQuestion.id}`}
+              className="flex flex-col items-center gap-1 rounded-xl border border-slate-200 px-2 py-2.5 text-[11px] font-bold text-tis-navy no-underline transition hover:bg-slate-50"
+            >
+              <BookPlus className="h-4 w-4 text-tis-sky" />
+              Add to Hub
+            </Link>
+            <Link
+              href="/inbox"
+              className="flex flex-col items-center gap-1 rounded-xl border border-slate-200 px-2 py-2.5 text-[11px] font-bold text-tis-navy no-underline transition hover:bg-slate-50"
+            >
+              <AlertCircle className="h-4 w-4 text-tis-sky" />
+              Needs attention
+            </Link>
+          </div>
         )}
       </div>
 
       <Section title="Session">
         <Row label="Started" value={formatMessageTime(session.started_at)} />
         <Row label="Last activity" value={formatMessageTime(session.last_message_at)} />
-        <Row label="Questions" value={String(session.message_count)} />
         <Row label="Language" value={session.primary_language || "en"} />
         <Row
           label="Needs attention"
@@ -735,9 +790,7 @@ function InfoPanel({
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div className="border-b border-slate-100 py-3 last:border-b-0">
-      <p className="mb-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-tis-gold">
-        {title}
-      </p>
+      <p className="mb-1.5 text-[13px] font-bold text-tis-navy">{title}</p>
       <div className="space-y-1">{children}</div>
     </div>
   );
