@@ -92,26 +92,22 @@ export function AppShell({
   }
 
   return (
-    <div
-      className={`min-h-screen lg:grid ${
-        collapsed ? "lg:grid-cols-[76px_1fr]" : "lg:grid-cols-[248px_1fr]"
-      }`}
-    >
+    <div className="admin-shell">
       {/* Mobile top bar */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
+      <div className="z-30 flex shrink-0 items-center justify-between border-b border-black/[0.06] bg-white px-4 py-3 lg:hidden">
         <div className="flex items-center gap-3">
           <Image
             src="/tina.png"
             alt="Tina"
             width={36}
             height={36}
-            className="rounded-full object-cover ring-2 ring-tis-sky/30"
+            className="rounded-full object-cover ring-2 ring-tis-navy/20"
           />
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-tis-gold">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-tis-navy">
               TIS Agent
             </p>
-            <p className="text-sm font-bold text-tis-navy">Tina Admin</p>
+            <p className="text-sm font-bold text-tis-ink">Tina Admin</p>
           </div>
         </div>
         <button
@@ -134,9 +130,9 @@ export function AppShell({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col border-r border-slate-200/80 bg-white/95 p-3 shadow-soft backdrop-blur transition-transform lg:static lg:w-auto lg:translate-x-0 ${
-          open ? "translate-x-0" : "-translate-x-full"
-        }`}
+        className={`fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col border-r border-black/[0.06] bg-white p-3 shadow-soft transition-transform lg:static lg:h-full lg:shrink-0 lg:shadow-none ${
+          collapsed ? "lg:w-[76px]" : "lg:w-[248px]"
+        } ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
         <div
           className={`hidden items-center gap-2 px-1 pb-4 pt-1 lg:flex ${
@@ -150,14 +146,14 @@ export function AppShell({
                 alt="Tina"
                 width={36}
                 height={36}
-                className="shrink-0 rounded-full object-cover ring-2 ring-tis-sky/30"
+                className="shrink-0 rounded-full object-cover ring-2 ring-tis-navy/20"
                 priority
               />
               <div className="min-w-0">
-                <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-tis-gold">
+                <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-tis-navy">
                   TIS Agent
                 </p>
-                <p className="truncate text-[15px] font-bold leading-tight text-tis-navy">
+                <p className="truncate text-[15px] font-bold leading-tight text-tis-ink">
                   Tina Admin
                 </p>
               </div>
@@ -165,7 +161,7 @@ export function AppShell({
           )}
           <button
             type="button"
-            className="rounded-lg p-2 text-tis-muted transition hover:bg-slate-100 hover:text-tis-navy"
+            className="rounded-lg p-2 text-tis-muted transition hover:bg-tis-mist hover:text-tis-navy"
             aria-label={iconsOnly ? "Expand navigation" : "Collapse navigation"}
             aria-pressed={collapsed}
             title={iconsOnly ? "Expand navigation" : "Collapse navigation"}
@@ -181,7 +177,7 @@ export function AppShell({
               {iconsOnly ? (
                 <div className="mx-auto mb-1 h-px w-6 bg-slate-200" aria-hidden />
               ) : (
-                <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-tis-muted">
                   {section.label}
                 </p>
               )}
@@ -201,19 +197,19 @@ export function AppShell({
                       iconsOnly ? "justify-center px-0 py-2.5" : "justify-between px-3 py-2.5"
                     } ${
                       active
-                        ? "bg-tis-mist text-tis-navy shadow-sm"
-                        : "text-tis-muted hover:bg-slate-50 hover:text-tis-navy"
+                        ? "bg-tis-acid text-tis-ink shadow-sm"
+                        : "text-tis-muted hover:bg-tis-mist hover:text-tis-navy"
                     }`}
                   >
                     <span className="flex items-center gap-3">
                       <span className="relative">
                         <Icon
                           className={`h-[18px] w-[18px] ${
-                            active ? "text-tis-sky" : "text-slate-400 group-hover:text-tis-sky"
+                            active ? "text-tis-navy" : "text-tis-muted group-hover:text-tis-navy"
                           }`}
                         />
                         {iconsOnly && count > 0 && (
-                          <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-tis-sky px-1 text-[9px] font-bold text-white">
+                          <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-tis-acid px-1 text-[9px] font-bold text-tis-ink">
                             {count}
                           </span>
                         )}
@@ -225,7 +221,7 @@ export function AppShell({
                         className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
                           link.badge === "inbox"
                             ? "bg-amber-100 text-amber-800"
-                            : "bg-tis-sky text-white"
+                            : "bg-tis-acid text-tis-ink"
                         }`}
                       >
                         {count}
@@ -281,12 +277,9 @@ export function AppShell({
         </div>
       </aside>
 
-      <div className="relative min-w-0">
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-48 bg-fuji" />
-        <div className="relative mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
-          {children}
-        </div>
-      </div>
+      <main className="admin-main bg-tis-cream">
+        <div className="admin-canvas">{children}</div>
+      </main>
     </div>
   );
 }
@@ -301,7 +294,7 @@ export function PageHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 flex flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+    <div className="mb-6 flex shrink-0 flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
       <div>
         <h1 className="page-title">{title}</h1>
         {subtitle && <p className="page-subtitle">{subtitle}</p>}

@@ -7,7 +7,7 @@ export default function ChatsLoading() {
         title="Chats"
         subtitle="WhatsApp sessions with Tina. A new session starts after 10 minutes of silence."
       />
-      <div className="grid min-h-[78vh] overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card lg:grid-cols-[296px_1fr]">
+      <div className="grid h-full min-h-0 flex-1 overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-card lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]">
         <div className="space-y-3 border-slate-100 p-4 lg:border-r">
           <div className="h-10 animate-pulse rounded-xl bg-slate-100" />
           {Array.from({ length: 7 }).map((_, index) => (

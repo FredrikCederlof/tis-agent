@@ -57,8 +57,8 @@ export default async function DashboardPage() {
           <h1 className="page-title">Dashboard</h1>
           <p className="page-subtitle">Overview of Tina’s performance and health</p>
         </div>
-        <p className="inline-flex w-fit items-center gap-2 justify-self-start rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-tis-success lg:justify-self-center">
-          <span className="h-2 w-2 rounded-full bg-tis-success" />
+        <p className="inline-flex w-fit items-center gap-2 justify-self-start rounded-full border border-tis-navy/10 bg-tis-mist px-3 py-1.5 text-sm font-semibold text-tis-navy lg:justify-self-center">
+          <span className="h-2 w-2 rounded-full bg-tis-navy" />
           All systems operational
         </p>
         <div className="flex items-center gap-2 lg:justify-self-end">
