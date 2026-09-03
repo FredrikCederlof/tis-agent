@@ -15,24 +15,24 @@ const iconMap = {
 
 const toneMap = {
   blue: {
-    icon: "bg-[#e8f1fa] text-tis-sky",
-    spark: "#4f8fcf",
-    fill: "rgba(79, 143, 207, 0.16)",
+    icon: "bg-tis-mist text-tis-navy",
+    spark: "#05513d",
+    fill: "rgba(5, 81, 61, 0.16)",
   },
   green: {
-    icon: "bg-emerald-50 text-tis-success",
-    spark: "#1f9d6a",
-    fill: "rgba(31, 157, 106, 0.16)",
+    icon: "bg-[#f3ffe0] text-tis-navy",
+    spark: "#8ffe09",
+    fill: "rgba(143, 254, 9, 0.22)",
   },
   purple: {
-    icon: "bg-violet-50 text-violet-600",
-    spark: "#7c5cbf",
-    fill: "rgba(124, 92, 191, 0.16)",
+    icon: "bg-slate-100 text-tis-ink",
+    spark: "#1a191b",
+    fill: "rgba(26, 25, 27, 0.12)",
   },
   teal: {
-    icon: "bg-teal-50 text-teal-600",
-    spark: "#0f9b8e",
-    fill: "rgba(15, 155, 142, 0.16)",
+    icon: "bg-tis-mist text-tis-navy",
+    spark: "#05513d",
+    fill: "rgba(5, 81, 61, 0.16)",
   },
 } as const;
 

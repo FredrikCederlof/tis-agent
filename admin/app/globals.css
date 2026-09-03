@@ -4,23 +4,25 @@
 
 :root {
   color-scheme: light;
+  --tis-racing: #05513d;
+  --tis-paper: #f1f1ee;
+  --tis-ink: #1a191b;
+  --tis-acid: #8ffe09;
 }
 
 html,
 body {
+  height: 100%;
   min-height: 100%;
 }
 
 body {
   @apply bg-tis-cream font-sans text-tis-ink antialiased;
-  background-image:
-    radial-gradient(ellipse 80% 50% at 100% -10%, rgba(79, 143, 207, 0.16), transparent 55%),
-    radial-gradient(ellipse 60% 40% at 0% 100%, rgba(201, 162, 39, 0.08), transparent 50%);
 }
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-white/80 bg-white/90 p-5 shadow-card backdrop-blur-sm;
+    @apply rounded-2xl border border-black/[0.06] bg-white p-5 shadow-card;
   }
 
   .label {
@@ -33,12 +35,12 @@ body {
 
   a.primary,
   button.primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-tis-navy px-4 py-2.5 text-sm font-semibold text-white no-underline shadow-sm transition hover:bg-tis-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-sky disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-tis-navy px-4 py-2.5 text-sm font-semibold text-white no-underline shadow-sm transition hover:bg-tis-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-navy disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   a.secondary,
   button.secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-tis-navy shadow-sm transition hover:bg-tis-mist focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-sky disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-semibold text-tis-navy shadow-sm transition hover:bg-tis-mist focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-navy disabled:opacity-50;
   }
 
   textarea,
@@ -47,7 +49,7 @@ body {
   input[type="email"],
   input[type="number"],
   input[type="date"] {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm outline-none transition placeholder:text-slate-400 focus:border-tis-sky focus:ring-4 focus:ring-tis-sky/15;
+    @apply w-full rounded-xl border border-black/[0.08] bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm outline-none transition placeholder:text-slate-400 focus:border-tis-navy focus:ring-4 focus:ring-tis-navy/15;
   }
 
   .page-title {
@@ -60,6 +62,26 @@ body {
 
   .stat-value {
     @apply mt-2 font-display text-3xl font-bold tracking-tight text-tis-navy;
+  }
+
+  .admin-shell {
+    @apply flex h-dvh min-h-0 w-full flex-col overflow-hidden lg:flex-row;
+  }
+
+  .admin-main {
+    @apply relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden;
+  }
+
+  .admin-canvas {
+    @apply flex min-h-0 w-full min-w-0 flex-1 flex-col overflow-auto px-4 py-4 sm:px-5 lg:px-6 lg:py-5;
+  }
+
+  .admin-canvas > * {
+    @apply w-full min-w-0;
+  }
+
+  .admin-canvas > *:last-child {
+    @apply min-h-0 flex-1;
   }
 }
 

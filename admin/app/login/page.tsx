@@ -35,7 +35,7 @@ function LoginForm() {
     <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
       <div className="pointer-events-none absolute inset-0 bg-fuji" />
       <div className="relative grid w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/70 bg-white/90 shadow-soft backdrop-blur md:grid-cols-[1.05fr_0.95fr]">
-        <div className="relative hidden overflow-hidden bg-gradient-to-br from-[#4f8fcf] via-[#3d7ab8] to-[#163a5f] p-8 text-white md:flex md:flex-col md:justify-between">
+        <div className="relative hidden overflow-hidden bg-gradient-to-br from-[#05513d] to-[#1a191b] p-8 text-white md:flex md:flex-col md:justify-between">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">
               TIS Agent
@@ -71,10 +71,10 @@ function LoginForm() {
               alt="Tina"
               width={48}
               height={48}
-              className="rounded-full object-cover ring-2 ring-tis-sky/40"
+              className="rounded-full object-cover ring-2 ring-tis-navy/30"
             />
             <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-tis-gold">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-tis-navy">
                 TIS Agent
               </p>
               <p className="text-lg font-bold text-tis-navy">Tina Admin</p>

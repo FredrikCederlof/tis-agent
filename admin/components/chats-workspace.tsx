@@ -85,8 +85,8 @@ function IconButton({
       onClick={onClick}
       className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border transition disabled:opacity-50 ${
         active
-          ? "border-tis-sky bg-tis-mist text-tis-navy"
-          : "border-slate-200 bg-white text-tis-muted hover:bg-slate-50 hover:text-tis-navy"
+          ? "border-tis-navy bg-tis-mist text-tis-navy"
+          : "border-black/[0.08] bg-white text-tis-muted hover:bg-tis-mist hover:text-tis-navy"
       }`}
     >
       {children}
@@ -161,7 +161,7 @@ export function ChatsWorkspace({
   }
 
   return (
-    <div className="grid min-h-[78vh] overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-card lg:grid-cols-[296px_1fr]">
+    <div className="grid h-full min-h-0 flex-1 overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-card lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]">
       <aside
         className={`flex min-h-0 flex-col border-slate-100 bg-white lg:border-r ${
           selectedId ? "hidden lg:flex" : "flex"
@@ -288,12 +288,12 @@ export function ChatsWorkspace({
                   <Link
                     href={`/chats/${row.id}`}
                     className={`relative flex items-start gap-3 rounded-2xl px-2.5 py-3 transition ${
-                      active ? "bg-slate-100" : "hover:bg-slate-50"
+                      active ? "bg-tis-mist text-tis-navy" : "hover:bg-slate-50"
                     }`}
                   >
                     {row.unread && (
                       <span
-                        className="absolute left-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-tis-sky"
+                        className="absolute left-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-tis-acid"
                         aria-label="Unread"
                       />
                     )}
@@ -410,7 +410,7 @@ function SegmentButton({
   const badge = active
     ? tone === "amber" && count > 0
       ? "bg-amber-100 text-amber-800"
-      : "bg-tis-sky text-white"
+      : "bg-tis-acid text-tis-ink"
     : "bg-slate-200 text-tis-muted";
   return (
     <button
@@ -671,7 +671,7 @@ function Bubble({
             failed
               ? "border border-rose-200 bg-rose-50 text-rose-900"
               : isAdmin
-                ? "bg-tis-gold/90 text-tis-ink"
+                ? "bg-tis-acid text-tis-ink"
                 : "bg-tis-navy text-white"
           }`}
         >
@@ -679,7 +679,7 @@ function Bubble({
         </div>
       </div>
       {isAdmin ? (
-        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tis-gold text-[11px] font-bold text-white">
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tis-acid text-[11px] font-bold text-tis-ink">
           TIS
         </span>
       ) : (
@@ -688,7 +688,7 @@ function Bubble({
           alt="Tina"
           width={32}
           height={32}
-          className="shrink-0 rounded-full object-cover ring-2 ring-tis-sky/30"
+          className="shrink-0 rounded-full object-cover ring-2 ring-tis-navy/20"
         />
       )}
     </div>
@@ -711,7 +711,7 @@ function InfoPanel({
   }, {});
 
   return (
-    <aside className="w-full border-t border-slate-100 bg-white p-4 lg:w-[268px] lg:border-l lg:border-t-0">
+    <aside className="w-full min-h-0 overflow-y-auto border-t border-slate-100 bg-white p-4 lg:w-[280px] lg:border-l lg:border-t-0">
       <p className="mb-3 text-sm font-bold text-tis-navy">Session information</p>
 
       <div className="flex flex-col items-center gap-2 border-b border-slate-100 pb-4 text-center">

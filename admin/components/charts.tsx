@@ -1,8 +1,8 @@
 /** Lightweight SVG charts — no chart library required. */
 
 const SERIES = [
-  { key: "sessions" as const, label: "Sessions", color: "#4f8fcf" },
-  { key: "questions" as const, label: "Questions", color: "#0f9b8e" },
+  { key: "sessions" as const, label: "Sessions", color: "#05513d" },
+  { key: "questions" as const, label: "Questions", color: "#1a191b" },
   { key: "gaps" as const, label: "Unanswered", color: "#d64545" },
 ];
 
@@ -56,7 +56,7 @@ export function ActivityChart({
                 x2={width - pad.right}
                 y1={y(tick)}
                 y2={y(tick)}
-                stroke="#eef2f7"
+                stroke="#ecece8"
                 strokeWidth="1"
               />
               <text
@@ -69,7 +69,7 @@ export function ActivityChart({
               </text>
             </g>
           ))}
-          <path d={area("sessions")} fill="rgba(79, 143, 207, 0.08)" />
+          <path d={area("sessions")} fill="rgba(5, 81, 61, 0.08)" />
           {SERIES.map((s) => (
             <path
               key={s.key}
@@ -118,10 +118,10 @@ export function OutcomeDonut({
   errors: number;
 }) {
   const parts = [
-    { label: "Grounded", value: success, color: "#1f9d6a" },
+    { label: "Grounded", value: success, color: "#05513d" },
     { label: "Gaps", value: gaps, color: "#d64545" },
-    { label: "Fixed", value: fixed, color: "#4f8fcf" },
-    { label: "Errors", value: errors, color: "#94a3b8" },
+    { label: "Fixed", value: fixed, color: "#8ffe09" },
+    { label: "Errors", value: errors, color: "#1a191b" },
   ];
   const rawTotal = parts.reduce((s, p) => s + p.value, 0);
   const total = rawTotal || 1;
@@ -132,7 +132,7 @@ export function OutcomeDonut({
   return (
     <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
       <svg viewBox="0 0 140 140" className="h-40 w-40 shrink-0">
-        <circle cx="70" cy="70" r={radius} fill="none" stroke="#eef2f7" strokeWidth="16" />
+        <circle cx="70" cy="70" r={radius} fill="none" stroke="#ecece8" strokeWidth="16" />
         {parts.map((part) => {
           const len = (part.value / total) * circ;
           const dash = `${len} ${circ - len}`;
