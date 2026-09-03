@@ -42,6 +42,7 @@ WhatsApp webhook stays on Railway; admin is a separate app.
 | Route | Purpose |
 |-------|---------|
 | `/` | Analytics — sessions, success rate, gaps (7 days) |
+| `/chats` | Chat sessions — parent ↔ Tina transcripts |
 | `/config` | Full system prompt (grounding, style, tone, answering), fixed answers, policy |
 | `/sync` | Manual web & calendar sync + document list |
 | `/knowledge` | Knowledge Hub — curated Q&A ingested into the RAG store |

@@ -3,20 +3,23 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   BookOpen,
   Inbox,
   LayoutDashboard,
   Menu,
+  MessageCircle,
   RefreshCw,
   Settings2,
   X,
 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
+  { href: "/chats", label: "Chats", icon: MessageCircle },
   { href: "/inbox", label: "Unanswered", icon: Inbox },
   { href: "/knowledge", label: "Knowledge Hub", icon: BookOpen },
   { href: "/sync", label: "Knowledge sync", icon: RefreshCw },
@@ -26,14 +29,28 @@ const links = [
 export function AppShell({
   email,
   unansweredCount = 0,
+  chatsUnreadCount,
   children,
 }: {
   email: string;
   unansweredCount?: number;
+  chatsUnreadCount?: number;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const [fetchedUnread, setFetchedUnread] = useState(0);
+  const unreadChats = chatsUnreadCount ?? fetchedUnread;
+
+  useEffect(() => {
+    if (chatsUnreadCount != null) return;
+    const supabase = createClient();
+    supabase
+      .from("admin_session_list")
+      .select("id", { count: "exact", head: true })
+      .eq("unread", true)
+      .then(({ count }) => setFetchedUnread(count ?? 0));
+  }, [chatsUnreadCount, pathname]);
 
   return (
     <div className="min-h-screen lg:grid lg:grid-cols-[260px_1fr]">
@@ -124,6 +141,11 @@ export function AppShell({
                 {link.href === "/inbox" && unansweredCount > 0 && (
                   <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-tis-navy">
                     {unansweredCount}
+                  </span>
+                )}
+                {link.href === "/chats" && unreadChats > 0 && (
+                  <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-bold text-tis-navy">
+                    {unreadChats}
                   </span>
                 )}
               </Link>

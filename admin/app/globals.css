@@ -45,7 +45,8 @@ body {
   select,
   input[type="text"],
   input[type="email"],
-  input[type="number"] {
+  input[type="number"],
+  input[type="date"] {
     @apply w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm outline-none transition placeholder:text-slate-400 focus:border-tis-sky focus:ring-4 focus:ring-tis-sky/15;
   }
 
