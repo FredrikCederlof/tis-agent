@@ -24,6 +24,10 @@ export type UnansweredRow = {
   reviewed_at: string | null;
   reviewed_by: string | null;
   knowledge_entry_id?: string | null;
+  wa_from?: string | null;
+  wa_message_id?: string | null;
+  human_replied_at?: string | null;
+  human_replied_by?: string | null;
 };
 
 export type KnowledgeOrigin = "manual" | "inbox";
@@ -58,6 +62,10 @@ export type ChatSessionRow = {
   last_question: string | null;
   last_reply: string | null;
   last_outcome: string | null;
+  needs_attention: boolean;
+  needs_attention_count: number;
+  last_admin_reply: string | null;
+  last_admin_reply_at: string | null;
 };
 
 export type StatsRow = {

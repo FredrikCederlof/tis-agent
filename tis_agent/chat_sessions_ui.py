@@ -32,6 +32,68 @@ def parent_hue(wa_from: str | None) -> int:
     return total % 360
 
 
+def needs_attention(interaction: dict) -> bool:
+    """A gap question with no review yet is what an admin should answer by hand."""
+    return (interaction.get("outcome") in GAP_OUTCOMES) and not interaction.get("reviewed_at")
+
+
+def build_timeline(interactions: list[dict], admin_replies: list[dict] | None = None) -> list[dict]:
+    """Merge parent questions, Tina answers, and admin replies into one thread."""
+    messages: list[dict] = []
+    for item in interactions:
+        created_at = item.get("created_at")
+        messages.append(
+            {
+                "id": f"{item['id']}:parent",
+                "kind": "parent",
+                "text": item.get("question") or "",
+                "at": created_at,
+                "interaction_id": item["id"],
+                "outcome": item.get("outcome"),
+                "needs_attention": needs_attention(item),
+            }
+        )
+        if item.get("reply"):
+            messages.append(
+                {
+                    "id": f"{item['id']}:tina",
+                    "kind": "tina",
+                    "text": item["reply"],
+                    "at": created_at,
+                    "interaction_id": item["id"],
+                    "outcome": item.get("outcome"),
+                    "needs_attention": False,
+                }
+            )
+    for reply in admin_replies or []:
+        messages.append(
+            {
+                "id": f"{reply['id']}:admin",
+                "kind": "admin",
+                "text": reply.get("body") or "",
+                "at": reply.get("created_at"),
+                "interaction_id": reply.get("interaction_id"),
+                "status": reply.get("status") or "sent",
+                "sent_by": reply.get("sent_by"),
+                "needs_attention": False,
+            }
+        )
+    # Question, then Tina, then any admin reply when timestamps match.
+    rank = {"parent": 0, "tina": 1, "admin": 2}
+    messages.sort(key=lambda message: (message.get("at") or "", rank[message["kind"]]))
+    return messages
+
+
+def reply_target(interactions: list[dict]) -> dict | None:
+    """Oldest question still needing attention, else the most recent question."""
+    pending = [item for item in interactions if needs_attention(item)]
+    if pending:
+        return min(pending, key=lambda item: item.get("created_at") or "")
+    if not interactions:
+        return None
+    return max(interactions, key=lambda item: item.get("created_at") or "")
+
+
 def same_parent_other_sessions_remain(
     sessions: list[dict],
     *,
