@@ -79,6 +79,7 @@ def test_timeline_orders_question_then_tina_then_admin_reply() -> None:
         "tina",
     ]
     assert timeline[0]["needs_attention"] is True
+    assert timeline[0]["suggested_answer"] == GAP["reply"]
     assert timeline[2]["text"] == "Yes — sports shoes are fine tomorrow."
     assert timeline[2]["sent_by"] == "admin@tokyois.com"
 

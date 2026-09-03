@@ -105,6 +105,8 @@ export type ChatMessage = {
   needsAttention: boolean;
   status?: "sent" | "failed";
   sentBy?: string | null;
+  /** Tina's reply to this parent question — used to prefill Knowledge Hub. */
+  suggestedAnswer?: string | null;
 };
 
 export function needsAttention(row: {
@@ -131,6 +133,7 @@ export function buildTimeline(
       interactionId: item.id,
       outcome: item.outcome,
       needsAttention: needsAttention(item),
+      suggestedAnswer: item.reply || null,
     });
     if (item.reply) {
       messages.push({

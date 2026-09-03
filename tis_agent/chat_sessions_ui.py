@@ -51,6 +51,7 @@ def build_timeline(interactions: list[dict], admin_replies: list[dict] | None = 
                 "interaction_id": item["id"],
                 "outcome": item.get("outcome"),
                 "needs_attention": needs_attention(item),
+                "suggested_answer": item.get("reply"),
             }
         )
         if item.get("reply"):
