@@ -53,8 +53,8 @@ select
   i.question as last_question,
   i.reply as last_reply,
   i.outcome as last_outcome,
-  coalesce(a.needs_attention, 0)::int as needs_attention_count,
-  coalesce(a.needs_attention, 0) > 0 as needs_attention,
+  coalesce(a.gap_count, 0)::int as needs_attention_count,
+  coalesce(a.gap_count, 0) > 0 as needs_attention,
   r.body as last_admin_reply,
   r.created_at as last_admin_reply_at
 from public.chat_sessions s
@@ -66,7 +66,7 @@ left join lateral (
   limit 1
 ) i on true
 left join lateral (
-  select count(*) as needs_attention
+  select count(*) as gap_count
   from public.interactions
   where session_id = s.id
     and outcome in ('no_evidence', 'low_confidence')
