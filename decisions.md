@@ -47,6 +47,7 @@ Admin, analytics, and configurable Tina behavior.
 - **Phase B:** Editable system prompt + fixed answers (who is Tina, operator) from DB. SQL: `sql/004_agent_config.sql`.
 - **Phase C:** Admin web UI (`admin/`) — Supabase Auth, prompt editor, answer policy (strict grounding), unanswered inbox, analytics. SQL: `sql/005_admin.sql`.
 - **Phase D (next):** Weekly email summary of gaps.
+- **Human in the loop:** When Tina has no confident answer, an admin can answer the parent from Admin, and the reply lands in the same WhatsApp conversation. This extends the unanswered/escalation flow — it is not a second inbox. Free-form replies only inside Meta's 24-hour window; no template messaging. A verified answer can optionally become a Knowledge Hub entry after review, never automatically. SQL: `sql/013_human_reply.sql`.
 
 ## Milestone 1
 

@@ -16,6 +16,10 @@ export type ChatSessionRow = {
   last_question: string | null;
   last_reply: string | null;
   last_outcome: string | null;
+  needs_attention: boolean;
+  needs_attention_count: number;
+  last_admin_reply: string | null;
+  last_admin_reply_at: string | null;
 };
 
 export type ChatInteraction = {
@@ -27,6 +31,22 @@ export type ChatInteraction = {
   reply: string | null;
   language: string;
   outcome: string;
+  created_at: string;
+  reviewed_at: string | null;
+  human_replied_at: string | null;
+  human_replied_by: string | null;
+};
+
+export type AdminReply = {
+  id: string;
+  session_id: string;
+  interaction_id: string | null;
+  wa_from: string;
+  wa_message_id: string | null;
+  body: string;
+  status: "sent" | "failed";
+  error: string | null;
+  sent_by: string | null;
   created_at: string;
 };
 
@@ -75,28 +95,117 @@ export function formatRelativeTime(iso: string): string {
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
+export type ChatMessage = {
+  id: string;
+  kind: "parent" | "tina" | "admin";
+  text: string;
+  at: string;
+  interactionId: string | null;
+  outcome?: string | null;
+  needsAttention: boolean;
+  status?: "sent" | "failed";
+  sentBy?: string | null;
+};
+
+export function needsAttention(row: {
+  outcome?: string | null;
+  reviewed_at?: string | null;
+}): boolean {
+  return (
+    GAP_OUTCOMES.includes((row.outcome || "") as (typeof GAP_OUTCOMES)[number]) && !row.reviewed_at
+  );
+}
+
+/** Merge parent questions, Tina answers, and admin replies into one thread. */
+export function buildTimeline(
+  interactions: ChatInteraction[],
+  adminReplies: AdminReply[] = [],
+): ChatMessage[] {
+  const messages: ChatMessage[] = [];
+  for (const item of interactions) {
+    messages.push({
+      id: `${item.id}:parent`,
+      kind: "parent",
+      text: item.question || "",
+      at: item.created_at,
+      interactionId: item.id,
+      outcome: item.outcome,
+      needsAttention: needsAttention(item),
+    });
+    if (item.reply) {
+      messages.push({
+        id: `${item.id}:tina`,
+        kind: "tina",
+        text: item.reply,
+        at: item.created_at,
+        interactionId: item.id,
+        outcome: item.outcome,
+        needsAttention: false,
+      });
+    }
+  }
+  for (const reply of adminReplies) {
+    messages.push({
+      id: `${reply.id}:admin`,
+      kind: "admin",
+      text: reply.body || "",
+      at: reply.created_at,
+      interactionId: reply.interaction_id,
+      needsAttention: false,
+      status: reply.status,
+      sentBy: reply.sent_by,
+    });
+  }
+  const rank = { parent: 0, tina: 1, admin: 2 };
+  return messages.sort((a, b) =>
+    a.at === b.at ? rank[a.kind] - rank[b.kind] : (a.at || "").localeCompare(b.at || ""),
+  );
+}
+
+/** Oldest question still needing attention, else the most recent question. */
+export function replyTarget(interactions: ChatInteraction[]): ChatInteraction | null {
+  const pending = interactions.filter((item) => needsAttention(item));
+  const pool = pending.length ? pending : interactions;
+  if (!pool.length) return null;
+  if (pending.length) {
+    return pool.reduce((oldest, item) => (item.created_at < oldest.created_at ? item : oldest));
+  }
+  return pool.reduce((newest, item) => (item.created_at > newest.created_at ? item : newest));
+}
+
+export function dayLabel(iso: string): string {
+  const date = new Date(iso);
+  const today = new Date();
+  const startOf = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+  const diffDays = Math.round((startOf(today) - startOf(date)) / 86_400_000);
+  if (diffDays === 0) return "Today";
+  if (diffDays === 1) return "Yesterday";
+  return date.toLocaleDateString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    year: date.getFullYear() === today.getFullYear() ? undefined : "numeric",
+  });
+}
+
+export type SessionFilters = {
+  query: string;
+  read: "" | "unread" | "read" | "attention";
+  language: string;
+  outcome: string;
+  from: string;
+  to: string;
+};
+
 export function filterSessions(
   rows: ChatSessionRow[],
-  {
-    query,
-    read,
-    language,
-    outcome,
-    from,
-    to,
-  }: {
-    query: string;
-    read: "" | "unread" | "read";
-    language: string;
-    outcome: string;
-    from: string;
-    to: string;
-  },
+  { query, read, language, outcome, from, to }: SessionFilters,
 ): ChatSessionRow[] {
   const needle = query.trim().toLowerCase();
   return rows.filter((row) => {
     if (read === "unread" && !row.unread) return false;
     if (read === "read" && row.unread) return false;
+    if (read === "attention" && !row.needs_attention) return false;
     if (language && (row.primary_language || "") !== language) return false;
     if (outcome === "gap" && !GAP_OUTCOMES.includes((row.last_outcome || "") as (typeof GAP_OUTCOMES)[number])) {
       return false;

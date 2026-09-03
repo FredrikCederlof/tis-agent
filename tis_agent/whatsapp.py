@@ -75,7 +75,8 @@ def _verify_signature(app_secret: str, body: bytes, signature_header: str | None
     return hmac.compare_digest(digest, expected)
 
 
-def send_text(settings: WhatsAppSettings, to: str, body: str) -> None:
+def send_text(settings: WhatsAppSettings, to: str, body: str) -> str | None:
+    """Send one WhatsApp text and return the message id Meta assigned it."""
     url = (
         f"https://graph.facebook.com/{GRAPH_API_VERSION}/"
         f"{settings.phone_number_id}/messages"
@@ -98,6 +99,11 @@ def send_text(settings: WhatsAppSettings, to: str, body: str) -> None:
     if response.status_code >= 400:
         logger.error("WhatsApp send failed: %s %s", response.status_code, response.text)
         response.raise_for_status()
+    try:
+        messages = (response.json() or {}).get("messages") or []
+        return messages[0].get("id") if messages else None
+    except Exception:
+        return None
 
 
 def send_typing_indicator(
@@ -251,6 +257,45 @@ async def admin_archive_knowledge(entry_id: str, request: Request) -> dict[str, 
             entry_id,
             updated_by=str((body or {}).get("updated_by") or "").strip() or None,
         )
+    except (ValueError, KeyError) as exc:
+        raise _knowledge_http_error(exc) from exc
+
+
+@app.get("/admin/reply/window")
+async def admin_reply_window(request: Request, session_id: str = "") -> dict[str, object]:
+    """Is the parent's 24-hour WhatsApp reply window still open for this session?"""
+    _require_admin_sync_token(request)
+    from tis_agent.human_reply import session_reply_window
+
+    if not session_id.strip():
+        raise HTTPException(status_code=400, detail="session_id is required")
+    return session_reply_window(session_id.strip()).as_dict()
+
+
+@app.post("/admin/reply")
+async def admin_send_reply(request: Request) -> dict[str, object]:
+    """Send a human answer to the parent in the existing WhatsApp conversation."""
+    _require_admin_sync_token(request)
+    from tis_agent.human_reply import (
+        ReplySendFailed,
+        ReplyWindowClosed,
+        send_human_reply,
+    )
+
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON") from exc
+
+    try:
+        return send_human_reply(body)
+    except ReplyWindowClosed as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except ReplySendFailed as exc:
+        raise HTTPException(
+            status_code=502,
+            detail=f"WhatsApp did not accept the reply: {exc}",
+        ) from exc
     except (ValueError, KeyError) as exc:
         raise _knowledge_http_error(exc) from exc
 
