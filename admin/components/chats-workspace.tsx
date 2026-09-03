@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
-  BookPlus,
   ChevronLeft,
   MoreHorizontal,
   PanelRight,
@@ -23,9 +22,11 @@ import {
   type ChatInteraction,
   type ChatMessage,
   type ChatSessionRow,
+  type ParentHistoryStats,
   type SessionFilters,
   buildTimeline,
   dayLabel,
+  emptyParentHistoryStats,
   filterSessions,
   formatMessageTime,
   formatRelativeTime,
@@ -103,6 +104,8 @@ export function ChatsWorkspace({
   selectedId,
   messages = [],
   adminReplies = [],
+  parentStats,
+  userEmail = "",
   loadError,
   threadError,
 }: {
@@ -110,6 +113,8 @@ export function ChatsWorkspace({
   selectedId?: string;
   messages?: ChatInteraction[];
   adminReplies?: AdminReply[];
+  parentStats?: ParentHistoryStats | null;
+  userEmail?: string;
   loadError?: string | null;
   threadError?: string | null;
 }) {
@@ -293,7 +298,7 @@ export function ChatsWorkspace({
                   >
                     {row.unread && (
                       <span
-                        className="absolute left-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-tis-acid"
+                        className="absolute left-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-tis-unread"
                         aria-label="Unread"
                       />
                     )}
@@ -377,6 +382,8 @@ export function ChatsWorkspace({
             session={selected}
             interactions={messages}
             adminReplies={adminReplies}
+            parentStats={parentStats || emptyParentHistoryStats()}
+            userEmail={userEmail}
             parentLastMessageAt={sessions
               .filter((row) => row.wa_from === selected.wa_from)
               .reduce<string | null>(
@@ -409,8 +416,8 @@ function SegmentButton({
 }) {
   const badge = active
     ? tone === "amber" && count > 0
-      ? "bg-amber-100 text-amber-800"
-      : "bg-tis-acid text-tis-ink"
+      ? "bg-tis-amber text-tis-ink"
+      : "bg-tis-unread text-white"
     : "bg-slate-200 text-tis-muted";
   return (
     <button
@@ -430,6 +437,8 @@ function ChatThread({
   session,
   interactions,
   adminReplies,
+  parentStats,
+  userEmail,
   parentLastMessageAt,
   showInfo,
   onToggleInfo,
@@ -438,6 +447,8 @@ function ChatThread({
   session: ChatSessionRow;
   interactions: ChatInteraction[];
   adminReplies: AdminReply[];
+  parentStats: ParentHistoryStats;
+  userEmail: string;
   parentLastMessageAt: string | null;
   showInfo: boolean;
   onToggleInfo: () => void;
@@ -447,6 +458,7 @@ function ChatThread({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [flaggingId, setFlaggingId] = useState<string | null>(null);
 
   const timeline = useMemo(
     () => buildTimeline(interactions, adminReplies),
@@ -465,6 +477,7 @@ function ChatThread({
   }, [interactions, parentLastMessageAt]);
 
   useEffect(() => {
+    // Opening a session only marks it read — never removes it from Chats.
     if (!session.unread) return;
     const supabase = createClient();
     void supabase
@@ -473,6 +486,27 @@ function ChatThread({
       .eq("id", session.id)
       .then(() => router.refresh());
   }, [router, session.id, session.unread]);
+
+  async function markNeedsAttention(interactionId: string) {
+    setFlaggingId(interactionId);
+    const supabase = createClient();
+    const { error } = await supabase
+      .from("interactions")
+      .update({
+        manual_attention_at: new Date().toISOString(),
+        manual_attention_by: userEmail || null,
+        reviewed_at: null,
+        reviewed_by: null,
+      })
+      .eq("id", interactionId);
+    setFlaggingId(null);
+    setMenuId(null);
+    if (error) {
+      window.alert(`Could not mark needs attention: ${error.message}`);
+      return;
+    }
+    router.refresh();
+  }
 
   async function onDelete() {
     if (
@@ -518,7 +552,7 @@ function ChatThread({
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {session.needs_attention && (
-              <span className="mr-1 hidden items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-bold text-amber-800 sm:inline-flex">
+              <span className="mr-1 hidden items-center gap-1 rounded-full bg-tis-amber/30 px-2.5 py-1 text-xs font-bold text-tis-ink sm:inline-flex">
                 <AlertCircle className="h-3.5 w-3.5" />
                 {session.needs_attention_count} needs attention
               </span>
@@ -538,7 +572,7 @@ function ChatThread({
           </p>
         )}
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-slate-50/60 px-4 py-5 sm:px-6">
+        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-tis-cream/60 px-4 py-5 sm:px-6">
           {timeline.length === 0 ? (
             <p className="text-sm text-tis-muted">No messages in this session.</p>
           ) : (
@@ -557,8 +591,14 @@ function ChatThread({
                   message={message}
                   waFrom={session.wa_from}
                   menuOpen={menuId === message.id}
+                  flagging={flaggingId === message.interactionId}
                   onToggleMenu={() =>
                     setMenuId((current) => (current === message.id ? null : message.id))
+                  }
+                  onMarkNeedsAttention={
+                    message.interactionId
+                      ? () => void markNeedsAttention(message.interactionId!)
+                      : undefined
                   }
                 />
               </div>
@@ -590,7 +630,15 @@ function ChatThread({
       </div>
 
       {showInfo && (
-        <InfoPanel session={session} interactions={interactions} adminReplies={adminReplies} />
+        <InfoPanel
+          session={session}
+          interactions={interactions}
+          adminReplies={adminReplies}
+          parentStats={parentStats}
+          userEmail={userEmail}
+          flagging={flaggingId != null}
+          onMarkNeedsAttention={(id) => void markNeedsAttention(id)}
+        />
       )}
     </div>
   );
@@ -600,12 +648,16 @@ function Bubble({
   message,
   waFrom,
   menuOpen,
+  flagging,
   onToggleMenu,
+  onMarkNeedsAttention,
 }: {
   message: ChatMessage;
   waFrom: string;
   menuOpen: boolean;
+  flagging?: boolean;
   onToggleMenu: () => void;
+  onMarkNeedsAttention?: () => void;
 }) {
   if (message.kind === "parent") {
     return (
@@ -616,7 +668,7 @@ function Bubble({
             <span className="text-[13px] font-bold text-tis-navy">Parent</span>
             <span className="text-[11px] text-slate-400">{timeOnly(message.at)}</span>
             {message.needsAttention && (
-              <span className="rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">
+              <span className="rounded-full bg-tis-amber/35 px-1.5 py-0.5 text-[10px] font-bold text-tis-ink">
                 {OUTCOME_LABELS[message.outcome || ""] || "Needs attention"}
               </span>
             )}
@@ -630,13 +682,27 @@ function Bubble({
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </button>
               {menuOpen && (
-                <div className="absolute left-0 z-10 mt-1 w-52 rounded-xl border border-slate-100 bg-white py-1 shadow-card">
+                <div className="absolute left-0 z-10 mt-1 w-56 rounded-xl border border-slate-100 bg-white py-1 shadow-card">
                   <Link
                     href={`/knowledge/new?from=${message.interactionId}`}
                     className="block px-3 py-2 text-sm font-semibold text-tis-navy hover:bg-tis-mist"
                   >
                     Add to Knowledge Hub
                   </Link>
+                  {onMarkNeedsAttention && (
+                    <button
+                      type="button"
+                      className="block w-full px-3 py-2 text-left text-sm font-semibold text-tis-navy hover:bg-tis-mist disabled:opacity-50"
+                      disabled={flagging || message.needsAttention}
+                      onClick={onMarkNeedsAttention}
+                    >
+                      {message.needsAttention
+                        ? "Already needs attention"
+                        : flagging
+                          ? "Marking…"
+                          : "Mark needs attention"}
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -671,7 +737,7 @@ function Bubble({
             failed
               ? "border border-rose-200 bg-rose-50 text-rose-900"
               : isAdmin
-                ? "bg-tis-acid text-tis-ink"
+                ? "bg-tis-blue text-white"
                 : "bg-tis-navy text-white"
           }`}
         >
@@ -679,7 +745,7 @@ function Bubble({
         </div>
       </div>
       {isAdmin ? (
-        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tis-acid text-[11px] font-bold text-tis-ink">
+        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tis-blue text-[11px] font-bold text-white">
           TIS
         </span>
       ) : (
@@ -688,7 +754,7 @@ function Bubble({
           alt="Tina"
           width={32}
           height={32}
-          className="shrink-0 rounded-full object-cover ring-2 ring-tis-navy/20"
+          className="shrink-0 rounded-full object-cover ring-2 ring-tis-ink"
         />
       )}
     </div>
@@ -699,10 +765,18 @@ function InfoPanel({
   session,
   interactions,
   adminReplies,
+  parentStats,
+  userEmail,
+  flagging,
+  onMarkNeedsAttention,
 }: {
   session: ChatSessionRow;
   interactions: ChatInteraction[];
   adminReplies: AdminReply[];
+  parentStats: ParentHistoryStats;
+  userEmail: string;
+  flagging: boolean;
+  onMarkNeedsAttention: (interactionId: string) => void;
 }) {
   const lastQuestion = interactions[interactions.length - 1];
   const outcomes = interactions.reduce<Record<string, number>>((acc, item) => {
@@ -724,20 +798,21 @@ function InfoPanel({
           </p>
         </div>
         {lastQuestion && (
-          <div className="mt-1 grid w-full grid-cols-2 gap-2">
-            <Link
-              href={`/knowledge/new?from=${lastQuestion.id}`}
-              className="flex flex-col items-center gap-1 rounded-xl border border-slate-200 px-2 py-2.5 text-[11px] font-bold text-tis-navy no-underline transition hover:bg-slate-50"
+          <div className="mt-1 grid w-full gap-2">
+            <button
+              type="button"
+              className="flex flex-col items-center gap-1 rounded-xl border border-slate-200 px-2 py-2.5 text-[11px] font-bold text-tis-navy transition hover:bg-slate-50 disabled:opacity-50"
+              disabled={flagging}
+              onClick={() => onMarkNeedsAttention(lastQuestion.id)}
             >
-              <BookPlus className="h-4 w-4 text-tis-sky" />
-              Add to Hub
-            </Link>
+              <AlertCircle className="h-4 w-4 text-tis-amber" />
+              {flagging ? "Marking…" : "Needs attention"}
+            </button>
             <Link
               href="/inbox"
-              className="flex flex-col items-center gap-1 rounded-xl border border-slate-200 px-2 py-2.5 text-[11px] font-bold text-tis-navy no-underline transition hover:bg-slate-50"
+              className="text-center text-[11px] font-semibold text-tis-blue no-underline hover:underline"
             >
-              <AlertCircle className="h-4 w-4 text-tis-sky" />
-              Needs attention
+              Open Needs Attention queue
             </Link>
           </div>
         )}
@@ -753,7 +828,28 @@ function InfoPanel({
         />
       </Section>
 
-      <Section title="Outcomes">
+      <Section title="Parent history">
+        <Row label="Total questions" value={String(parentStats.totalQuestions)} />
+        <Row label="Total sessions" value={String(parentStats.totalSessions)} />
+        <Row label="Unique questions" value={String(parentStats.uniqueQuestions)} />
+        <Row
+          label="First seen"
+          value={parentStats.firstSeen ? formatMessageTime(parentStats.firstSeen) : "—"}
+        />
+        <Row
+          label="Last seen"
+          value={parentStats.lastSeen ? formatMessageTime(parentStats.lastSeen) : "—"}
+        />
+      </Section>
+
+      <Section title="AI outcomes">
+        <Row label="Answered from knowledge" value={String(parentStats.answeredFromKnowledge)} />
+        <Row label="AI couldn't answer" value={String(parentStats.aiCouldNotAnswer)} />
+        <Row label="Human replies" value={String(parentStats.humanReplies)} />
+        <Row label="Added to Knowledge Hub" value={String(parentStats.addedToKnowledgeHub)} />
+      </Section>
+
+      <Section title="Outcomes (this session)">
         {Object.keys(outcomes).length === 0 ? (
           <p className="text-xs text-tis-muted">No logged answers.</p>
         ) : (
@@ -782,6 +878,7 @@ function InfoPanel({
       <Section title="Troubleshooting">
         <Row label="WhatsApp" value={session.wa_from} mono />
         <Row label="Session ID" value={session.id} mono />
+        {userEmail ? <Row label="Signed in as" value={userEmail} /> : null}
       </Section>
     </aside>
   );

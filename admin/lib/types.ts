@@ -28,6 +28,9 @@ export type UnansweredRow = {
   wa_message_id?: string | null;
   human_replied_at?: string | null;
   human_replied_by?: string | null;
+  manual_attention_at?: string | null;
+  manual_attention_by?: string | null;
+  attention_source?: "auto" | "manual" | string | null;
 };
 
 export type KnowledgeOrigin = "manual" | "inbox";

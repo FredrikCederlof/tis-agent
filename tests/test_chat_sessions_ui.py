@@ -61,6 +61,16 @@ def test_needs_attention_only_for_unreviewed_gaps() -> None:
     assert needs_attention({**GAP, "reviewed_at": "2026-09-03T03:00:00+00:00"}) is False
 
 
+def test_needs_attention_includes_manual_flag() -> None:
+    flagged = {
+        **ANSWERED,
+        "manual_attention_at": "2026-09-03T03:00:00+00:00",
+        "reviewed_at": None,
+    }
+    assert needs_attention(flagged) is True
+    assert needs_attention({**flagged, "reviewed_at": "2026-09-03T04:00:00+00:00"}) is False
+
+
 def test_timeline_orders_question_then_tina_then_admin_reply() -> None:
     admin_reply = {
         "id": "r1",

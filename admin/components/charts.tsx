@@ -120,7 +120,7 @@ export function OutcomeDonut({
   const parts = [
     { label: "Grounded", value: success, color: "#05513d" },
     { label: "Gaps", value: gaps, color: "#d64545" },
-    { label: "Fixed", value: fixed, color: "#8ffe09" },
+    { label: "Fixed", value: fixed, color: "#90ff09" },
     { label: "Errors", value: errors, color: "#1a191b" },
   ];
   const rawTotal = parts.reduce((s, p) => s + p.value, 0);

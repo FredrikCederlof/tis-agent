@@ -2,9 +2,20 @@
 
 Web admin for Tina — edit prompts, answer policy, review gaps, view analytics.
 
+## Screens
+
+| Route | Purpose |
+|-------|---------|
+| `/` | Analytics — sessions, success rate, gaps (7 days) |
+| `/chats` | Chat sessions — parent ↔ Tina transcripts, plus human replies |
+| `/config` | Full system prompt (grounding, style, tone, answering), fixed answers, policy |
+| `/sync` | Manual web & calendar sync + document list |
+| `/knowledge` | Knowledge Hub — curated Q&A ingested into the RAG store |
+| `/inbox` | Needs attention — auto gaps and manually flagged questions |
+
 ## Setup
 
-1. Run `sql/005_admin.sql`, `sql/010_knowledge_hub.sql`, `sql/012_chat_sessions_admin.sql`, and `sql/013_human_reply.sql` in [Supabase SQL Editor](https://supabase.com/dashboard/project/ixjsiwedssgutrmegyzv/sql/new).
+1. Run `sql/005_admin.sql`, `sql/010_knowledge_hub.sql`, `sql/012_chat_sessions_admin.sql`, `sql/013_human_reply.sql`, and `sql/014_manual_attention.sql` in [Supabase SQL Editor](https://supabase.com/dashboard/project/ixjsiwedssgutrmegyzv/sql/new).
 2. In Supabase → Authentication → Providers: enable **Email** (magic link).
 3. In Supabase → Authentication → URL configuration, add redirect URL:
    - Local: `http://localhost:3000/auth/callback`
@@ -36,17 +47,6 @@ On **Railway** (WhatsApp + admin sync API), also set `TIS_PORTAL_USERNAME` and `
 For automatic updates, add a **second Railway service** with cron `30 18 * * 2,5` (Wed/Sat 03:30 JST) and start command `python -m tis_agent sync web`. See root `AGENTS.md`.
 
 WhatsApp webhook stays on Railway; admin is a separate app.
-
-## Screens
-
-| Route | Purpose |
-|-------|---------|
-| `/` | Analytics — sessions, success rate, gaps (7 days) |
-| `/chats` | Chat sessions — parent ↔ Tina transcripts, plus human replies |
-| `/config` | Full system prompt (grounding, style, tone, answering), fixed answers, policy |
-| `/sync` | Manual web & calendar sync + document list |
-| `/knowledge` | Knowledge Hub — curated Q&A ingested into the RAG store |
-| `/inbox` | Needs attention — reply on WhatsApp, mark reviewed, or add to Knowledge Hub |
 
 ## Human replies (human in the loop)
 

@@ -40,7 +40,7 @@ export default async function InboxPage() {
     <AppShell email={user.email || ""} unansweredCount={count ?? rows.length}>
       <PageHeader
         title="Needs attention"
-        subtitle="Questions Tina could not answer confidently. Reply to the parent on WhatsApp, or turn the answer into knowledge."
+        subtitle="Automatic gaps and questions you marked for follow-up. Reply on WhatsApp, or turn the answer into knowledge."
       />
       {error ? (
         <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-tis-danger">{error.message}</p>
