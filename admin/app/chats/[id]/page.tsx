@@ -29,11 +29,10 @@ export default async function ChatSessionPage({
       .select("*")
       .order("last_message_at", { ascending: false })
       .limit(500),
+    // "*" keeps the thread readable before sql/013 adds the human-reply columns.
     supabase
       .from("interactions")
-      .select(
-        "id, session_id, wa_message_id, wa_from, question, reply, language, outcome, created_at, reviewed_at, human_replied_at, human_replied_by",
-      )
+      .select("*")
       .eq("session_id", params.id)
       .order("created_at", { ascending: true }),
     supabase
