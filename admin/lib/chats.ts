@@ -35,7 +35,71 @@ export type ChatInteraction = {
   reviewed_at: string | null;
   human_replied_at: string | null;
   human_replied_by: string | null;
+  manual_attention_at?: string | null;
+  manual_attention_by?: string | null;
 };
+
+export type ParentHistoryStats = {
+  totalQuestions: number;
+  totalSessions: number;
+  uniqueQuestions: number;
+  firstSeen: string | null;
+  lastSeen: string | null;
+  answeredFromKnowledge: number;
+  aiCouldNotAnswer: number;
+  humanReplies: number;
+  addedToKnowledgeHub: number;
+};
+
+export function emptyParentHistoryStats(): ParentHistoryStats {
+  return {
+    totalQuestions: 0,
+    totalSessions: 0,
+    uniqueQuestions: 0,
+    firstSeen: null,
+    lastSeen: null,
+    answeredFromKnowledge: 0,
+    aiCouldNotAnswer: 0,
+    humanReplies: 0,
+    addedToKnowledgeHub: 0,
+  };
+}
+
+/** Aggregate parent-wide Chats / AI outcome stats from raw rows. */
+export function buildParentHistoryStats(input: {
+  sessions: { started_at: string; last_message_at: string }[];
+  interactions: { question: string; outcome: string }[];
+  humanReplyCount: number;
+  knowledgeHubCount: number;
+}): ParentHistoryStats {
+  const { sessions, interactions, humanReplyCount, knowledgeHubCount } = input;
+  const unique = new Set(
+    interactions
+      .map((row) => (row.question || "").trim().toLowerCase())
+      .filter(Boolean),
+  );
+  let firstSeen: string | null = null;
+  let lastSeen: string | null = null;
+  for (const session of sessions) {
+    if (!firstSeen || session.started_at < firstSeen) firstSeen = session.started_at;
+    if (!lastSeen || session.last_message_at > lastSeen) lastSeen = session.last_message_at;
+  }
+  return {
+    totalQuestions: interactions.length,
+    totalSessions: sessions.length,
+    uniqueQuestions: unique.size,
+    firstSeen,
+    lastSeen,
+    answeredFromKnowledge: interactions.filter(
+      (row) => row.outcome === "success" || row.outcome === "fixed_answer",
+    ).length,
+    aiCouldNotAnswer: interactions.filter((row) =>
+      GAP_OUTCOMES.includes(row.outcome as (typeof GAP_OUTCOMES)[number]),
+    ).length,
+    humanReplies: humanReplyCount,
+    addedToKnowledgeHub: knowledgeHubCount,
+  };
+}
 
 export type AdminReply = {
   id: string;
@@ -110,10 +174,11 @@ export type ChatMessage = {
 export function needsAttention(row: {
   outcome?: string | null;
   reviewed_at?: string | null;
+  manual_attention_at?: string | null;
 }): boolean {
-  return (
-    GAP_OUTCOMES.includes((row.outcome || "") as (typeof GAP_OUTCOMES)[number]) && !row.reviewed_at
-  );
+  if (row.reviewed_at) return false;
+  if (row.manual_attention_at) return true;
+  return GAP_OUTCOMES.includes((row.outcome || "") as (typeof GAP_OUTCOMES)[number]);
 }
 
 /** Merge parent questions, Tina answers, and admin replies into one thread. */

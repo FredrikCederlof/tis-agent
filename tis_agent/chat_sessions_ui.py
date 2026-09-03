@@ -33,8 +33,12 @@ def parent_hue(wa_from: str | None) -> int:
 
 
 def needs_attention(interaction: dict) -> bool:
-    """A gap question with no review yet is what an admin should answer by hand."""
-    return (interaction.get("outcome") in GAP_OUTCOMES) and not interaction.get("reviewed_at")
+    """Auto gaps or a manual flag, while still unreviewed."""
+    if interaction.get("reviewed_at"):
+        return False
+    if interaction.get("manual_attention_at"):
+        return True
+    return interaction.get("outcome") in GAP_OUTCOMES
 
 
 def build_timeline(interactions: list[dict], admin_replies: list[dict] | None = None) -> list[dict]:
