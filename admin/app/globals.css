@@ -7,7 +7,11 @@
   --tis-racing: #05513d;
   --tis-paper: #f1f1ee;
   --tis-ink: #1a191b;
-  --tis-acid: #8ffe09;
+  --tis-acid: #90ff09;
+  --tis-unread: #9b7bff;
+  --tis-blue: #4d6bff;
+  --tis-lilac: #9b7bff;
+  --tis-amber: #ffc857;
 }
 
 html,
@@ -35,7 +39,7 @@ body {
 
   a.primary,
   button.primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-tis-navy px-4 py-2.5 text-sm font-semibold text-white no-underline shadow-sm transition hover:bg-tis-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-navy disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-tis-acid px-4 py-2.5 text-sm font-semibold text-tis-ink no-underline shadow-sm transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-navy disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   a.secondary,

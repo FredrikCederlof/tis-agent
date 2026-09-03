@@ -21,8 +21,8 @@ const toneMap = {
   },
   green: {
     icon: "bg-[#f3ffe0] text-tis-navy",
-    spark: "#8ffe09",
-    fill: "rgba(143, 254, 9, 0.22)",
+    spark: "#90ff09",
+    fill: "rgba(144, 255, 9, 0.22)",
   },
   purple: {
     icon: "bg-slate-100 text-tis-ink",

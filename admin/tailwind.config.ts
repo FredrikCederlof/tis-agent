@@ -6,14 +6,18 @@ const config: Config = {
     extend: {
       colors: {
         tis: {
-          // Ceeworks palette: Racing Green, Championship White, Off-Black, Acid Green
-          navy: "#05513d",
-          ink: "#1a191b",
-          sky: "#05513d",
+          // Ceeworks palette
+          navy: "#05513d", // Racing Green — primary / sidebar / Tina bubbles
+          ink: "#1a191b", // Off-Black
+          sky: "#05513d", // alias kept for existing class names
           mist: "#e7f3ec",
-          gold: "#8ffe09",
-          cream: "#f1f1ee",
-          acid: "#8ffe09",
+          gold: "#90ff09", // alias → Acid Green CTA
+          cream: "#f1f1ee", // Championship White canvas
+          acid: "#90ff09", // CTA
+          unread: "#9b7bff", // new/unread
+          blue: "#4d6bff",
+          lilac: "#9b7bff",
+          amber: "#ffc857",
           success: "#05513d",
           danger: "#d64545",
           muted: "#5c635f",

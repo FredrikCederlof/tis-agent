@@ -101,7 +101,7 @@ export function AppShell({
             alt="Tina"
             width={36}
             height={36}
-            className="rounded-full object-cover ring-2 ring-tis-navy/20"
+            className="rounded-full object-cover ring-2 ring-tis-ink"
           />
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-tis-navy">
@@ -130,7 +130,7 @@ export function AppShell({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col border-r border-black/[0.06] bg-white p-3 shadow-soft transition-transform lg:static lg:h-full lg:shrink-0 lg:shadow-none ${
+        className={`fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col border-r border-tis-navy/40 bg-tis-navy p-3 text-white shadow-soft transition-transform lg:static lg:h-full lg:shrink-0 lg:shadow-none ${
           collapsed ? "lg:w-[76px]" : "lg:w-[248px]"
         } ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
       >
@@ -146,14 +146,14 @@ export function AppShell({
                 alt="Tina"
                 width={36}
                 height={36}
-                className="shrink-0 rounded-full object-cover ring-2 ring-tis-navy/20"
+                className="shrink-0 rounded-full object-cover ring-2 ring-tis-ink"
                 priority
               />
               <div className="min-w-0">
-                <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-tis-navy">
+                <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-tis-acid">
                   TIS Agent
                 </p>
-                <p className="truncate text-[15px] font-bold leading-tight text-tis-ink">
+                <p className="truncate text-[15px] font-bold leading-tight text-white">
                   Tina Admin
                 </p>
               </div>
@@ -161,7 +161,7 @@ export function AppShell({
           )}
           <button
             type="button"
-            className="rounded-lg p-2 text-tis-muted transition hover:bg-tis-mist hover:text-tis-navy"
+            className="rounded-lg p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
             aria-label={iconsOnly ? "Expand navigation" : "Collapse navigation"}
             aria-pressed={collapsed}
             title={iconsOnly ? "Expand navigation" : "Collapse navigation"}
@@ -175,9 +175,9 @@ export function AppShell({
           {sections.map((section) => (
             <div key={section.label} className="space-y-0.5">
               {iconsOnly ? (
-                <div className="mx-auto mb-1 h-px w-6 bg-slate-200" aria-hidden />
+                <div className="mx-auto mb-1 h-px w-6 bg-white/20" aria-hidden />
               ) : (
-                <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-tis-muted">
+                <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
                   {section.label}
                 </p>
               )}
@@ -198,18 +198,24 @@ export function AppShell({
                     } ${
                       active
                         ? "bg-tis-acid text-tis-ink shadow-sm"
-                        : "text-tis-muted hover:bg-tis-mist hover:text-tis-navy"
+                        : "text-white/80 hover:bg-white/10 hover:text-white"
                     }`}
                   >
                     <span className="flex items-center gap-3">
                       <span className="relative">
                         <Icon
                           className={`h-[18px] w-[18px] ${
-                            active ? "text-tis-navy" : "text-tis-muted group-hover:text-tis-navy"
+                            active ? "text-tis-ink" : "text-white/70 group-hover:text-white"
                           }`}
                         />
                         {iconsOnly && count > 0 && (
-                          <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-tis-acid px-1 text-[9px] font-bold text-tis-ink">
+                          <span
+                            className={`absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold ${
+                              link.badge === "chats"
+                                ? "bg-tis-unread text-white"
+                                : "bg-tis-amber text-tis-ink"
+                            }`}
+                          >
                             {count}
                           </span>
                         )}
@@ -220,8 +226,8 @@ export function AppShell({
                       <span
                         className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
                           link.badge === "inbox"
-                            ? "bg-amber-100 text-amber-800"
-                            : "bg-tis-acid text-tis-ink"
+                            ? "bg-tis-amber text-tis-ink"
+                            : "bg-tis-unread text-white"
                         }`}
                       >
                         {count}
@@ -234,9 +240,9 @@ export function AppShell({
           ))}
 
           {!iconsOnly && (
-            <div className="mt-auto rounded-xl bg-tis-mist/60 px-3 py-3 text-xs text-tis-muted">
-              <p className="flex items-center gap-2 font-bold text-tis-navy">
-                <BarChart3 className="h-3.5 w-3.5" />
+            <div className="mt-auto rounded-xl bg-white/10 px-3 py-3 text-xs text-white/75">
+              <p className="flex items-center gap-2 font-bold text-white">
+                <BarChart3 className="h-3.5 w-3.5 text-tis-acid" />
                 Parent WhatsApp insights
               </p>
               <p className="mt-1 leading-relaxed">
@@ -246,27 +252,29 @@ export function AppShell({
           )}
         </nav>
 
-        <div className="mt-3 space-y-2 border-t border-slate-100 pt-3">
+        <div className="mt-3 space-y-2 border-t border-white/15 pt-3">
           <div
-            className={`flex items-center gap-2.5 rounded-xl bg-tis-mist/70 py-2.5 ${
+            className={`flex items-center gap-2.5 rounded-xl bg-white/10 py-2.5 ${
               iconsOnly ? "justify-center px-0" : "px-2.5"
             }`}
             title={iconsOnly ? email : undefined}
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tis-navy text-sm font-bold text-white">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tis-acid text-sm font-bold text-tis-ink">
               {(email || "?").slice(0, 1).toUpperCase()}
             </span>
             {!iconsOnly && (
               <div className="min-w-0">
-                <p className="truncate text-xs font-bold text-tis-navy">{email}</p>
-                <p className="text-[11px] text-tis-muted">Admin</p>
+                <p className="truncate text-xs font-bold text-white">{email}</p>
+                <p className="text-[11px] text-white/60">Admin</p>
               </div>
             )}
           </div>
           <form action="/auth/signout" method="post">
             <button
               type="submit"
-              className={`secondary w-full ${iconsOnly ? "!px-0" : ""}`}
+              className={`inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 bg-transparent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 ${
+                iconsOnly ? "!px-0" : ""
+              }`}
               title={iconsOnly ? "Sign out" : undefined}
               aria-label={iconsOnly ? "Sign out" : undefined}
             >
