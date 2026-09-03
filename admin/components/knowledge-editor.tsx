@@ -173,8 +173,8 @@ export function KnowledgeEditor({
     <form className="card space-y-5" onSubmit={onSave}>
       {origin === "inbox" && (
         <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
-          Started from an unanswered inbox question. Saving marks that row reviewed and
-          links it to this entry.
+          Started from a parent question. Saving marks that interaction reviewed and links it to
+          this Knowledge Hub entry. Nothing is published until you save.
         </p>
       )}
       {archived && (

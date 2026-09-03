@@ -20,6 +20,8 @@ def test_greeting_detected():
     assert is_greeting_or_thanks("Hi")
     assert is_greeting_or_thanks("Hello")
     assert is_greeting_or_thanks("thanks!")
+    assert is_greeting_or_thanks("Great")
+    assert is_greeting_or_thanks("Got it")
     assert not is_greeting_or_thanks("Is it school tomorrow?")
 
 

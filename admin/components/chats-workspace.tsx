@@ -15,6 +15,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { KnowledgeQuestionPicker } from "@/components/knowledge-question-picker";
 import { ReplyComposer } from "@/components/reply-composer";
 import { WaMessage } from "@/components/wa-message";
 import {
@@ -35,6 +36,11 @@ import {
   parentLabel,
   replyTarget,
 } from "@/lib/chats";
+import {
+  isKnowledgeCandidateQuestion,
+  knowledgeCandidates,
+  knowledgeHubUrl,
+} from "@/lib/knowledge-questions";
 
 const OUTCOME_LABELS: Record<string, string> = {
   success: "Answered from sources",
@@ -447,11 +453,13 @@ function ChatThread({
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const timeline = useMemo(
     () => buildTimeline(interactions, adminReplies),
     [adminReplies, interactions],
   );
+  const candidates = useMemo(() => knowledgeCandidates(interactions), [interactions]);
   const target = useMemo(() => replyTarget(interactions), [interactions]);
   // The 24h window follows the parent's newest message, which may be in a later session.
   const lastInboundAt = useMemo(() => {
@@ -590,8 +598,20 @@ function ChatThread({
       </div>
 
       {showInfo && (
-        <InfoPanel session={session} interactions={interactions} adminReplies={adminReplies} />
+        <InfoPanel
+          session={session}
+          interactions={interactions}
+          adminReplies={adminReplies}
+          candidateCount={candidates.length}
+          onAddQuestion={() => setPickerOpen(true)}
+        />
       )}
+
+      <KnowledgeQuestionPicker
+        open={pickerOpen}
+        candidates={candidates}
+        onClose={() => setPickerOpen(false)}
+      />
     </div>
   );
 }
@@ -608,8 +628,20 @@ function Bubble({
   onToggleMenu: () => void;
 }) {
   if (message.kind === "parent") {
+    const canAddToHub =
+      Boolean(message.interactionId) && isKnowledgeCandidateQuestion(message.text);
+
+    async function copyMessage() {
+      try {
+        await navigator.clipboard.writeText(message.text);
+      } catch {
+        // Clipboard can be blocked; the menu still closes.
+      }
+      onToggleMenu();
+    }
+
     return (
-      <div className="flex items-start gap-2.5">
+      <div className="group/parent flex items-start gap-2.5">
         <ParentAvatar waFrom={waFrom} size={32} />
         <div className="min-w-0 max-w-[85%] sm:max-w-[68%]">
           <div className="mb-1 flex items-center gap-2">
@@ -620,23 +652,35 @@ function Bubble({
                 {OUTCOME_LABELS[message.outcome || ""] || "Needs attention"}
               </span>
             )}
-            <div className="relative">
+            <div className="relative opacity-0 transition group-hover/parent:opacity-100 focus-within:opacity-100">
               <button
                 type="button"
                 className="rounded p-0.5 text-slate-400 hover:bg-slate-200/70 hover:text-tis-navy"
                 aria-label="Parent message actions"
+                aria-expanded={menuOpen}
                 onClick={onToggleMenu}
               >
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </button>
               {menuOpen && (
-                <div className="absolute left-0 z-10 mt-1 w-52 rounded-xl border border-slate-100 bg-white py-1 shadow-card">
-                  <Link
-                    href={`/knowledge/new?from=${message.interactionId}`}
-                    className="block px-3 py-2 text-sm font-semibold text-tis-navy hover:bg-tis-mist"
+                <div className="absolute left-0 z-10 mt-1 w-56 rounded-xl border border-slate-100 bg-white py-1 shadow-card">
+                  {canAddToHub && message.interactionId && (
+                    <Link
+                      href={knowledgeHubUrl(message.interactionId, {
+                        answer: message.suggestedAnswer,
+                      })}
+                      className="block px-3 py-2 text-sm font-semibold text-tis-navy hover:bg-tis-mist"
+                    >
+                      Add to Knowledge Hub
+                    </Link>
+                  )}
+                  <button
+                    type="button"
+                    className="block w-full px-3 py-2 text-left text-sm font-semibold text-tis-navy hover:bg-tis-mist"
+                    onClick={() => void copyMessage()}
                   >
-                    Add to Knowledge Hub
-                  </Link>
+                    Copy message
+                  </button>
                 </div>
               )}
             </div>
@@ -699,12 +743,15 @@ function InfoPanel({
   session,
   interactions,
   adminReplies,
+  candidateCount,
+  onAddQuestion,
 }: {
   session: ChatSessionRow;
   interactions: ChatInteraction[];
   adminReplies: AdminReply[];
+  candidateCount: number;
+  onAddQuestion: () => void;
 }) {
-  const lastQuestion = interactions[interactions.length - 1];
   const outcomes = interactions.reduce<Record<string, number>>((acc, item) => {
     acc[item.outcome] = (acc[item.outcome] || 0) + 1;
     return acc;
@@ -723,24 +770,29 @@ function InfoPanel({
             {session.message_count === 1 ? "" : "s"}
           </p>
         </div>
-        {lastQuestion && (
-          <div className="mt-1 grid w-full grid-cols-2 gap-2">
-            <Link
-              href={`/knowledge/new?from=${lastQuestion.id}`}
-              className="flex flex-col items-center gap-1 rounded-xl border border-slate-200 px-2 py-2.5 text-[11px] font-bold text-tis-navy no-underline transition hover:bg-slate-50"
-            >
-              <BookPlus className="h-4 w-4 text-tis-sky" />
-              Add to Hub
-            </Link>
-            <Link
-              href="/inbox"
-              className="flex flex-col items-center gap-1 rounded-xl border border-slate-200 px-2 py-2.5 text-[11px] font-bold text-tis-navy no-underline transition hover:bg-slate-50"
-            >
-              <AlertCircle className="h-4 w-4 text-tis-sky" />
-              Needs attention
-            </Link>
-          </div>
-        )}
+        <div className="mt-1 w-full space-y-2">
+          <button
+            type="button"
+            className="flex w-full flex-col items-center gap-1 rounded-xl border border-slate-200 px-2 py-2.5 text-[11px] font-bold text-tis-navy transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            disabled={candidateCount === 0}
+            onClick={onAddQuestion}
+          >
+            <BookPlus className="h-4 w-4 text-tis-sky" />
+            Add question to Knowledge Hub
+          </button>
+          <p className="text-[11px] leading-relaxed text-tis-muted">
+            {candidateCount === 0
+              ? "No parent questions in this session would make a useful Knowledge Hub entry."
+              : "Select a question from this session and create a knowledge entry."}
+          </p>
+          <Link
+            href="/inbox"
+            className="flex w-full flex-col items-center gap-1 rounded-xl border border-slate-200 px-2 py-2.5 text-[11px] font-bold text-tis-navy no-underline transition hover:bg-slate-50"
+          >
+            <AlertCircle className="h-4 w-4 text-tis-sky" />
+            Needs attention
+          </Link>
+        </div>
       </div>
 
       <Section title="Session">

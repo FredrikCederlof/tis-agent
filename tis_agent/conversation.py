@@ -9,7 +9,10 @@ from tis_agent.agent_config import DEFAULT_GREETING_MESSAGE
 
 _GREETING_RE = re.compile(
     r"(?is)^\s*(?:hi|hii+|hello|hey|yo|good\s+(?:morning|afternoon|evening)|"
-    r"hej|tjena|hallå|hola|thanks|thank\s+you|tack|ok|okay|cheers|bye|goodbye)"
+    r"hej|tjena|hallå|hola|thanks|thank\s+you|thank\s+u|tack|"
+    r"ok|okay|okey|cheers|bye|goodbye|"
+    r"great|awesome|cool|nice|perfect|got\s+it|sounds?\s+good|"
+    r"all\s+good|understood|noted|👍|🙏)"
     r"[\s!.?]*$"
 )
 _CONFIRM_RE = re.compile(
@@ -44,6 +47,35 @@ def is_confirmation_challenge(text: str) -> bool:
 
 def is_calendar_portal_nudge(text: str) -> bool:
     return bool(_PORTAL_NUDGE_RE.match((text or "").strip()))
+
+
+def is_knowledge_candidate_question(text: str) -> bool:
+    """True when a parent message is worth turning into a Knowledge Hub entry.
+
+    Reuses the greeting / ack / nudge classifiers so Admin and WhatsApp stay aligned.
+    """
+    question = (text or "").strip()
+    if not question:
+        return False
+    if is_greeting_or_thanks(question):
+        return False
+    if is_confirmation_challenge(question):
+        return False
+    if is_calendar_portal_nudge(question):
+        return False
+    return True
+
+
+def knowledge_candidates(interactions: list[dict]) -> list[dict]:
+    """Parent interactions that can seed a Knowledge Hub entry (oldest first)."""
+    rows: list[dict] = []
+    for item in interactions:
+        question = (item.get("question") or "").strip()
+        if not is_knowledge_candidate_question(question):
+            continue
+        rows.append(item)
+    rows.sort(key=lambda row: row.get("created_at") or "")
+    return rows
 
 
 def last_substantive_question(history: list[ConversationTurn] | list[dict[str, str]]) -> str | None:
