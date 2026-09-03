@@ -16,6 +16,7 @@ const RELATED_WARN_AT = 0.68;
 export function KnowledgeEditor({
   entry,
   initialQuestion = "",
+  initialAnswer = "",
   origin,
   originInteractionId,
   userEmail,
@@ -24,6 +25,7 @@ export function KnowledgeEditor({
 }: {
   entry?: KnowledgeEntry;
   initialQuestion?: string;
+  initialAnswer?: string;
   origin: "manual" | "inbox";
   originInteractionId?: string | null;
   userEmail: string;
@@ -37,7 +39,7 @@ export function KnowledgeEditor({
   const [similarQuestions, setSimilarQuestions] = useState<string[]>(
     entry?.similar_questions?.length ? entry.similar_questions : [""],
   );
-  const [answer, setAnswer] = useState(entry?.answer || "");
+  const [answer, setAnswer] = useState(entry?.answer || initialAnswer);
   const [tags, setTags] = useState((entry?.tags || []).join(", "));
   const [category, setCategory] = useState(entry?.category || "");
   const [sourceNote, setSourceNote] = useState(entry?.source_note || "");

@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export default async function NewKnowledgePage({
   searchParams,
 }: {
-  searchParams?: { from?: string };
+  searchParams?: { from?: string; answer?: string };
 }) {
   const supabase = await createClient();
   const {
@@ -39,6 +39,7 @@ export default async function NewKnowledgePage({
       />
       <KnowledgeEditor
         initialQuestion={question}
+        initialAnswer={(searchParams?.answer || "").trim()}
         origin={fromId ? "inbox" : "manual"}
         originInteractionId={fromId || null}
         userEmail={user.email || ""}
