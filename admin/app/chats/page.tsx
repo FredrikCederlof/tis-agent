@@ -35,6 +35,7 @@ export default async function ChatsPage() {
       />
       <ChatsWorkspace
         sessions={(data || []) as ChatSessionRow[]}
+        userEmail={user.email || ""}
         loadError={error?.message}
       />
     </AppShell>
