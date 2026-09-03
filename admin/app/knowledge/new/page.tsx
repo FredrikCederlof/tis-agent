@@ -17,14 +17,20 @@ export default async function NewKnowledgePage({
   if (!user) redirect("/login");
 
   const fromId = searchParams?.from?.trim() || "";
+  const answerOverride = (searchParams?.answer || "").trim();
   let question = "";
+  let suggestedAnswer = answerOverride;
   if (fromId) {
     const { data } = await supabase
       .from("interactions")
-      .select("id, question")
+      .select("id, question, reply")
       .eq("id", fromId)
       .maybeSingle();
     question = (data?.question || "").trim();
+    // Prefer an explicit answer (e.g. a human reply just sent); otherwise use Tina's reply.
+    if (!suggestedAnswer) {
+      suggestedAnswer = (data?.reply || "").trim();
+    }
   }
 
   const { count } = await supabase
@@ -34,12 +40,16 @@ export default async function NewKnowledgePage({
   return (
     <AppShell email={user.email || ""} unansweredCount={count ?? 0}>
       <PageHeader
-        title={fromId ? "Add inbox question to Knowledge Hub" : "New Knowledge Hub entry"}
-        subtitle="One verified answer becomes one RAG document. Similar phrasings stay on that document."
+        title={fromId ? "Add question to Knowledge Hub" : "New Knowledge Hub entry"}
+        subtitle={
+          fromId
+            ? "Started from a parent question in Chats. Edit and verify before Tina uses it."
+            : "One verified answer becomes one RAG document. Similar phrasings stay on that document."
+        }
       />
       <KnowledgeEditor
         initialQuestion={question}
-        initialAnswer={(searchParams?.answer || "").trim()}
+        initialAnswer={suggestedAnswer}
         origin={fromId ? "inbox" : "manual"}
         originInteractionId={fromId || null}
         userEmail={user.email || ""}
