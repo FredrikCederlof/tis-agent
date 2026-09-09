@@ -15,6 +15,7 @@ function isPublicPath(pathname: string): boolean {
   return (
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth/callback") ||
+    pathname.startsWith("/auth/preview-login") ||
     pathname === "/favicon.ico"
   );
 }
@@ -57,12 +58,13 @@ export async function middleware(request: NextRequest) {
 
   const isLogin = request.nextUrl.pathname.startsWith("/login");
   const isAuthCallback = request.nextUrl.pathname.startsWith("/auth/callback");
+  const isPublic = isPublicPath(request.nextUrl.pathname);
 
-  if (isAuthCallback) {
+  if (isAuthCallback || request.nextUrl.pathname.startsWith("/auth/preview-login")) {
     return supabaseResponse;
   }
 
-  if (!user && !isLogin) {
+  if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
