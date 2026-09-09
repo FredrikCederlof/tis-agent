@@ -76,7 +76,7 @@ export default async function DashboardPage({
           <span className="h-2 w-2 rounded-full bg-tis-navy" />
           All systems operational
         </p>
-        <div className="flex flex-wrap items-center gap-2 lg:justify-self-end">
+        <div className="flex items-center gap-2 lg:justify-self-end">
           <DashboardDateRange from={from} to={to} />
           <RefreshButton />
         </div>
