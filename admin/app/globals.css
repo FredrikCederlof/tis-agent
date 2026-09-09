@@ -87,6 +87,29 @@ body {
   .admin-canvas > *:last-child {
     @apply min-h-0 flex-1;
   }
+
+  .tis-day-picker {
+    --rdp-accent-color: #05513d;
+    --rdp-accent-background-color: #e7f3ec;
+    --rdp-range_start-date-background-color: #05513d;
+    --rdp-range_end-date-background-color: #05513d;
+    --rdp-range_middle-background-color: #e7f3ec;
+    --rdp-today-color: #05513d;
+    font-size: 0.8125rem;
+  }
+
+  .tis-day-picker .rdp-root {
+    --rdp-accent-color: #05513d;
+    --rdp-accent-background-color: #e7f3ec;
+  }
+
+  .tis-day-picker .rdp-month_caption {
+    @apply font-semibold text-tis-navy;
+  }
+
+  .tis-day-picker .rdp-weekday {
+    @apply text-[0.65rem] font-semibold uppercase tracking-wide text-tis-muted;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

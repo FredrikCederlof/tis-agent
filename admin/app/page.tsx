@@ -5,11 +5,14 @@ import { StatCard } from "@/components/stat-card";
 import { ActivityChart, OutcomeDonut } from "@/components/charts";
 import { UnansweredPreview } from "@/components/unanswered-preview";
 import { RefreshButton } from "@/components/refresh-button";
+import { DashboardDateRange } from "@/components/dashboard-date-range";
 import {
   KPI_DEFINITIONS,
   buildDashboardModel,
   fetchSinceIso,
+  fetchUntilIso,
   percentChange,
+  resolveDateRange,
   type InteractionRow,
   type SessionRow,
 } from "@/lib/dashboard";
@@ -17,25 +20,34 @@ import type { UnansweredRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: { from?: string; to?: string };
+}) {
   const supabase = await createClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
-  const since = fetchSinceIso();
+  const { from, to } = resolveDateRange(searchParams?.from, searchParams?.to);
+  const since = fetchSinceIso(from, to);
+  const until = fetchUntilIso(to);
+
   const [{ data: sessions }, { data: interactions }, unansweredRes] = await Promise.all([
     supabase
       .from("chat_sessions")
       .select("id, started_at")
       .gte("started_at", since)
-      .limit(5000),
+      .lte("started_at", until)
+      .limit(10000),
     supabase
       .from("interactions")
       .select("created_at, outcome")
       .gte("created_at", since)
-      .limit(5000),
+      .lte("created_at", until)
+      .limit(10000),
     supabase
       .from("unanswered_interactions")
       .select("id, question, outcome, created_at", { count: "exact" })
@@ -46,9 +58,12 @@ export default async function DashboardPage() {
   const dash = buildDashboardModel(
     (sessions || []) as SessionRow[],
     (interactions || []) as InteractionRow[],
+    from,
+    to,
   );
-  const { current, previous, days, rangeLabel } = dash;
+  const { current, previous, days, dayCount, previousLabel } = dash;
   const unansweredCount = unansweredRes.count ?? 0;
+  const periodNoun = dayCount === 1 ? "day" : "days";
 
   return (
     <AppShell email={user.email || ""} unansweredCount={unansweredCount}>
@@ -62,9 +77,7 @@ export default async function DashboardPage() {
           All systems operational
         </p>
         <div className="flex items-center gap-2 lg:justify-self-end">
-          <span className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-tis-muted shadow-sm">
-            {rangeLabel}
-          </span>
+          <DashboardDateRange from={from} to={to} />
           <RefreshButton />
         </div>
       </div>
@@ -78,6 +91,7 @@ export default async function DashboardPage() {
           tone="blue"
           sparkline={days.map((d) => d.sessions)}
           delta={percentChange(current.sessions, previous.sessions)}
+          deltaLabel={`vs previous ${dayCount} ${periodNoun}`}
         />
         <StatCard
           label="Questions"
@@ -87,6 +101,7 @@ export default async function DashboardPage() {
           tone="green"
           sparkline={days.map((d) => d.questions)}
           delta={percentChange(current.questions, previous.questions)}
+          deltaLabel={`vs previous ${dayCount} ${periodNoun}`}
         />
         <StatCard
           label="Avg. questions / session"
@@ -105,6 +120,7 @@ export default async function DashboardPage() {
             current.avgQuestionsPerSession ?? 0,
             previous.avgQuestionsPerSession ?? 0,
           )}
+          deltaLabel={`vs previous ${dayCount} ${periodNoun}`}
         />
         <StatCard
           label="Success rate"
@@ -117,6 +133,7 @@ export default async function DashboardPage() {
             return denom > 0 ? Math.round((d.success / denom) * 100) : 0;
           })}
           delta={percentChange(current.successRate, previous.successRate)}
+          deltaLabel={`vs previous ${dayCount} ${periodNoun}`}
         />
       </div>
 
@@ -125,7 +142,9 @@ export default async function DashboardPage() {
           <div className="mb-1 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold text-tis-navy">Activity over time</h2>
-              <p className="text-sm text-tis-muted">Daily WhatsApp volume for the past week</p>
+              <p className="text-sm text-tis-muted">
+                Daily WhatsApp volume for the selected {dayCount} {periodNoun}
+              </p>
             </div>
             <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-tis-muted">
               Daily
@@ -136,7 +155,12 @@ export default async function DashboardPage() {
 
         <section className="card">
           <h2 className="mb-1 text-lg font-bold text-tis-navy">Outcome mix</h2>
-          <p className="mb-4 text-sm text-tis-muted">How Tina classified answers this week</p>
+          <p className="mb-4 text-sm text-tis-muted">
+            How Tina classified answers in this period
+            <span className="mt-1 block text-xs text-slate-400">
+              Compared with {previousLabel}
+            </span>
+          </p>
           <OutcomeDonut
             success={current.successCount}
             gaps={current.gapCount}
