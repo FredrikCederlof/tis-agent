@@ -1,27 +1,25 @@
 import type { Config } from "tailwindcss";
 
 const config: Config = {
-  darkMode: "class",
   content: ["./app/**/*.{js,ts,jsx,tsx}", "./components/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
       colors: {
         tis: {
-          // Ceeworks palette — surfaces use CSS vars so dark mode can flip them
-          navy: "#05513d", // Racing Green — primary / sidebar / Tina bubbles
-          ink: "var(--tis-ink)", // Off-Black (flips in dark)
-          sky: "#05513d", // alias kept for existing class names
+          navy: "#05513d",
+          ink: "#1a191b",
+          sky: "#05513d",
           mist: "#e7f3ec",
-          gold: "#90ff09", // alias → Acid Green CTA
-          cream: "var(--tis-cream)", // Championship White canvas (flips in dark)
-          acid: "#90ff09", // CTA
-          unread: "#9b7bff", // new/unread
+          gold: "#90ff09",
+          cream: "#f1f1ee",
+          acid: "#90ff09",
+          unread: "#9b7bff",
           blue: "#4d6bff",
           lilac: "#9b7bff",
           amber: "#ffc857",
           success: "#05513d",
           danger: "#d64545",
-          muted: "var(--tis-muted)",
+          muted: "#5c635f",
         },
       },
       fontFamily: {

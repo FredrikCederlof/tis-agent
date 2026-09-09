@@ -17,7 +17,6 @@ import {
   X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_COLLAPSED_KEY = "tis-admin-nav-collapsed";
 
@@ -94,7 +93,7 @@ export function AppShell({
   return (
     <div className="admin-shell">
       {/* Mobile top bar */}
-      <div className="z-30 flex shrink-0 items-center justify-between border-b border-black/[0.06] bg-white px-4 py-3 dark:border-white/10 dark:bg-[color:var(--tis-card)] lg:hidden">
+      <div className="z-30 flex shrink-0 items-center justify-between border-b border-black/[0.06] bg-white px-4 py-3 lg:hidden">
         <div className="flex items-center gap-3">
           <Image
             src="/tina.png"
@@ -257,7 +256,6 @@ export function AppShell({
               </div>
             )}
           </div>
-          <ThemeToggle compact={iconsOnly} />
           <form action="/auth/signout" method="post">
             <button
               type="submit"

@@ -1,96 +1,105 @@
 /** Lightweight SVG charts — no chart library required. */
 
-const SERIES = [
-  { key: "sessions" as const, label: "Sessions", color: "#05513d" },
-  { key: "questions" as const, label: "Questions", color: "#1a191b" },
-  { key: "gaps" as const, label: "Unanswered", color: "#d64545" },
-];
-
-export function ActivityChart({
+export function PerformanceChart({
   points,
 }: {
-  points: { label: string; sessions: number; questions: number; gaps: number }[];
+  points: {
+    label: string;
+    questions: number;
+    answeredPct: number;
+    attentionPct: number;
+  }[];
 }) {
   const width = 640;
   const height = 240;
-  // Tight pads so series use nearly the full widget width.
-  const pad = { top: 8, right: 4, bottom: 28, left: 28 };
-  const maxY = Math.max(1, ...points.flatMap((p) => [p.sessions, p.questions, p.gaps]));
-  const niceMax = niceCeil(maxY);
-  const ticks = [0, 0.5, 1].map((t) => Math.round(niceMax * t));
+  const pad = { top: 12, right: 8, bottom: 28, left: 32 };
+  const maxQ = Math.max(1, ...points.map((p) => p.questions));
+  const niceMax = niceCeil(maxQ);
 
   const x = (i: number) =>
     pad.left +
     (points.length <= 1 ? 0 : (i / (points.length - 1)) * (width - pad.left - pad.right));
-  const y = (v: number) =>
+  const yPct = (v: number) =>
+    height - pad.bottom - (v / 100) * (height - pad.top - pad.bottom);
+  const yBar = (v: number) =>
     height - pad.bottom - (v / niceMax) * (height - pad.top - pad.bottom);
+  const barW = Math.max(
+    2,
+    Math.min(14, ((width - pad.left - pad.right) / Math.max(1, points.length)) * 0.45),
+  );
 
-  const line = (key: "sessions" | "questions" | "gaps") =>
+  const line = (key: "answeredPct" | "attentionPct") =>
     points
-      .map((p, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${y(p[key]).toFixed(1)}`)
+      .map((p, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${yPct(p[key]).toFixed(1)}`)
       .join(" ");
-
-  const area = (key: "sessions" | "questions" | "gaps") => {
-    if (points.length === 0) return "";
-    const lastX = x(points.length - 1).toFixed(1);
-    const firstX = x(0).toFixed(1);
-    const base = y(0).toFixed(1);
-    return `${line(key)} L ${lastX} ${base} L ${firstX} ${base} Z`;
-  };
 
   return (
     <div className="w-full">
       <div className="mb-3 flex flex-wrap gap-4 text-xs font-medium text-tis-muted">
-        {SERIES.map((s) => (
-          <span key={s.key} className="inline-flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full" style={{ background: s.color }} />
-            {s.label}
-          </span>
-        ))}
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-tis-navy" />
+          Answered by Tina %
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-full bg-tis-amber" />
+          Needs attention %
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-2 w-2 rounded-sm bg-tis-lilac/50" />
+          Total questions
+        </span>
       </div>
-      <div className="w-full">
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full">
-          {ticks.map((tick) => (
-            <text
-              key={tick}
-              x={pad.left - 6}
-              y={y(tick) + 3}
-              textAnchor="end"
-              className="fill-slate-400 text-[10px] dark:fill-white/40"
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full">
+        {points.map((p, i) => {
+          const bx = x(i) - barW / 2;
+          const top = yBar(p.questions);
+          const h = height - pad.bottom - top;
+          return (
+            <rect
+              key={`bar-${p.label}-${i}`}
+              x={bx}
+              y={top}
+              width={barW}
+              height={Math.max(0, h)}
+              fill="rgba(155, 123, 255, 0.22)"
+              rx="2"
             >
-              {tick}
+              <title>{`${p.label}: ${p.answeredPct}% answered, ${p.questions} questions`}</title>
+            </rect>
+          );
+        })}
+        <path
+          d={line("answeredPct")}
+          fill="none"
+          stroke="#05513d"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path
+          d={line("attentionPct")}
+          fill="none"
+          stroke="#ffc857"
+          strokeWidth="2.4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {points.map((p, i) => {
+          const step = points.length > 14 ? Math.ceil(points.length / 7) : 1;
+          if (i % step !== 0 && i !== points.length - 1) return null;
+          return (
+            <text
+              key={`lbl-${p.label}-${i}`}
+              x={x(i)}
+              y={height - 8}
+              textAnchor="middle"
+              className="fill-slate-400 text-[10px]"
+            >
+              {p.label}
             </text>
-          ))}
-          <path d={area("sessions")} fill="rgba(5, 81, 61, 0.08)" />
-          {SERIES.map((s) => (
-            <path
-              key={s.key}
-              d={line(s.key)}
-              fill="none"
-              stroke={s.color}
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          ))}
-          {points.map((p, i) => {
-            // Sparse x labels when many days so the chart stays readable.
-            const step = points.length > 14 ? Math.ceil(points.length / 7) : 1;
-            if (i % step !== 0 && i !== points.length - 1) return null;
-            return (
-              <text
-                key={`${p.label}-${i}`}
-                x={x(i)}
-                y={height - 8}
-                textAnchor="middle"
-                className="fill-slate-400 text-[10px] dark:fill-white/40"
-              >
-                {p.label}
-              </text>
-            );
-          })}
-        </svg>
-      </div>
+          );
+        })}
+      </svg>
     </div>
   );
 }
@@ -103,59 +112,59 @@ function niceCeil(n: number): number {
   return nice * mag;
 }
 
-/** Vertical outcome bars with rounded top corners (replaces OutcomeDonut). */
-export function OutcomeBars({
+export function OutcomeDonut({
   success,
   gaps,
-  fixed,
+  human,
   errors,
 }: {
   success: number;
   gaps: number;
-  fixed: number;
+  human: number;
   errors: number;
 }) {
   const parts = [
-    { label: "Grounded", value: success, color: "#05513d" },
-    { label: "Gaps", value: gaps, color: "#d64545" },
-    { label: "Fixed", value: fixed, color: "#90ff09" },
-    { label: "Errors", value: errors, color: "#1a191b" },
+    { label: "Answered from knowledge", value: success, color: "#05513d" },
+    { label: "Needs attention", value: gaps, color: "#ffc857" },
+    { label: "Human replies", value: human, color: "#9b7bff" },
+    { label: "System error", value: errors, color: "#d64545" },
   ];
   const rawTotal = parts.reduce((s, p) => s + p.value, 0);
-  const max = Math.max(1, ...parts.map((p) => p.value));
-  const chartH = 160;
-  const chartW = 280;
-  const barW = 44;
-  const gap = 24;
-  const baseY = chartH - 8;
-  const startX = 20;
+  const total = rawTotal || 1;
+  let offset = 0;
+  const radius = 54;
+  const circ = 2 * Math.PI * radius;
 
   return (
-    <div className="flex flex-col gap-5 sm:flex-row sm:items-end">
-      <svg viewBox={`0 0 ${chartW} ${chartH + 28}`} className="h-48 w-full max-w-[320px] shrink-0">
-        {parts.map((part, i) => {
-          const h = (part.value / max) * (chartH - 24);
-          const x = startX + i * (barW + gap);
-          const y = baseY - h;
-          const r = Math.min(10, barW / 2, h / 2);
-          const path =
-            h <= 0
-              ? ""
-              : `M ${x} ${baseY} L ${x} ${y + r} Q ${x} ${y} ${x + r} ${y} L ${x + barW - r} ${y} Q ${x + barW} ${y} ${x + barW} ${y + r} L ${x + barW} ${baseY} Z`;
-          return (
-            <g key={part.label}>
-              {h > 0 && <path d={path} fill={part.color} />}
-              <text
-                x={x + barW / 2}
-                y={chartH + 18}
-                textAnchor="middle"
-                className="fill-tis-muted text-[10px] font-semibold"
-              >
-                {part.label}
-              </text>
-            </g>
+    <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
+      <svg viewBox="0 0 140 140" className="h-40 w-40 shrink-0">
+        <circle cx="70" cy="70" r={radius} fill="none" stroke="#ecece8" strokeWidth="16" />
+        {parts.map((part) => {
+          const len = (part.value / total) * circ;
+          const dash = `${len} ${circ - len}`;
+          const el = (
+            <circle
+              key={part.label}
+              cx="70"
+              cy="70"
+              r={radius}
+              fill="none"
+              stroke={part.color}
+              strokeWidth="16"
+              strokeDasharray={dash}
+              strokeDashoffset={-offset}
+              transform="rotate(-90 70 70)"
+            />
           );
+          offset += len;
+          return el;
         })}
+        <text x="70" y="66" textAnchor="middle" className="fill-tis-navy text-xl font-bold">
+          {rawTotal}
+        </text>
+        <text x="70" y="84" textAnchor="middle" className="fill-slate-400 text-[10px] font-medium">
+          Total
+        </text>
       </svg>
       <ul className="w-full space-y-2.5 text-sm">
         {parts.map((part) => (
@@ -164,10 +173,10 @@ export function OutcomeBars({
               <span className="h-2.5 w-2.5 rounded-full" style={{ background: part.color }} />
               {part.label}
             </span>
-            <span className="font-semibold text-tis-navy dark:text-tis-cream">
+            <span className="font-semibold text-tis-navy">
               {part.value}
               <span className="ml-1 text-xs font-medium text-slate-400">
-                ({rawTotal === 0 ? 0 : Math.round((part.value / rawTotal) * 100)}%)
+                ({rawTotal === 0 ? 0 : Math.round((part.value / total) * 100)}%)
               </span>
             </span>
           </li>
@@ -175,14 +184,4 @@ export function OutcomeBars({
       </ul>
     </div>
   );
-}
-
-/** @deprecated Prefer OutcomeBars — kept for any residual imports. */
-export function OutcomeDonut(props: {
-  success: number;
-  gaps: number;
-  fixed: number;
-  errors: number;
-}) {
-  return <OutcomeBars {...props} />;
 }
