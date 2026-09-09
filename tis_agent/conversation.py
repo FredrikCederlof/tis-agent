@@ -26,6 +26,22 @@ _PORTAL_NUDGE_RE = re.compile(
 _SHORT_DATE_FOLLOWUP_RE = re.compile(
     r"(?is)^\s*(?:what\s+about|and|how\s+about|och|hur\s+är\s+det\s+med)\b"
 )
+# Vague pronoun follow-ups asking for contact details after a prior topic.
+_CONTACT_FOLLOWUP_RE = re.compile(
+    r"(?is)^\s*(?:"
+    r"(?:do\s+you\s+(?:got|have|know)\s+)?"
+    r"(?:their|the|her|his|its)\s+"
+    r"(?:contact|contacts|email|emails|phone|phones|number|numbers)\b"
+    r"|who\s+do\s+i\s+(?:email|call|contact)\b"
+    r"|(?:got|have)\s+their\s+(?:contact|contacts|email|emails)\b"
+    r"|what(?:'s|\s+is)\s+their\s+(?:email|phone|contact)\b"
+    r"|can\s+(?:i|you)\s+(?:get|have|share)\s+(?:their|the)\s+"
+    r"(?:contact|contacts|email|emails|phone)\b"
+    r")[\s!.?]*$"
+)
+_HEALTH_OFFICE_RE = re.compile(
+    r"(?i)\b(?:health\s+office|nurse(?:'?s)?\s+(?:room|office)|medical\s+(?:office|room))\b"
+)
 
 
 @dataclass(frozen=True)
@@ -46,6 +62,10 @@ def is_calendar_portal_nudge(text: str) -> bool:
     return bool(_PORTAL_NUDGE_RE.match((text or "").strip()))
 
 
+def is_contact_followup(text: str) -> bool:
+    return bool(_CONTACT_FOLLOWUP_RE.match((text or "").strip()))
+
+
 def last_substantive_question(history: list[ConversationTurn] | list[dict[str, str]]) -> str | None:
     """Most recent parent question that was not a greeting/confirm/nudge."""
     turns = _as_turns(history)
@@ -54,6 +74,8 @@ def last_substantive_question(history: list[ConversationTurn] | list[dict[str, s
         if not q:
             continue
         if is_greeting_or_thanks(q) or is_confirmation_challenge(q) or is_calendar_portal_nudge(q):
+            continue
+        if is_contact_followup(q):
             continue
         return q
     return None
@@ -88,6 +110,19 @@ def rewrite_followup(
         return (
             f"Regarding the previous question ({prior}): {text}\n"
             "Answer from the TIS Parent Calendar when dates or school days are involved."
+        )
+
+    if prior and is_contact_followup(text):
+        health_hint = ""
+        if _HEALTH_OFFICE_RE.search(prior):
+            health_hint = (
+                " Include school nurse and medical staff contact emails "
+                "(Health Office / nurse room)."
+            )
+        return (
+            f"{prior}\n\n"
+            f"Parent follow-up asking for contact details: {text}\n"
+            f"Find official TIS contact emails or phone numbers for that topic.{health_hint}"
         )
 
     return text

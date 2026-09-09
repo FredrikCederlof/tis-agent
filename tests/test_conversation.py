@@ -44,6 +44,23 @@ def test_rewrite_what_about_keeps_prior_context():
     assert "previous question" in rewritten.lower() or "September" in rewritten
 
 
+def test_rewrite_contact_followup_after_health_office():
+    history = [
+        ConversationTurn(
+            question="Who works in the Health Office?",
+            reply="The Health Office is staffed by school nurses.",
+        )
+    ]
+    rewritten = rewrite_followup("Do you got their contacts?", history)
+    assert "Health Office" in rewritten
+    assert "school nurse" in rewritten.lower() or "medical" in rewritten.lower()
+    assert "contact" in rewritten.lower()
+
+
+def test_rewrite_contact_followup_without_prior_unchanged():
+    assert rewrite_followup("Do you got their contacts?", None) == "Do you got their contacts?"
+
+
 def test_greeting_reply_english():
     reply = greeting_reply("en")
     assert "Tina" in reply
