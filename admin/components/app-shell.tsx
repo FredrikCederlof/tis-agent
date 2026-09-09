@@ -5,7 +5,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
-  BarChart3,
   BookOpen,
   Inbox,
   LayoutDashboard,
@@ -238,18 +237,6 @@ export function AppShell({
               })}
             </div>
           ))}
-
-          {!iconsOnly && (
-            <div className="mt-auto rounded-xl bg-white/10 px-3 py-3 text-xs text-white/75">
-              <p className="flex items-center gap-2 font-bold text-white">
-                <BarChart3 className="h-3.5 w-3.5 text-tis-acid" />
-                Parent WhatsApp insights
-              </p>
-              <p className="mt-1 leading-relaxed">
-                Grounded answers from official TIS documents only.
-              </p>
-            </div>
-          )}
         </nav>
 
         <div className="mt-3 space-y-2 border-t border-white/15 pt-3">
