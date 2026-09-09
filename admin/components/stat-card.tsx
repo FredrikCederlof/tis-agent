@@ -1,53 +1,147 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { AlertTriangle, BookOpen, MessageCircle, Sparkles, type LucideIcon } from "lucide-react";
 import { InfoTip } from "@/components/info-tip";
 
-const DELTA_COLORS = {
-  up: { stroke: "#05513d", fill: "rgba(5, 81, 61, 0.18)" },
-  down: { stroke: "#d64545", fill: "rgba(214, 69, 69, 0.18)" },
-  flat: { stroke: "#5c635f", fill: "rgba(92, 99, 95, 0.14)" },
-} as const;
+type Accent = "green" | "purple" | "amber" | "blue";
 
-const ACCENT = {
-  green: "bg-tis-mist text-tis-navy",
-  purple: "bg-[#f3eeff] text-[#6b4fd8]",
-  amber: "bg-[#fff6e0] text-[#8a6500]",
-  blue: "bg-[#eef1ff] text-tis-blue",
-} as const;
+const ACCENTS: Record<
+  Accent,
+  { iconBg: string; iconFg: string; stroke: string; fill: string; Icon: LucideIcon }
+> = {
+  green: {
+    iconBg: "bg-[#e7f3ec]",
+    iconFg: "text-tis-navy",
+    stroke: "#05513d",
+    fill: "rgba(5, 81, 61, 0.16)",
+    Icon: MessageCircle,
+  },
+  purple: {
+    iconBg: "bg-[#f3eeff]",
+    iconFg: "text-[#6b4fd8]",
+    stroke: "#9b7bff",
+    fill: "rgba(155, 123, 255, 0.18)",
+    Icon: Sparkles,
+  },
+  amber: {
+    iconBg: "bg-[#fff6e0]",
+    iconFg: "text-[#8a6500]",
+    stroke: "#ffc857",
+    fill: "rgba(255, 200, 87, 0.28)",
+    Icon: AlertTriangle,
+  },
+  blue: {
+    iconBg: "bg-[#eef1ff]",
+    iconFg: "text-tis-blue",
+    stroke: "#4d6bff",
+    fill: "rgba(77, 107, 255, 0.16)",
+    Icon: BookOpen,
+  },
+};
 
-function Sparkline({
+function smoothAreaPath(
+  coords: { x: number; y: number }[],
+  height: number,
+): { line: string; area: string } {
+  if (coords.length === 1) {
+    const p = coords[0];
+    const line = `M ${p.x} ${p.y}`;
+    return { line, area: `${line} L ${p.x} ${height} L ${p.x} ${height} Z` };
+  }
+
+  let line = `M ${coords[0].x.toFixed(1)} ${coords[0].y.toFixed(1)}`;
+  for (let i = 0; i < coords.length - 1; i++) {
+    const p0 = coords[i === 0 ? i : i - 1];
+    const p1 = coords[i];
+    const p2 = coords[i + 1];
+    const p3 = coords[i + 2] ?? p2;
+    const cp1x = p1.x + (p2.x - p0.x) / 6;
+    const cp1y = p1.y + (p2.y - p0.y) / 6;
+    const cp2x = p2.x - (p3.x - p1.x) / 6;
+    const cp2y = p2.y - (p3.y - p1.y) / 6;
+    line += ` C ${cp1x.toFixed(1)} ${cp1y.toFixed(1)}, ${cp2x.toFixed(1)} ${cp2y.toFixed(1)}, ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  const last = coords[coords.length - 1];
+  const first = coords[0];
+  const area = `${line} L ${last.x.toFixed(1)} ${height} L ${first.x.toFixed(1)} ${height} Z`;
+  return { line, area };
+}
+
+function AreaSparkline({
   values,
+  labels,
   stroke,
   fill,
+  valueFormatter,
 }: {
   values: number[];
+  labels?: string[];
   stroke: string;
   fill: string;
+  valueFormatter?: (v: number) => string;
 }) {
-  const width = 96;
-  const height = 44;
-  const padX = 2;
-  const padY = 4;
+  const width = 120;
+  const height = 56;
+  const padX = 4;
+  const padY = 6;
   const series = values.length >= 2 ? values : [0, 0];
   const max = Math.max(1, ...series);
   const coords = series.map((v, i) => {
     const x = padX + (i / Math.max(1, series.length - 1)) * (width - padX * 2);
     const y = height - padY - (v / max) * (height - padY * 2);
-    return { x, y };
+    return { x, y, v, label: labels?.[i] };
   });
-  const line = coords.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
-  const area = `${line} L ${coords[coords.length - 1].x.toFixed(1)} ${height} L ${coords[0].x.toFixed(1)} ${height} Z`;
+  const { line, area } = smoothAreaPath(coords, height);
+  const [hover, setHover] = useState<number | null>(null);
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="h-11 w-24 shrink-0" aria-hidden>
-      <path d={area} fill={fill} />
-      <path
-        d={line}
-        fill="none"
-        stroke={stroke}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
+    <div className="relative shrink-0">
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="h-14 w-[7.5rem]"
+        onMouseLeave={() => setHover(null)}
+        role="img"
+        aria-label="Trend sparkline"
+      >
+        <path d={area} fill={fill} />
+        <path
+          d={line}
+          fill="none"
+          stroke={stroke}
+          strokeWidth="2.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {coords.map((p, i) => (
+          <circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r={hover === i ? 3.5 : 0}
+            fill={stroke}
+            className="transition-[r]"
+          />
+        ))}
+        {coords.map((p, i) => (
+          <rect
+            key={`hit-${i}`}
+            x={p.x - Math.max(6, (width - padX * 2) / series.length / 2)}
+            y={0}
+            width={Math.max(12, (width - padX * 2) / series.length)}
+            height={height}
+            fill="transparent"
+            onMouseEnter={() => setHover(i)}
+          />
+        ))}
+      </svg>
+      {hover != null ? (
+        <div className="pointer-events-none absolute -top-2 left-1/2 z-30 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg bg-tis-ink px-2.5 py-1.5 text-[11px] font-medium text-white shadow-soft">
+          {coords[hover].label ? `${coords[hover].label}: ` : ""}
+          {valueFormatter ? valueFormatter(coords[hover].v) : coords[hover].v}
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -82,6 +176,8 @@ export function StatCard({
   definition,
   accent = "green",
   sparkline,
+  sparklineLabels,
+  sparkFormat = "number",
   delta,
   deltaLabel = "vs previous period",
   deltaUnit = "%",
@@ -90,32 +186,36 @@ export function StatCard({
   value: string | number;
   detail?: string;
   definition: string;
-  accent?: keyof typeof ACCENT;
+  accent?: Accent;
   sparkline: number[];
+  sparklineLabels?: string[];
+  sparkFormat?: "number" | "percent";
   delta: number | null;
   deltaLabel?: string;
   deltaUnit?: string;
 }) {
-  const trend = delta == null || delta === 0 ? "flat" : delta > 0 ? "up" : "down";
-  const sparkColors = DELTA_COLORS[trend];
+  const theme = ACCENTS[accent];
+  const Icon = theme.Icon;
+  const formatter = useMemo(
+    () => (v: number) => (sparkFormat === "percent" ? `${v}%` : String(v)),
+    [sparkFormat],
+  );
 
   return (
-    <div className="card relative !p-4 hover:z-20 focus-within:z-20">
-      <div className="flex items-start gap-2">
+    <div className="card relative overflow-hidden !p-4 hover:z-20 focus-within:z-20">
+      <div className="flex items-start gap-3">
         <span
-          className={`mt-1 h-2 w-2 shrink-0 rounded-full ${
-            accent === "amber"
-              ? "bg-tis-amber"
-              : accent === "blue"
-                ? "bg-tis-blue"
-                : accent === "purple"
-                  ? "bg-tis-lilac"
-                  : "bg-tis-navy"
-          }`}
-        />
-        <p className="min-w-0 flex-1 text-sm font-medium text-slate-600">{label}</p>
-        <div className="shrink-0">
-          <InfoTip label={label}>{definition}</InfoTip>
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${theme.iconBg} ${theme.iconFg}`}
+        >
+          <Icon className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-2">
+            <p className="min-w-0 flex-1 text-sm font-medium text-slate-600">{label}</p>
+            <div className="shrink-0">
+              <InfoTip label={label}>{definition}</InfoTip>
+            </div>
+          </div>
         </div>
       </div>
       <div className="mt-3 flex items-end justify-between gap-3">
@@ -126,7 +226,13 @@ export function StatCard({
             <Delta value={delta} label={deltaLabel} unit={deltaUnit} />
           </div>
         </div>
-        <Sparkline values={sparkline} stroke={sparkColors.stroke} fill={sparkColors.fill} />
+        <AreaSparkline
+          values={sparkline}
+          labels={sparklineLabels}
+          stroke={theme.stroke}
+          fill={theme.fill}
+          valueFormatter={formatter}
+        />
       </div>
     </div>
   );

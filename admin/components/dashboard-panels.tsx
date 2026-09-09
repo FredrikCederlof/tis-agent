@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ArrowRight, BookOpen, ChartColumn, ChevronRight, Search } from "lucide-react";
 import { attentionReason } from "@/lib/dashboard";
 import type { KnowledgeGap } from "@/lib/dashboard";
 
@@ -39,16 +40,23 @@ export function KnowledgeHealthCard({
 }) {
   return (
     <section className="card flex h-full flex-col">
-      <h2 className="text-lg font-bold text-tis-navy">Knowledge health</h2>
-      <p className="mt-1 text-sm text-tis-muted">Hub articles and coverage for the selected range</p>
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e7f3ec] text-tis-navy">
+          <BookOpen className="h-4 w-4" strokeWidth={2.25} />
+        </span>
+        <div>
+          <h2 className="text-lg font-bold text-tis-navy">Knowledge health</h2>
+          <p className="text-sm text-tis-muted">Hub articles and coverage for the selected range</p>
+        </div>
+      </div>
       <dl className="mt-4 flex-1 space-y-3 text-sm">
         <div className="flex items-center justify-between gap-3">
           <dt className="text-tis-muted">Knowledge articles</dt>
           <dd className="font-semibold text-tis-navy">
             {articles}
             {articlesDelta != null ? (
-              <span className="ml-1 text-xs font-medium text-tis-muted">
-                {articlesDelta >= 0 ? "↑" : "↓"} {Math.abs(articlesDelta)}
+              <span className="ml-1 text-xs font-medium text-tis-success">
+                {articlesDelta >= 0 ? "↑" : "↓"} {Math.abs(articlesDelta)} this period
               </span>
             ) : null}
           </dd>
@@ -58,7 +66,7 @@ export function KnowledgeHealthCard({
           <dd className="font-semibold text-tis-navy">
             {coveragePct}%
             {coverageDelta != null ? (
-              <span className="ml-1 text-xs font-medium text-tis-muted">
+              <span className="ml-1 text-xs font-medium text-tis-success">
                 {coverageDelta >= 0 ? "↑" : "↓"} {Math.abs(coverageDelta)} pp
               </span>
             ) : null}
@@ -75,6 +83,7 @@ export function KnowledgeHealthCard({
       </dl>
       <Link href="/knowledge" className="primary mt-5 w-full !no-underline">
         Open Knowledge Hub
+        <ArrowRight className="h-4 w-4" />
       </Link>
     </section>
   );
@@ -84,33 +93,48 @@ export function TopKnowledgeGapsCard({ gaps }: { gaps: KnowledgeGap[] }) {
   return (
     <section className="card flex h-full flex-col">
       <div className="flex items-start justify-between gap-3">
-        <div>
-          <h2 className="text-lg font-bold text-tis-navy">Top knowledge gaps</h2>
-          <p className="mt-1 text-sm text-tis-muted">Most common unanswered questions in range</p>
+        <div className="flex items-center gap-2.5">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#eef1ff] text-tis-blue">
+            <Search className="h-4 w-4" strokeWidth={2.25} />
+          </span>
+          <div>
+            <h2 className="text-lg font-bold text-tis-navy">Top knowledge gaps</h2>
+            <p className="text-sm text-tis-muted">Most common unanswered questions in range</p>
+          </div>
         </div>
-        <Link href="/inbox" className="shrink-0 text-sm font-semibold text-tis-sky hover:underline">
-          View all gaps
-        </Link>
       </div>
       {gaps.length === 0 ? (
         <p className="mt-4 text-sm text-tis-muted">No repeated gaps in this period.</p>
       ) : (
-        <ol className="mt-4 flex-1 space-y-2.5">
+        <ol className="mt-4 flex-1 space-y-1">
           {gaps.map((gap, index) => (
-            <li key={`${gap.topic}-${index}`} className="flex items-start gap-3 text-sm">
-              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-tis-mist text-xs font-bold text-tis-navy">
-                {index + 1}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium text-tis-navy">{gap.topic}</p>
-                <p className="text-xs text-tis-muted">
-                  {gap.count} question{gap.count === 1 ? "" : "s"}
-                </p>
-              </div>
+            <li key={`${gap.topic}-${index}`}>
+              <Link
+                href="/inbox"
+                className="group flex items-center gap-3 rounded-xl px-1 py-2 text-sm transition hover:bg-slate-50"
+              >
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f3eeff] text-xs font-bold text-[#6b4fd8]">
+                  {index + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-tis-navy">{gap.topic}</p>
+                  <p className="text-xs text-tis-muted">
+                    {gap.count} question{gap.count === 1 ? "" : "s"}
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-tis-navy" />
+              </Link>
             </li>
           ))}
         </ol>
       )}
+      <Link
+        href="/inbox"
+        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-semibold text-tis-navy transition hover:bg-tis-mist"
+      >
+        View all gaps
+        <ArrowRight className="h-4 w-4" />
+      </Link>
     </section>
   );
 }
@@ -124,23 +148,30 @@ export function TinaLearningCard({
   nowCovered: number;
   fromHuman: number;
 }) {
+  const items = [
+    { value: addedToHub, label: "Questions added to Knowledge Hub" },
+    { value: nowCovered, label: "Previously unanswered now covered" },
+    { value: fromHuman, label: "Human answers converted to knowledge" },
+  ];
+
   return (
-    <section className="card">
-      <h2 className="text-lg font-bold text-tis-navy">Tina learning</h2>
-      <p className="mt-1 text-sm text-tis-muted">How the Knowledge Hub grew in this period</p>
+    <section className="card h-full">
+      <div className="flex items-center gap-2.5">
+        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e7f3ec] text-tis-navy">
+          <ChartColumn className="h-4 w-4" strokeWidth={2.25} />
+        </span>
+        <div>
+          <h2 className="text-lg font-bold text-tis-navy">Tina learning</h2>
+          <p className="text-sm text-tis-muted">How the Knowledge Hub grew in this period</p>
+        </div>
+      </div>
       <div className="mt-4 grid grid-cols-3 gap-3">
-        <div>
-          <p className="font-display text-2xl font-bold text-tis-navy">{addedToHub}</p>
-          <p className="mt-1 text-xs text-tis-muted">Questions added to Knowledge Hub</p>
-        </div>
-        <div>
-          <p className="font-display text-2xl font-bold text-tis-navy">{nowCovered}</p>
-          <p className="mt-1 text-xs text-tis-muted">Previously unanswered now covered</p>
-        </div>
-        <div>
-          <p className="font-display text-2xl font-bold text-tis-navy">{fromHuman}</p>
-          <p className="mt-1 text-xs text-tis-muted">Human answers converted to knowledge</p>
-        </div>
+        {items.map((item) => (
+          <div key={item.label}>
+            <p className="font-display text-2xl font-bold text-tis-navy">{item.value}</p>
+            <p className="mt-1 text-xs leading-snug text-tis-muted">{item.label}</p>
+          </div>
+        ))}
       </div>
     </section>
   );

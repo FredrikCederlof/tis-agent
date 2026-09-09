@@ -21,7 +21,7 @@ import {
   resolveDateRange,
   type InteractionRow,
 } from "@/lib/dashboard";
-import type { KnowledgeEntry, UnansweredRow } from "@/lib/types";
+import type { KnowledgeEntry } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -85,15 +85,13 @@ export default async function DashboardPage({
   const fromParents = entries.filter(
     (e) => e.origin === "inbox" && e.created_at >= since && e.created_at <= until,
   ).length;
-  const humanConverted = fromParents;
   const groundedDenom = current.successCount + current.gapCount;
-  // Exclusive outcome slices for the donut (avoid double-counting human_replied_at on gaps).
   const humanSlice = current.fixedCount;
-
   const attentionShare =
     current.questions > 0
       ? Math.round((unansweredCount / Math.max(current.questions, 1)) * 1000) / 10
       : 0;
+  const dayLabels = days.map((d) => d.label);
 
   return (
     <AppShell email={user.email || ""} unansweredCount={unansweredCount}>
@@ -121,6 +119,7 @@ export default async function DashboardPage({
           definition={KPI_DEFINITIONS.totalQuestions}
           accent="green"
           sparkline={days.map((d) => d.questions)}
+          sparklineLabels={dayLabels}
           delta={percentChange(current.questions, previous.questions)}
           deltaLabel={`vs previous ${dayCount} ${periodNoun}`}
         />
@@ -131,6 +130,8 @@ export default async function DashboardPage({
           definition={KPI_DEFINITIONS.answeredByTina}
           accent="purple"
           sparkline={days.map((d) => d.answeredPct)}
+          sparklineLabels={dayLabels}
+          sparkFormat="percent"
           delta={percentagePointChange(current.answeredByTinaPct, previous.answeredByTinaPct)}
           deltaLabel={`vs previous ${dayCount} ${periodNoun}`}
           deltaUnit=" pp"
@@ -146,6 +147,7 @@ export default async function DashboardPage({
           definition={KPI_DEFINITIONS.needsAttention}
           accent="amber"
           sparkline={days.map((d) => d.gaps)}
+          sparklineLabels={dayLabels}
           delta={percentChange(current.gapCount, previous.gapCount)}
           deltaLabel={`gap volume vs previous ${dayCount} ${periodNoun}`}
         />
@@ -158,6 +160,8 @@ export default async function DashboardPage({
           sparkline={days.map((d) =>
             d.questions > 0 ? Math.round((d.success / d.questions) * 100) : 0,
           )}
+          sparklineLabels={dayLabels}
+          sparkFormat="percent"
           delta={percentagePointChange(
             current.knowledgeCoveragePct,
             previous.knowledgeCoveragePct,
@@ -168,8 +172,8 @@ export default async function DashboardPage({
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.7fr_1fr]">
-        <section className="card">
-          <div className="mb-1 flex items-center justify-between gap-3">
+        <section className="card flex min-h-[360px] flex-col">
+          <div className="mb-2 flex items-center justify-between gap-3">
             <div>
               <h2 className="text-lg font-bold text-tis-navy">Tina performance over time</h2>
               <p className="text-sm text-tis-muted">
@@ -180,18 +184,29 @@ export default async function DashboardPage({
               Daily
             </span>
           </div>
-          <PerformanceChart points={days} />
+          <div className="min-h-0 flex-1">
+            <PerformanceChart
+              points={days.map((d) => ({
+                label: d.label,
+                questions: d.questions,
+                answeredPct: d.answeredPct,
+                attentionPct: d.attentionPct,
+              }))}
+            />
+          </div>
         </section>
 
-        <section className="card">
+        <section className="card flex min-h-[360px] flex-col">
           <h2 className="mb-1 text-lg font-bold text-tis-navy">Answer outcomes</h2>
           <p className="mb-4 text-sm text-tis-muted">How questions were handled in this period</p>
-          <OutcomeDonut
-            success={current.successCount}
-            gaps={current.gapCount}
-            human={humanSlice}
-            errors={current.errorCount}
-          />
+          <div className="min-h-0 flex-1">
+            <OutcomeDonut
+              success={current.successCount}
+              gaps={current.gapCount}
+              human={humanSlice}
+              errors={current.errorCount}
+            />
+          </div>
         </section>
       </div>
 
@@ -214,14 +229,21 @@ export default async function DashboardPage({
           <TinaLearningCard
             addedToHub={addedThisPeriod}
             nowCovered={fromParents}
-            fromHuman={humanConverted}
+            fromHuman={fromParents}
           />
         </div>
       </div>
 
       <div className="mt-6">
         <NeedsAttentionTable
-          rows={(unansweredRes.data || []) as UnansweredRow[]}
+          rows={(unansweredRes.data || []) as {
+            id: string;
+            session_id: string;
+            question: string;
+            outcome: string;
+            created_at: string;
+            wa_from?: string | null;
+          }[]}
           total={unansweredCount}
         />
       </div>
