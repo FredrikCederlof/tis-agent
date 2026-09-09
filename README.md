@@ -47,6 +47,6 @@ Always-on hosting so Meta has a stable Callback URL (no cloudflared churn).
 4. Generate a Railway public domain; Callback URL = `https://YOUR_RAILWAY_HOST/webhook`.
 5. In Meta → WhatsApp → Configuration: paste that URL, verify token = `WHATSAPP_VERIFY_TOKEN`, subscribe to `messages`.
 
-Nightly Drive → Supabase sync stays on Cursor Cloud Agents (`AGENTS.md`), not on Railway.
+Nightly Drive + web/calendar → Supabase sync stays on Cursor Cloud Agents (`AGENTS.md`), not on Railway. Railway hosts the WhatsApp webhook only.
 
 Nightly sync instructions: see `AGENTS.md`.

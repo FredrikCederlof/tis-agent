@@ -12,7 +12,7 @@ Parents ask Tina in WhatsApp. Answers must come from official TIS documents stor
 - **Supabase Storage bucket:** `tis-ass`
 - **Supabase project:** `ixjsiwedssgutrmegyzv`
 
-Drop PDFs or Google Docs into the Drive folder. The nightly job uploads new/changed files and re-vectorizes them.
+Drop PDFs or Google Docs into the Drive folder. The nightly job uploads new/changed files and re-vectorizes them. After Drive files, it also refreshes public web pages, the parent calendar, and TIS Times.
 
 ## Nightly sync procedure
 
@@ -22,6 +22,8 @@ Drop PDFs or Google Docs into the Drive folder. The nightly job uploads new/chan
    - `SUPABASE_URL`
    - `SUPABASE_SECRET_KEY`
    - `OPENAI_API_KEY`
+   - `TIS_PORTAL_USERNAME` (optional; without it TIS Times is skipped)
+   - `TIS_PORTAL_PASSWORD` (optional; without it TIS Times is skipped)
 4. Run `python -m tis_agent sync state` to list currently synced documents.
 5. Use **Google Drive** integration to list files in folder `1P0XZLFtIBivKEx55BjvUZH6_xsWZUDZa`, **including nested subfolders** (e.g. `Curriculum Guides`). Walk folders recursively.
 6. For each file (skip folder entries themselves, but process files inside them):
@@ -40,8 +42,15 @@ Drop PDFs or Google Docs into the Drive folder. The nightly job uploads new/chan
   --modified "<Drive modifiedTime ISO>"
 ```
 
-7. Print a short summary: synced / skipped / failed per file.
-8. Do **not** send WhatsApp messages or email parents.
+7. Print a short summary: synced / skipped / failed per Drive file.
+8. Run web, calendar, and TIS Times ingest (unchanged sources print `"status": "skipped"`):
+
+```bash
+.venv/bin/python -m tis_agent sync web
+```
+
+Print the JSON summary: synced / skipped / failed per source. A failed source must not abort the rest of the job.
+9. Do **not** send WhatsApp messages or email parents. Do **not** start the WhatsApp server.
 
 ## Supported file types
 
@@ -75,7 +84,7 @@ After `sql/007_temporal.sql`, calendar events are one chunk per event with `star
 - `TIS_PORTAL_USERNAME`
 - `TIS_PORTAL_PASSWORD`
 
-On Railway, add the same vars so admin **Sync web & calendar** can ingest TIS Times. Without them, that source is skipped and other web sources still sync.
+On the nightly Cloud Agent and on Railway `tis-agent` (admin **Sync web & calendar**), set the same vars so TIS Times can ingest. Without them, that source is skipped and other web sources still sync.
 
 Sync only the portal section:
 
@@ -83,19 +92,33 @@ Sync only the portal section:
 python -m tis_agent sync web --url "https://portal.tokyois.com/tis-times/" --title "TIS Times (Parent Portal)"
 ```
 
-## Bi-weekly web sync (Wed + Sat)
+## Nightly web and calendar refresh
 
-Run `sync web` twice a week so TIS Times, calendar, and public pages stay fresh. Unchanged documents are **skipped** automatically (content hash) — only new or edited text is re-embedded.
+`sync web` runs **every night on this same Drive Cloud Agent**, after Drive files. Unchanged documents are **skipped** automatically (content hash) — only new or edited text is re-embedded.
 
-**Recommended: Railway cron service** (separate from the WhatsApp service):
+Do **not** use a Railway cron (`tis-sync-web`) for this. Railway `tis-agent` is the WhatsApp webhook only. Admin **Sync web & calendar** remains for on-demand runs.
 
-1. In Railway, add a new service from the same `tis-agent` repo.
-2. **Start command:** `python -m tis_agent sync web` (or `bash scripts/sync_web_sources.sh`)
-3. **Cron schedule** (UTC): `30 18 * * 2,5` → **Wed & Sat 03:30 JST**
-4. Copy the same secrets as production: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`, `TIS_PORTAL_USERNAME`, `TIS_PORTAL_PASSWORD`
-5. The service must **exit** when sync finishes (do not run the WhatsApp server on this service).
+If a Railway service named `tis-sync-web` still exists, delete it.
 
-Alternative: extend the nightly Cloud Agent procedure to run `sync web` after Drive sync on the same days.
+### Cursor Automation prompt (paste into the nightly Drive automation)
+
+The nightly job is this repo’s Cloud Agent reading `AGENTS.md`. The prompt must include web/calendar ingest — not Drive files only:
+
+```
+Sync TIS knowledge into Tina’s store. Follow AGENTS.md.
+
+This job is standalone. Do not send WhatsApp, do not email anyone, and do not start the WhatsApp server.
+
+Procedure:
+1. Install deps if needed: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+2. Load secrets: SUPABASE_URL, SUPABASE_SECRET_KEY, OPENAI_API_KEY, TIS_PORTAL_USERNAME, TIS_PORTAL_PASSWORD.
+3. Run python -m tis_agent sync state.
+4. Use Google Drive to walk folder 1P0XZLFtIBivKEx55BjvUZH6_xsWZUDZa recursively (including nested subfolders). Skip folder entries. For each new or newer file, download (PDF as-is; Google Docs as text/plain) to /tmp/tis-sync/ and run: python -m tis_agent sync file ... with --title --mime-type --drive-id --modified.
+5. Print synced / skipped / failed per Drive file.
+6. Run: python -m tis_agent sync web
+7. Print the JSON summary for Tech Portal, parent calendar, uniform page, and TIS Times. Unchanged sources should be skipped. Missing portal credentials skip TIS Times only.
+8. Do not send WhatsApp or email parents.
+```
 
 ## Sunday school-mail bulletin (standalone Cloud Agent)
 
