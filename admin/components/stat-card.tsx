@@ -74,7 +74,7 @@ function Sparkline({
   );
 }
 
-function Delta({ value }: { value: number | null }) {
+function Delta({ value, label }: { value: number | null; label: string }) {
   if (value == null) {
     return <p className="text-xs font-medium text-tis-muted">New this period</p>;
   }
@@ -86,7 +86,7 @@ function Delta({ value }: { value: number | null }) {
 
   return (
     <p className={`text-xs font-semibold ${color}`}>
-      {arrow} {Math.abs(value)}% vs last 7 days
+      {arrow} {Math.abs(value)}% {label}
     </p>
   );
 }
@@ -99,6 +99,7 @@ export function StatCard({
   tone = "blue",
   sparkline,
   delta,
+  deltaLabel = "vs previous period",
 }: {
   label: string;
   value: string | number;
@@ -107,6 +108,7 @@ export function StatCard({
   tone?: keyof typeof toneMap;
   sparkline: number[];
   delta: number | null;
+  deltaLabel?: string;
 }) {
   const Icon = iconMap[icon] ?? iconMap.sessions;
   const colors = toneMap[tone] ?? toneMap.blue;
@@ -126,7 +128,7 @@ export function StatCard({
         <div className="min-w-0">
           <p className="font-display text-3xl font-bold tracking-tight text-tis-navy">{value}</p>
           <div className="mt-1.5">
-            <Delta value={delta} />
+            <Delta value={delta} label={deltaLabel} />
           </div>
         </div>
         <Sparkline values={sparkline} stroke={colors.spark} fill={colors.fill} />

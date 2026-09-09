@@ -1,6 +1,7 @@
 /** Tokyo-calendar analytics for the admin dashboard. Japan has no DST. */
 
 export const TOKYO = "Asia/Tokyo";
+export const DEFAULT_RANGE_DAYS = 30;
 
 export function tokyoYmd(date: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -15,10 +16,21 @@ export function tokyoDayStart(ymd: string): Date {
   return new Date(`${ymd}T00:00:00+09:00`);
 }
 
+export function tokyoDayEnd(ymd: string): Date {
+  return new Date(`${ymd}T23:59:59.999+09:00`);
+}
+
 export function shiftYmd(ymd: string, days: number): string {
   const d = tokyoDayStart(ymd);
   d.setUTCDate(d.getUTCDate() + days);
   return tokyoYmd(d);
+}
+
+/** Inclusive day count between two YMD dates (same day => 1). */
+export function daysInclusive(startYmd: string, endYmd: string): number {
+  const start = tokyoDayStart(startYmd).getTime();
+  const end = tokyoDayStart(endYmd).getTime();
+  return Math.max(1, Math.round((end - start) / 86_400_000) + 1);
 }
 
 export function formatDayLabel(ymd: string): string {
@@ -46,6 +58,49 @@ export function formatRangeLabel(startYmd: string, endYmd: string): string {
   return `${left} – ${right}`;
 }
 
+const YMD_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+export function isYmd(value: string | null | undefined): value is string {
+  if (!value || !YMD_RE.test(value)) return false;
+  const [y, m, d] = value.split("-").map(Number);
+  const dt = tokyoDayStart(value);
+  return (
+    !Number.isNaN(dt.getTime()) &&
+    tokyoYmd(dt) === value &&
+    m >= 1 &&
+    m <= 12 &&
+    d >= 1 &&
+    d <= 31
+  );
+}
+
+/** Default: last 30 Tokyo calendar days including today. */
+export function defaultDateRange(now = new Date()): { from: string; to: string } {
+  const to = tokyoYmd(now);
+  return { from: shiftYmd(to, -(DEFAULT_RANGE_DAYS - 1)), to };
+}
+
+export function resolveDateRange(
+  fromParam?: string | null,
+  toParam?: string | null,
+  now = new Date(),
+): { from: string; to: string } {
+  const fallback = defaultDateRange(now);
+  let from = isYmd(fromParam) ? fromParam : fallback.from;
+  let to = isYmd(toParam) ? toParam : fallback.to;
+  if (from > to) {
+    const swap = from;
+    from = to;
+    to = swap;
+  }
+  // Cap extreme ranges so the chart stays usable.
+  const maxDays = 366;
+  if (daysInclusive(from, to) > maxDays) {
+    from = shiftYmd(to, -(maxDays - 1));
+  }
+  return { from, to };
+}
+
 export type DailyPoint = {
   key: string;
   label: string;
@@ -69,7 +124,7 @@ export type PeriodStats = {
 export type SessionRow = {
   id: string;
   started_at: string;
-}
+};
 
 export type InteractionRow = {
   created_at: string;
@@ -81,10 +136,15 @@ export function percentChange(current: number, previous: number): number | null 
   return Math.round(((current - previous) / previous) * 100);
 }
 
-export function fetchSinceIso(now = new Date()): string {
-  const today = tokyoYmd(now);
-  const currentStart = shiftYmd(today, -6);
-  return tokyoDayStart(shiftYmd(currentStart, -7)).toISOString();
+/** Earliest ISO to fetch so current + previous comparison windows are covered. */
+export function fetchSinceIso(fromYmd: string, toYmd: string): string {
+  const length = daysInclusive(fromYmd, toYmd);
+  const previousStart = shiftYmd(fromYmd, -length);
+  return tokyoDayStart(previousStart).toISOString();
+}
+
+export function fetchUntilIso(toYmd: string): string {
+  return tokyoDayEnd(toYmd).toISOString();
 }
 
 function inYmdRange(iso: string, start: string, end: string): boolean {
@@ -120,16 +180,16 @@ function statsFor(sessions: SessionRow[], interactions: InteractionRow[]): Perio
 export function buildDashboardModel(
   sessions: SessionRow[],
   interactions: InteractionRow[],
-  now = new Date(),
+  fromYmd: string,
+  toYmd: string,
 ) {
-  const today = tokyoYmd(now);
-  const currentStart = shiftYmd(today, -6);
-  const previousStart = shiftYmd(currentStart, -7);
-  const previousEnd = shiftYmd(currentStart, -1);
+  const length = daysInclusive(fromYmd, toYmd);
+  const previousEnd = shiftYmd(fromYmd, -1);
+  const previousStart = shiftYmd(fromYmd, -length);
 
   const days: DailyPoint[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const key = shiftYmd(today, -i);
+  for (let i = 0; i < length; i++) {
+    const key = shiftYmd(fromYmd, i);
     days.push({
       key,
       label: formatDayLabel(key),
@@ -141,11 +201,11 @@ export function buildDashboardModel(
   }
   const byDay = Object.fromEntries(days.map((d) => [d.key, d]));
 
-  const currentSessions = sessions.filter((s) => inYmdRange(s.started_at, currentStart, today));
+  const currentSessions = sessions.filter((s) => inYmdRange(s.started_at, fromYmd, toYmd));
   const previousSessions = sessions.filter((s) =>
     inYmdRange(s.started_at, previousStart, previousEnd),
   );
-  const currentIx = interactions.filter((i) => inYmdRange(i.created_at, currentStart, today));
+  const currentIx = interactions.filter((i) => inYmdRange(i.created_at, fromYmd, toYmd));
   const previousIx = interactions.filter((i) =>
     inYmdRange(i.created_at, previousStart, previousEnd),
   );
@@ -165,7 +225,11 @@ export function buildDashboardModel(
   }
 
   return {
-    rangeLabel: formatRangeLabel(currentStart, today),
+    from: fromYmd,
+    to: toYmd,
+    rangeLabel: formatRangeLabel(fromYmd, toYmd),
+    dayCount: length,
+    previousLabel: formatRangeLabel(previousStart, previousEnd),
     current: statsFor(currentSessions, currentIx),
     previous: statsFor(previousSessions, previousIx),
     days,
