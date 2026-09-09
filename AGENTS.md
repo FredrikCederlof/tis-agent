@@ -96,9 +96,7 @@ python -m tis_agent sync web --url "https://portal.tokyois.com/tis-times/" --tit
 
 `sync web` runs **every night on this same Drive Cloud Agent**, after Drive files. Unchanged documents are **skipped** automatically (content hash) — only new or edited text is re-embedded.
 
-Do **not** use a Railway cron (`tis-sync-web`) for this. Railway `tis-agent` is the WhatsApp webhook only. Admin **Sync web & calendar** remains for on-demand runs.
-
-If a Railway service named `tis-sync-web` still exists, delete it.
+Do **not** recreate a Railway cron (`tis-sync-web`). That service was deleted. Railway `tis-agent` is the WhatsApp webhook only. Admin **Sync web & calendar** remains for on-demand runs.
 
 ### Cursor Automation prompt (paste into the nightly Drive automation)
 
