@@ -242,5 +242,5 @@ export const KPI_DEFINITIONS = {
   questions: "Parent messages Tina received during this period.",
   avg: "Questions divided by sessions in this period. Higher means parents asked more follow-ups per conversation.",
   success:
-    "Share of questions answered from official TIS sources. Grounded answers ÷ (grounded answers + knowledge gaps). Fixed answers and errors are counted separately in Outcome mix.",
+    "Share of questions Tina handled from official TIS sources (Handled by Tina). Grounded answers ÷ (grounded answers + knowledge gaps). Fixed answers and errors are counted separately in Outcome mix.",
 } as const;

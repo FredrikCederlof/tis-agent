@@ -13,10 +13,11 @@ export function ActivityChart({
 }) {
   const width = 640;
   const height = 240;
-  const pad = { top: 12, right: 12, bottom: 28, left: 36 };
+  // Tight pads so series use nearly the full widget width.
+  const pad = { top: 8, right: 4, bottom: 28, left: 28 };
   const maxY = Math.max(1, ...points.flatMap((p) => [p.sessions, p.questions, p.gaps]));
   const niceMax = niceCeil(maxY);
-  const ticks = [0, 0.25, 0.5, 0.75, 1].map((t) => Math.round(niceMax * t));
+  const ticks = [0, 0.5, 1].map((t) => Math.round(niceMax * t));
 
   const x = (i: number) =>
     pad.left +
@@ -47,27 +48,18 @@ export function ActivityChart({
           </span>
         ))}
       </div>
-      <div className="w-full overflow-x-auto">
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full min-w-[320px]">
+      <div className="w-full">
+        <svg viewBox={`0 0 ${width} ${height}`} className="h-56 w-full">
           {ticks.map((tick) => (
-            <g key={tick}>
-              <line
-                x1={pad.left}
-                x2={width - pad.right}
-                y1={y(tick)}
-                y2={y(tick)}
-                stroke="#ecece8"
-                strokeWidth="1"
-              />
-              <text
-                x={pad.left - 8}
-                y={y(tick) + 3}
-                textAnchor="end"
-                className="fill-slate-400 text-[10px]"
-              >
-                {tick}
-              </text>
-            </g>
+            <text
+              key={tick}
+              x={pad.left - 6}
+              y={y(tick) + 3}
+              textAnchor="end"
+              className="fill-slate-400 text-[10px] dark:fill-white/40"
+            >
+              {tick}
+            </text>
           ))}
           <path d={area("sessions")} fill="rgba(5, 81, 61, 0.08)" />
           {SERIES.map((s) => (
@@ -81,17 +73,22 @@ export function ActivityChart({
               strokeLinejoin="round"
             />
           ))}
-          {points.map((p, i) => (
-            <text
-              key={p.label}
-              x={x(i)}
-              y={height - 8}
-              textAnchor="middle"
-              className="fill-slate-400 text-[10px]"
-            >
-              {p.label}
-            </text>
-          ))}
+          {points.map((p, i) => {
+            // Sparse x labels when many days so the chart stays readable.
+            const step = points.length > 14 ? Math.ceil(points.length / 7) : 1;
+            if (i % step !== 0 && i !== points.length - 1) return null;
+            return (
+              <text
+                key={`${p.label}-${i}`}
+                x={x(i)}
+                y={height - 8}
+                textAnchor="middle"
+                className="fill-slate-400 text-[10px] dark:fill-white/40"
+              >
+                {p.label}
+              </text>
+            );
+          })}
         </svg>
       </div>
     </div>
@@ -106,7 +103,8 @@ function niceCeil(n: number): number {
   return nice * mag;
 }
 
-export function OutcomeDonut({
+/** Vertical outcome bars with rounded top corners (replaces OutcomeDonut). */
+export function OutcomeBars({
   success,
   gaps,
   fixed,
@@ -124,41 +122,40 @@ export function OutcomeDonut({
     { label: "Errors", value: errors, color: "#1a191b" },
   ];
   const rawTotal = parts.reduce((s, p) => s + p.value, 0);
-  const total = rawTotal || 1;
-  let offset = 0;
-  const radius = 54;
-  const circ = 2 * Math.PI * radius;
+  const max = Math.max(1, ...parts.map((p) => p.value));
+  const chartH = 160;
+  const chartW = 280;
+  const barW = 44;
+  const gap = 24;
+  const baseY = chartH - 8;
+  const startX = 20;
 
   return (
-    <div className="flex flex-col items-center gap-5 sm:flex-row sm:items-center">
-      <svg viewBox="0 0 140 140" className="h-40 w-40 shrink-0">
-        <circle cx="70" cy="70" r={radius} fill="none" stroke="#ecece8" strokeWidth="16" />
-        {parts.map((part) => {
-          const len = (part.value / total) * circ;
-          const dash = `${len} ${circ - len}`;
-          const el = (
-            <circle
-              key={part.label}
-              cx="70"
-              cy="70"
-              r={radius}
-              fill="none"
-              stroke={part.color}
-              strokeWidth="16"
-              strokeDasharray={dash}
-              strokeDashoffset={-offset}
-              transform="rotate(-90 70 70)"
-            />
+    <div className="flex flex-col gap-5 sm:flex-row sm:items-end">
+      <svg viewBox={`0 0 ${chartW} ${chartH + 28}`} className="h-48 w-full max-w-[320px] shrink-0">
+        {parts.map((part, i) => {
+          const h = (part.value / max) * (chartH - 24);
+          const x = startX + i * (barW + gap);
+          const y = baseY - h;
+          const r = Math.min(10, barW / 2, h / 2);
+          const path =
+            h <= 0
+              ? ""
+              : `M ${x} ${baseY} L ${x} ${y + r} Q ${x} ${y} ${x + r} ${y} L ${x + barW - r} ${y} Q ${x + barW} ${y} ${x + barW} ${y + r} L ${x + barW} ${baseY} Z`;
+          return (
+            <g key={part.label}>
+              {h > 0 && <path d={path} fill={part.color} />}
+              <text
+                x={x + barW / 2}
+                y={chartH + 18}
+                textAnchor="middle"
+                className="fill-tis-muted text-[10px] font-semibold"
+              >
+                {part.label}
+              </text>
+            </g>
           );
-          offset += len;
-          return el;
         })}
-        <text x="70" y="66" textAnchor="middle" className="fill-tis-navy text-xl font-bold">
-          {rawTotal}
-        </text>
-        <text x="70" y="84" textAnchor="middle" className="fill-slate-400 text-[10px] font-medium">
-          Total
-        </text>
       </svg>
       <ul className="w-full space-y-2.5 text-sm">
         {parts.map((part) => (
@@ -167,10 +164,10 @@ export function OutcomeDonut({
               <span className="h-2.5 w-2.5 rounded-full" style={{ background: part.color }} />
               {part.label}
             </span>
-            <span className="font-semibold text-tis-navy">
+            <span className="font-semibold text-tis-navy dark:text-tis-cream">
               {part.value}
               <span className="ml-1 text-xs font-medium text-slate-400">
-                ({rawTotal === 0 ? 0 : Math.round((part.value / total) * 100)}%)
+                ({rawTotal === 0 ? 0 : Math.round((part.value / rawTotal) * 100)}%)
               </span>
             </span>
           </li>
@@ -178,4 +175,14 @@ export function OutcomeDonut({
       </ul>
     </div>
   );
+}
+
+/** @deprecated Prefer OutcomeBars — kept for any residual imports. */
+export function OutcomeDonut(props: {
+  success: number;
+  gaps: number;
+  fixed: number;
+  errors: number;
+}) {
+  return <OutcomeBars {...props} />;
 }
