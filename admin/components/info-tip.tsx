@@ -7,7 +7,7 @@ export function InfoTip({ label, children }: { label: string; children: string }
     <span className="relative inline-flex">
       <button
         type="button"
-        className="peer inline-flex rounded-full p-0.5 text-slate-400 transition hover:text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-sky"
+        className="peer inline-flex rounded-full p-0.5 text-slate-400 transition hover:text-slate-600 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-sky dark:text-white/45 dark:hover:text-white/80"
         aria-label={`${label} definition`}
         aria-describedby={id}
       >

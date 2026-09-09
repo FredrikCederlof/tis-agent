@@ -15,25 +15,23 @@ const iconMap = {
 
 const toneMap = {
   blue: {
-    icon: "bg-tis-mist text-tis-navy",
-    spark: "#05513d",
-    fill: "rgba(5, 81, 61, 0.16)",
+    icon: "bg-tis-mist text-tis-navy dark:bg-white/10 dark:text-tis-acid",
   },
   green: {
-    icon: "bg-[#f3ffe0] text-tis-navy",
-    spark: "#90ff09",
-    fill: "rgba(144, 255, 9, 0.22)",
+    icon: "bg-[#f3ffe0] text-tis-navy dark:bg-white/10 dark:text-tis-acid",
   },
   purple: {
-    icon: "bg-slate-100 text-tis-ink",
-    spark: "#1a191b",
-    fill: "rgba(26, 25, 27, 0.12)",
+    icon: "bg-slate-100 text-tis-ink dark:bg-white/10 dark:text-tis-cream",
   },
   teal: {
-    icon: "bg-tis-mist text-tis-navy",
-    spark: "#05513d",
-    fill: "rgba(5, 81, 61, 0.16)",
+    icon: "bg-tis-mist text-tis-navy dark:bg-white/10 dark:text-tis-acid",
   },
+} as const;
+
+const DELTA_COLORS = {
+  up: { stroke: "#05513d", fill: "rgba(5, 81, 61, 0.18)" },
+  down: { stroke: "#d64545", fill: "rgba(214, 69, 69, 0.18)" },
+  flat: { stroke: "#5c635f", fill: "rgba(92, 99, 95, 0.14)" },
 } as const;
 
 function Sparkline({
@@ -112,26 +110,34 @@ export function StatCard({
 }) {
   const Icon = iconMap[icon] ?? iconMap.sessions;
   const colors = toneMap[tone] ?? toneMap.blue;
+  const trend = delta == null || delta === 0 ? "flat" : delta > 0 ? "up" : "down";
+  const sparkColors = DELTA_COLORS[trend];
 
   return (
     <div className="card relative !p-4 hover:z-20 focus-within:z-20">
-      <div className="flex items-center gap-2">
+      <div className="flex items-start gap-2">
         <div
           className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${colors.icon}`}
         >
           <Icon className="h-4 w-4" />
         </div>
-        <p className="min-w-0 text-sm font-medium text-slate-600">{label}</p>
-        <InfoTip label={label}>{definition}</InfoTip>
+        <p className="min-w-0 flex-1 pt-1 text-sm font-medium text-slate-600 dark:text-white/70">
+          {label}
+        </p>
+        <div className="shrink-0 pt-0.5">
+          <InfoTip label={label}>{definition}</InfoTip>
+        </div>
       </div>
       <div className="mt-3 flex items-end justify-between gap-3">
         <div className="min-w-0">
-          <p className="font-display text-3xl font-bold tracking-tight text-tis-navy">{value}</p>
+          <p className="font-display text-3xl font-bold tracking-tight text-tis-navy dark:text-tis-cream">
+            {value}
+          </p>
           <div className="mt-1.5">
             <Delta value={delta} label={deltaLabel} />
           </div>
         </div>
-        <Sparkline values={sparkline} stroke={colors.spark} fill={colors.fill} />
+        <Sparkline values={sparkline} stroke={sparkColors.stroke} fill={sparkColors.fill} />
       </div>
     </div>
   );

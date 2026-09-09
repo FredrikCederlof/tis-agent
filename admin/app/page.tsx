@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
-import { ActivityChart, OutcomeDonut } from "@/components/charts";
+import { ActivityChart, OutcomeBars } from "@/components/charts";
 import { UnansweredPreview } from "@/components/unanswered-preview";
 import { RefreshButton } from "@/components/refresh-button";
 import { DashboardDateRange } from "@/components/dashboard-date-range";
@@ -72,8 +72,8 @@ export default async function DashboardPage({
           <h1 className="page-title">Dashboard</h1>
           <p className="page-subtitle">Overview of Tina’s performance and health</p>
         </div>
-        <p className="inline-flex w-fit items-center gap-2 justify-self-start rounded-full border border-tis-navy/10 bg-tis-mist px-3 py-1.5 text-sm font-semibold text-tis-navy lg:justify-self-center">
-          <span className="h-2 w-2 rounded-full bg-tis-navy" />
+        <p className="inline-flex w-fit items-center gap-2 justify-self-start rounded-full border border-tis-navy/10 bg-tis-mist px-3 py-1.5 text-sm font-semibold text-tis-navy dark:border-white/15 dark:bg-white/10 dark:text-tis-cream lg:justify-self-center">
+          <span className="h-2 w-2 rounded-full bg-tis-navy dark:bg-tis-acid" />
           All systems operational
         </p>
         <div className="flex items-center gap-2 lg:justify-self-end">
@@ -123,7 +123,7 @@ export default async function DashboardPage({
           deltaLabel={`vs previous ${dayCount} ${periodNoun}`}
         />
         <StatCard
-          label="Success rate"
+          label="Handled by Tina"
           value={`${current.successRate}%`}
           definition={KPI_DEFINITIONS.success}
           icon="success"
@@ -146,7 +146,7 @@ export default async function DashboardPage({
                 Daily WhatsApp volume for the selected {dayCount} {periodNoun}
               </p>
             </div>
-            <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-tis-muted">
+            <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-tis-muted dark:bg-white/10">
               Daily
             </span>
           </div>
@@ -161,7 +161,7 @@ export default async function DashboardPage({
               Compared with {previousLabel}
             </span>
           </p>
-          <OutcomeDonut
+          <OutcomeBars
             success={current.successCount}
             gaps={current.gapCount}
             fixed={current.fixedCount}

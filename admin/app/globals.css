@@ -6,12 +6,28 @@
   color-scheme: light;
   --tis-racing: #05513d;
   --tis-paper: #f1f1ee;
+  --tis-cream: #f1f1ee;
+  --tis-card: #ffffff;
   --tis-ink: #1a191b;
+  --tis-muted: #5c635f;
   --tis-acid: #90ff09;
   --tis-unread: #9b7bff;
   --tis-blue: #4d6bff;
   --tis-lilac: #9b7bff;
   --tis-amber: #ffc857;
+  --tis-border: rgba(0, 0, 0, 0.06);
+  --tis-border-strong: rgba(0, 0, 0, 0.08);
+}
+
+html.dark {
+  color-scheme: dark;
+  --tis-paper: #0f1411;
+  --tis-cream: #0f1411;
+  --tis-card: #1a211d;
+  --tis-ink: #f1f1ee;
+  --tis-muted: #9aa39c;
+  --tis-border: rgba(255, 255, 255, 0.08);
+  --tis-border-strong: rgba(255, 255, 255, 0.12);
 }
 
 html,
@@ -26,11 +42,16 @@ body {
 
 @layer components {
   .card {
-    @apply rounded-2xl border border-black/[0.06] bg-white p-5 shadow-card;
+    @apply rounded-2xl border bg-white p-5 shadow-card;
+    border-color: var(--tis-border);
+  }
+
+  html.dark .card {
+    @apply bg-[color:var(--tis-card)] shadow-none;
   }
 
   .label {
-    @apply mb-1.5 block text-sm font-medium text-tis-navy;
+    @apply mb-1.5 block text-sm font-medium text-tis-navy dark:text-tis-cream;
   }
 
   .hint {
@@ -44,7 +65,13 @@ body {
 
   a.secondary,
   button.secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-semibold text-tis-navy shadow-sm transition hover:bg-tis-mist focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-navy disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border bg-white px-4 py-2.5 text-sm font-semibold text-tis-navy shadow-sm transition hover:bg-tis-mist focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-navy disabled:opacity-50;
+    border-color: var(--tis-border-strong);
+  }
+
+  html.dark a.secondary,
+  html.dark button.secondary {
+    @apply bg-[color:var(--tis-card)] text-tis-cream hover:bg-white/10;
   }
 
   textarea,
@@ -53,11 +80,21 @@ body {
   input[type="email"],
   input[type="number"],
   input[type="date"] {
-    @apply w-full rounded-xl border border-black/[0.08] bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm outline-none transition placeholder:text-slate-400 focus:border-tis-navy focus:ring-4 focus:ring-tis-navy/15;
+    @apply w-full rounded-xl border bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm outline-none transition placeholder:text-slate-400 focus:border-tis-navy focus:ring-4 focus:ring-tis-navy/15;
+    border-color: var(--tis-border-strong);
+  }
+
+  html.dark textarea,
+  html.dark select,
+  html.dark input[type="text"],
+  html.dark input[type="email"],
+  html.dark input[type="number"],
+  html.dark input[type="date"] {
+    @apply bg-[color:var(--tis-card)] text-tis-cream placeholder:text-white/35 focus:border-tis-acid focus:ring-tis-acid/20;
   }
 
   .page-title {
-    @apply font-display text-2xl font-bold tracking-tight text-tis-navy sm:text-3xl;
+    @apply font-display text-2xl font-bold tracking-tight text-tis-navy dark:text-tis-cream sm:text-3xl;
   }
 
   .page-subtitle {
@@ -65,7 +102,7 @@ body {
   }
 
   .stat-value {
-    @apply mt-2 font-display text-3xl font-bold tracking-tight text-tis-navy;
+    @apply mt-2 font-display text-3xl font-bold tracking-tight text-tis-navy dark:text-tis-cream;
   }
 
   .admin-shell {
@@ -73,7 +110,7 @@ body {
   }
 
   .admin-main {
-    @apply relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden;
+    @apply relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-tis-cream;
   }
 
   .admin-canvas {
@@ -98,18 +135,53 @@ body {
     font-size: 0.8125rem;
   }
 
+  html.dark .tis-day-picker {
+    --rdp-accent-background-color: rgba(144, 255, 9, 0.15);
+    --rdp-range_middle-background-color: rgba(5, 81, 61, 0.45);
+    --rdp-today-color: #90ff09;
+  }
+
   .tis-day-picker .rdp-root {
     --rdp-accent-color: #05513d;
     --rdp-accent-background-color: #e7f3ec;
   }
 
   .tis-day-picker .rdp-month_caption {
-    @apply font-semibold text-tis-navy;
+    @apply font-semibold text-tis-navy dark:text-tis-cream;
   }
 
   .tis-day-picker .rdp-weekday {
     @apply text-[0.65rem] font-semibold uppercase tracking-wide text-tis-muted;
   }
+}
+
+/* Broad surface flips so Chats / Knowledge inherit dark without per-file rewrites */
+html.dark .bg-white {
+  background-color: var(--tis-card);
+}
+
+html.dark .bg-slate-50,
+html.dark .bg-slate-100 {
+  background-color: rgba(255, 255, 255, 0.06);
+}
+
+html.dark .text-tis-navy {
+  color: var(--tis-cream);
+}
+
+html.dark .border-slate-200,
+html.dark .border-black\/\[0\.06\],
+html.dark .border-black\/\[0\.08\] {
+  border-color: var(--tis-border-strong);
+}
+
+html.dark .text-slate-600,
+html.dark .text-slate-500 {
+  color: rgba(241, 241, 238, 0.7);
+}
+
+html.dark .text-slate-400 {
+  color: rgba(241, 241, 238, 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {
