@@ -64,7 +64,7 @@ _SCHOOL_START_RE = re.compile(
 
 
 def _normalize_retrieval_query(question: str) -> str:
-    """Light spelling/spacing fixes so embeddings match handbook wording better."""
+    """Light spelling/spacing fixes and synonym expansion for better chunk match."""
     text = question.strip()
     replacements = (
         (r"\bschoolbuses?\b", "school bus"),
@@ -74,6 +74,15 @@ def _normalize_retrieval_query(question: str) -> str:
     )
     for pattern, repl in replacements:
         text = re.sub(pattern, repl, text, flags=re.IGNORECASE)
+
+    # Parent wording → document wording (Health Office ↔ school nurse / medical).
+    if re.search(
+        r"(?i)\b(?:health\s+office|nurse(?:'?s)?\s+(?:room|office)|medical\s+(?:office|room))\b",
+        text,
+    ):
+        extras = " school nurse medical staff health safety nurse@tokyois.com"
+        if "school nurse" not in text.lower():
+            text = f"{text}{extras}"
     return text
 
 
