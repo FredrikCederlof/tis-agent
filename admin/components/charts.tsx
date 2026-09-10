@@ -18,6 +18,29 @@ function niceCeil(n: number): number {
   return nice * mag;
 }
 
+function roundedLine(
+  points: { x: number; y: number }[],
+  yMin: number,
+  yMax: number,
+): string {
+  if (points.length === 0) return "";
+  if (points.length === 1) return `M ${points[0].x} ${points[0].y}`;
+  const clampY = (y: number) => Math.min(yMax, Math.max(yMin, y));
+  let d = `M ${points[0].x.toFixed(1)} ${points[0].y.toFixed(1)}`;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = points[Math.max(0, i - 1)];
+    const p1 = points[i];
+    const p2 = points[i + 1];
+    const p3 = points[Math.min(points.length - 1, i + 2)];
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = clampY(p1.y + (p2.y - p0.y) / 6);
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = clampY(p2.y - (p3.y - p1.y) / 6);
+    d += ` C ${c1x.toFixed(1)} ${c1y.toFixed(1)} ${c2x.toFixed(1)} ${c2y.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}`;
+  }
+  return d;
+}
+
 export function ChartHeader({
   icon,
   title,
@@ -70,9 +93,9 @@ export function PerformanceChart({
   points: PerformancePoint[];
   rangeLabel?: string;
 }) {
-  const width = 760;
+  const width = 520;
   const height = 280;
-  const pad = { top: 10, right: 28, bottom: 32, left: 36 };
+  const pad = { top: 10, right: 16, bottom: 32, left: 36 };
   const plotW = width - pad.left - pad.right;
   const plotH = height - pad.top - pad.bottom;
   const maxQ = Math.max(1, ...points.map((p) => p.questions));
@@ -82,12 +105,16 @@ export function PerformanceChart({
     pad.left + (points.length <= 1 ? plotW / 2 : (i / (points.length - 1)) * plotW);
   const yPct = (v: number) => pad.top + plotH - (v / 100) * plotH;
   const yBar = (v: number) => pad.top + plotH - (v / niceMax) * plotH;
-  const barW = Math.max(3, Math.min(14, (plotW / Math.max(1, points.length)) * 0.42));
+  const barW = Math.max(3, Math.min(12, (plotW / Math.max(1, points.length)) * 0.42));
+  const yMin = pad.top;
+  const yMax = pad.top + plotH;
 
   const line = (key: "answeredPct" | "attentionPct") =>
-    points
-      .map((p, i) => `${i === 0 ? "M" : "L"} ${x(i).toFixed(1)} ${yPct(p[key]).toFixed(1)}`)
-      .join(" ");
+    roundedLine(
+      points.map((p, i) => ({ x: x(i), y: yPct(p[key]) })),
+      yMin,
+      yMax,
+    );
 
   const [hover, setHover] = useState<number | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -163,24 +190,15 @@ export function PerformanceChart({
       >
         <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full">
           {yTicks.map((t) => (
-            <g key={t}>
-              <line
-                x1={pad.left}
-                x2={width - pad.right}
-                y1={yPct(t)}
-                y2={yPct(t)}
-                stroke="#ecece8"
-                strokeWidth="1"
-              />
-              <text
-                x={pad.left - 8}
-                y={yPct(t) + 3}
-                textAnchor="end"
-                className="fill-slate-400 text-[10px]"
-              >
-                {t}%
-              </text>
-            </g>
+            <text
+              key={t}
+              x={pad.left - 8}
+              y={yPct(t) + 3}
+              textAnchor="end"
+              className="fill-slate-400 text-[10px]"
+            >
+              {t}%
+            </text>
           ))}
 
           {points.map((p, i) => {
@@ -204,7 +222,7 @@ export function PerformanceChart({
             d={line("answeredPct")}
             fill="none"
             stroke="#05513d"
-            strokeWidth="2.4"
+            strokeWidth="2.6"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -212,7 +230,7 @@ export function PerformanceChart({
             d={line("attentionPct")}
             fill="none"
             stroke="#ffc857"
-            strokeWidth="2.4"
+            strokeWidth="2.6"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -321,9 +339,9 @@ export function OutcomeDonut({
         title="Answer outcomes"
         subtitle="How questions were handled in this period"
       />
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 sm:flex-row sm:items-center">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
         <div className="relative shrink-0">
-          <svg viewBox="0 0 140 140" className="h-44 w-44">
+          <svg viewBox="0 0 140 140" className="h-36 w-36 xl:h-40 xl:w-40">
             <circle cx="70" cy="70" r={radius} fill="none" stroke="#ecece8" strokeWidth="20" />
             {segments.map((part) => (
               <circle
