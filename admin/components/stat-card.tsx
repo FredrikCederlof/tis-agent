@@ -162,10 +162,10 @@ export function StatCard({
   detail?: string;
   definition: string;
   accent?: Accent;
-  sparkline: number[];
+  sparkline?: number[];
   sparklineLabels?: string[];
   sparkFormat?: "number" | "percent";
-  delta: number | null;
+  delta?: number | null;
   deltaLabel?: string;
   deltaUnit?: string;
 }) {
@@ -178,35 +178,39 @@ export function StatCard({
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border p-4 shadow-card hover:z-20 focus-within:z-20 sm:p-5 ${theme.card}`}
+      className={`relative z-0 flex min-h-[148px] flex-col justify-between rounded-2xl border p-4 shadow-card hover:z-30 focus-within:z-30 sm:p-5 ${theme.card}`}
     >
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-start gap-2">
         <span
-          className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${theme.iconBg} ${theme.iconFg}`}
+          className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${theme.iconBg} ${theme.iconFg}`}
         >
           <Icon className="h-4 w-4" strokeWidth={2.25} aria-hidden />
         </span>
-        <p className="min-w-0 flex-1 text-sm font-semibold text-tis-navy">{label}</p>
-        <div className="shrink-0">
+        <p className="min-w-0 pt-1 text-sm font-semibold text-tis-navy">{label}</p>
+        <div className="relative z-40 mt-1 shrink-0">
           <InfoTip label={label}>{definition}</InfoTip>
         </div>
       </div>
-      <div className="mt-3 flex items-end justify-between gap-3">
+      <div className="mt-4 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-baseline gap-2">
             <p className="font-display text-3xl font-bold tracking-tight text-tis-navy">{value}</p>
             {detail ? <p className="text-xs text-tis-muted">{detail}</p> : null}
           </div>
-          <div className="mt-1.5">
-            <Delta value={delta} label={deltaLabel} unit={deltaUnit} />
-          </div>
+          {delta !== undefined ? (
+            <div className="mt-1.5">
+              <Delta value={delta} label={deltaLabel} unit={deltaUnit} />
+            </div>
+          ) : null}
         </div>
-        <BarSparkline
-          values={sparkline}
-          labels={sparklineLabels}
-          color={theme.bar}
-          valueFormatter={formatter}
-        />
+        {sparkline ? (
+          <BarSparkline
+            values={sparkline}
+            labels={sparklineLabels}
+            color={theme.bar}
+            valueFormatter={formatter}
+          />
+        ) : null}
       </div>
     </div>
   );

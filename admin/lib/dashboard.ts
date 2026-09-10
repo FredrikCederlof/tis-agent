@@ -283,6 +283,9 @@ export const KPI_DEFINITIONS = {
     "Open items in Needs attention right now (auto gaps + manually flagged). Not limited to the date range.",
   knowledgeCoverage:
     "Share of period questions that received a grounded or fixed answer (excludes open gaps and system errors from the numerator).",
+  knowledgeArticles: "Active Q&A entries in the Knowledge Hub that Tina can retrieve.",
+  addedFromParents: "Knowledge Hub entries created from parent questions in Needs attention.",
+  addedThisPeriod: "Knowledge Hub entries created during the current date range (last 30 days by default).",
 } as const;
 
 export function attentionReason(outcome: string): { label: string; tone: "amber" | "rose" } {

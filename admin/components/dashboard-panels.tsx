@@ -1,12 +1,5 @@
 import Link from "next/link";
-import {
-  AlertTriangle,
-  ArrowRight,
-  BookOpen,
-  ChartColumn,
-  ChevronRight,
-  Search,
-} from "lucide-react";
+import { AlertTriangle, ArrowRight, ChevronRight, Search } from "lucide-react";
 import { attentionReason } from "@/lib/dashboard";
 import type { KnowledgeGap } from "@/lib/dashboard";
 import { IconWell } from "@/components/charts";
@@ -28,77 +21,6 @@ function maskParent(waFrom: string | null | undefined): string {
   const digits = waFrom.replace(/\D/g, "");
   if (digits.length < 4) return "—";
   return `•• •${digits.slice(-4)}`;
-}
-
-function UpDelta({ value, suffix }: { value: number | null; suffix: string }) {
-  if (value == null) return null;
-  const arrow = value >= 0 ? "↑" : "↓";
-  return (
-    <span className="ml-2 text-xs font-semibold text-emerald-600">
-      {arrow} {Math.abs(value)} {suffix}
-    </span>
-  );
-}
-
-export function KnowledgeHealthCard({
-  articles,
-  articlesDelta,
-  coveragePct,
-  coverageDelta,
-  fromParents,
-  addedThisPeriod,
-}: {
-  articles: number;
-  articlesDelta: number | null;
-  coveragePct: number;
-  coverageDelta: number | null;
-  fromParents: number;
-  addedThisPeriod: number;
-}) {
-  const rows = [
-    {
-      label: "Knowledge articles",
-      value: articles,
-      extra: <UpDelta value={articlesDelta} suffix="this period" />,
-    },
-    {
-      label: "Questions covered",
-      value: `${coveragePct}%`,
-      extra: <UpDelta value={coverageDelta} suffix="pp" />,
-    },
-    { label: "Added from parent questions", value: fromParents },
-    { label: "Added this period", value: addedThisPeriod },
-  ];
-
-  return (
-    <section className="card flex h-full flex-col">
-      <div className="flex items-center gap-2.5">
-        <IconWell>
-          <BookOpen className="h-4 w-4" strokeWidth={2.25} />
-        </IconWell>
-        <div>
-          <h2 className="text-lg font-bold text-tis-navy">Knowledge health</h2>
-          <p className="text-sm text-tis-muted">Status of your knowledge base</p>
-        </div>
-      </div>
-      <dl className="mt-4 flex-1 divide-y divide-slate-100 text-sm">
-        {rows.map((row) => (
-          <div key={row.label} className="flex items-center justify-between gap-3 py-2.5 first:pt-0">
-            <dt className="text-tis-muted">{row.label}</dt>
-            <dd className="font-semibold text-tis-navy">
-              {row.value}
-              {row.extra}
-            </dd>
-          </div>
-        ))}
-      </dl>
-      <Link href="/knowledge" className="primary mt-5 w-full !no-underline">
-        <BookOpen className="h-4 w-4" />
-        Open Knowledge Hub
-        <ArrowRight className="h-4 w-4" />
-      </Link>
-    </section>
-  );
 }
 
 export function TopKnowledgeGapsCard({ gaps }: { gaps: KnowledgeGap[] }) {
@@ -143,67 +65,6 @@ export function TopKnowledgeGapsCard({ gaps }: { gaps: KnowledgeGap[] }) {
         View all gaps
         <ArrowRight className="h-4 w-4" />
       </Link>
-    </section>
-  );
-}
-
-export function TinaLearningCard({
-  addedToHub,
-  nowCovered,
-  fromHuman,
-  addedDelta,
-  coveredDelta,
-  humanDelta,
-}: {
-  addedToHub: number;
-  nowCovered: number;
-  fromHuman: number;
-  addedDelta?: number | null;
-  coveredDelta?: number | null;
-  humanDelta?: number | null;
-}) {
-  const items = [
-    {
-      value: addedToHub,
-      label: "Questions added to Knowledge Hub",
-      delta: addedDelta,
-    },
-    {
-      value: nowCovered,
-      label: "Previously unanswered questions now covered",
-      delta: coveredDelta,
-    },
-    {
-      value: fromHuman,
-      label: "Human answers converted to knowledge",
-      delta: humanDelta,
-    },
-  ];
-
-  return (
-    <section className="card h-full">
-      <div className="flex items-center gap-2.5">
-        <IconWell>
-          <ChartColumn className="h-4 w-4" strokeWidth={2.25} />
-        </IconWell>
-        <div>
-          <h2 className="text-lg font-bold text-tis-navy">Tina learning</h2>
-          <p className="text-sm text-tis-muted">How Tina is improving over time</p>
-        </div>
-      </div>
-      <div className="mt-5 grid grid-cols-3 gap-4">
-        {items.map((item) => (
-          <div key={item.label}>
-            <p className="font-display text-3xl font-bold text-tis-navy">{item.value}</p>
-            <p className="mt-1 text-xs leading-snug text-tis-muted">{item.label}</p>
-            {item.delta ? (
-              <p className="mt-1.5 text-xs font-semibold text-emerald-600">
-                {item.delta >= 0 ? "↑" : "↓"} {Math.abs(item.delta)} this period
-              </p>
-            ) : null}
-          </div>
-        ))}
-      </div>
     </section>
   );
 }
