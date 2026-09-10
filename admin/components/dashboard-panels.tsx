@@ -1,7 +1,15 @@
 import Link from "next/link";
-import { ArrowRight, BookOpen, ChartColumn, ChevronRight, Search } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  BookOpen,
+  ChartColumn,
+  ChevronRight,
+  Search,
+} from "lucide-react";
 import { attentionReason } from "@/lib/dashboard";
 import type { KnowledgeGap } from "@/lib/dashboard";
+import { IconWell } from "@/components/charts";
 
 function relativeTime(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime();
@@ -11,7 +19,6 @@ function relativeTime(iso: string): string {
   const hours = Math.floor(minutes / 60);
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  if (days === 1) return "Yesterday";
   if (days < 7) return `${days}d ago`;
   return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
@@ -19,8 +26,18 @@ function relativeTime(iso: string): string {
 function maskParent(waFrom: string | null | undefined): string {
   if (!waFrom) return "—";
   const digits = waFrom.replace(/\D/g, "");
-  if (digits.length < 4) return "…";
-  return `…${digits.slice(-4)}`;
+  if (digits.length < 4) return "—";
+  return `•• •${digits.slice(-4)}`;
+}
+
+function UpDelta({ value, suffix }: { value: number | null; suffix: string }) {
+  if (value == null) return null;
+  const arrow = value >= 0 ? "↑" : "↓";
+  return (
+    <span className="ml-2 text-xs font-semibold text-emerald-600">
+      {arrow} {Math.abs(value)} {suffix}
+    </span>
+  );
 }
 
 export function KnowledgeHealthCard({
@@ -38,50 +55,45 @@ export function KnowledgeHealthCard({
   fromParents: number;
   addedThisPeriod: number;
 }) {
+  const rows = [
+    {
+      label: "Knowledge articles",
+      value: articles,
+      extra: <UpDelta value={articlesDelta} suffix="this period" />,
+    },
+    {
+      label: "Questions covered",
+      value: `${coveragePct}%`,
+      extra: <UpDelta value={coverageDelta} suffix="pp" />,
+    },
+    { label: "Added from parent questions", value: fromParents },
+    { label: "Added this period", value: addedThisPeriod },
+  ];
+
   return (
     <section className="card flex h-full flex-col">
       <div className="flex items-center gap-2.5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e7f3ec] text-tis-navy">
+        <IconWell>
           <BookOpen className="h-4 w-4" strokeWidth={2.25} />
-        </span>
+        </IconWell>
         <div>
           <h2 className="text-lg font-bold text-tis-navy">Knowledge health</h2>
-          <p className="text-sm text-tis-muted">Hub articles and coverage for the selected range</p>
+          <p className="text-sm text-tis-muted">Status of your knowledge base</p>
         </div>
       </div>
-      <dl className="mt-4 flex-1 space-y-3 text-sm">
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-tis-muted">Knowledge articles</dt>
-          <dd className="font-semibold text-tis-navy">
-            {articles}
-            {articlesDelta != null ? (
-              <span className="ml-1 text-xs font-medium text-tis-success">
-                {articlesDelta >= 0 ? "↑" : "↓"} {Math.abs(articlesDelta)} this period
-              </span>
-            ) : null}
-          </dd>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-tis-muted">Questions covered</dt>
-          <dd className="font-semibold text-tis-navy">
-            {coveragePct}%
-            {coverageDelta != null ? (
-              <span className="ml-1 text-xs font-medium text-tis-success">
-                {coverageDelta >= 0 ? "↑" : "↓"} {Math.abs(coverageDelta)} pp
-              </span>
-            ) : null}
-          </dd>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-tis-muted">Added from parent questions</dt>
-          <dd className="font-semibold text-tis-navy">{fromParents}</dd>
-        </div>
-        <div className="flex items-center justify-between gap-3">
-          <dt className="text-tis-muted">Added this period</dt>
-          <dd className="font-semibold text-tis-navy">{addedThisPeriod}</dd>
-        </div>
+      <dl className="mt-4 flex-1 divide-y divide-slate-100 text-sm">
+        {rows.map((row) => (
+          <div key={row.label} className="flex items-center justify-between gap-3 py-2.5 first:pt-0">
+            <dt className="text-tis-muted">{row.label}</dt>
+            <dd className="font-semibold text-tis-navy">
+              {row.value}
+              {row.extra}
+            </dd>
+          </div>
+        ))}
       </dl>
       <Link href="/knowledge" className="primary mt-5 w-full !no-underline">
+        <BookOpen className="h-4 w-4" />
         Open Knowledge Hub
         <ArrowRight className="h-4 w-4" />
       </Link>
@@ -92,21 +104,19 @@ export function KnowledgeHealthCard({
 export function TopKnowledgeGapsCard({ gaps }: { gaps: KnowledgeGap[] }) {
   return (
     <section className="card flex h-full flex-col">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-2.5">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#eef1ff] text-tis-blue">
-            <Search className="h-4 w-4" strokeWidth={2.25} />
-          </span>
-          <div>
-            <h2 className="text-lg font-bold text-tis-navy">Top knowledge gaps</h2>
-            <p className="text-sm text-tis-muted">Most common unanswered questions in range</p>
-          </div>
+      <div className="flex items-center gap-2.5">
+        <IconWell tone="blue">
+          <Search className="h-4 w-4" strokeWidth={2.25} />
+        </IconWell>
+        <div>
+          <h2 className="text-lg font-bold text-tis-navy">Top knowledge gaps</h2>
+          <p className="text-sm text-tis-muted">Most common unanswered or low confidence questions</p>
         </div>
       </div>
       {gaps.length === 0 ? (
-        <p className="mt-4 text-sm text-tis-muted">No repeated gaps in this period.</p>
+        <p className="mt-4 flex-1 text-sm text-tis-muted">No repeated gaps in this period.</p>
       ) : (
-        <ol className="mt-4 flex-1 space-y-1">
+        <ol className="mt-4 flex-1 space-y-0.5">
           {gaps.map((gap, index) => (
             <li key={`${gap.topic}-${index}`}>
               <Link
@@ -116,12 +126,10 @@ export function TopKnowledgeGapsCard({ gaps }: { gaps: KnowledgeGap[] }) {
                 <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#f3eeff] text-xs font-bold text-[#6b4fd8]">
                   {index + 1}
                 </span>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-tis-navy">{gap.topic}</p>
-                  <p className="text-xs text-tis-muted">
-                    {gap.count} question{gap.count === 1 ? "" : "s"}
-                  </p>
-                </div>
+                <p className="min-w-0 flex-1 truncate font-medium text-tis-navy">{gap.topic}</p>
+                <span className="shrink-0 text-xs text-tis-muted">
+                  {gap.count} question{gap.count === 1 ? "" : "s"}
+                </span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-slate-300 transition group-hover:text-tis-navy" />
               </Link>
             </li>
@@ -130,7 +138,7 @@ export function TopKnowledgeGapsCard({ gaps }: { gaps: KnowledgeGap[] }) {
       )}
       <Link
         href="/inbox"
-        className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-semibold text-tis-navy transition hover:bg-tis-mist"
+        className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-[#f7f7f5] px-4 py-2.5 text-sm font-semibold text-tis-navy transition hover:bg-tis-mist"
       >
         View all gaps
         <ArrowRight className="h-4 w-4" />
@@ -143,33 +151,56 @@ export function TinaLearningCard({
   addedToHub,
   nowCovered,
   fromHuman,
+  addedDelta,
+  coveredDelta,
+  humanDelta,
 }: {
   addedToHub: number;
   nowCovered: number;
   fromHuman: number;
+  addedDelta?: number | null;
+  coveredDelta?: number | null;
+  humanDelta?: number | null;
 }) {
   const items = [
-    { value: addedToHub, label: "Questions added to Knowledge Hub" },
-    { value: nowCovered, label: "Previously unanswered now covered" },
-    { value: fromHuman, label: "Human answers converted to knowledge" },
+    {
+      value: addedToHub,
+      label: "Questions added to Knowledge Hub",
+      delta: addedDelta,
+    },
+    {
+      value: nowCovered,
+      label: "Previously unanswered questions now covered",
+      delta: coveredDelta,
+    },
+    {
+      value: fromHuman,
+      label: "Human answers converted to knowledge",
+      delta: humanDelta,
+    },
   ];
 
   return (
     <section className="card h-full">
       <div className="flex items-center gap-2.5">
-        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#e7f3ec] text-tis-navy">
+        <IconWell>
           <ChartColumn className="h-4 w-4" strokeWidth={2.25} />
-        </span>
+        </IconWell>
         <div>
           <h2 className="text-lg font-bold text-tis-navy">Tina learning</h2>
-          <p className="text-sm text-tis-muted">How the Knowledge Hub grew in this period</p>
+          <p className="text-sm text-tis-muted">How Tina is improving over time</p>
         </div>
       </div>
-      <div className="mt-4 grid grid-cols-3 gap-3">
+      <div className="mt-5 grid grid-cols-3 gap-4">
         {items.map((item) => (
           <div key={item.label}>
-            <p className="font-display text-2xl font-bold text-tis-navy">{item.value}</p>
+            <p className="font-display text-3xl font-bold text-tis-navy">{item.value}</p>
             <p className="mt-1 text-xs leading-snug text-tis-muted">{item.label}</p>
+            {item.delta != null ? (
+              <p className="mt-1.5 text-xs font-semibold text-emerald-600">
+                {item.delta >= 0 ? "↑" : "↓"} {Math.abs(item.delta)} this period
+              </p>
+            ) : null}
           </div>
         ))}
       </div>
@@ -194,25 +225,32 @@ export function NeedsAttentionTable({
   return (
     <section className="card !p-0 overflow-hidden">
       <div className="flex items-center justify-between gap-3 px-5 py-4">
-        <div>
-          <h2 className="text-lg font-bold text-tis-navy">Needs attention</h2>
-          <p className="text-sm text-tis-muted">Latest open gaps and flagged questions</p>
+        <div className="flex items-center gap-2.5">
+          <IconWell tone="amber">
+            <AlertTriangle className="h-4 w-4" strokeWidth={2.25} />
+          </IconWell>
+          <div>
+            <h2 className="text-lg font-bold text-tis-navy">Needs attention</h2>
+            <p className="text-sm text-tis-muted">Latest questions that need your review</p>
+          </div>
         </div>
-        <Link href="/inbox" className="text-sm font-semibold text-tis-sky hover:underline">
+        <Link href="/inbox" className="inline-flex items-center gap-1 text-sm font-semibold text-tis-navy">
           View all{total > 0 ? ` (${total})` : ""}
+          <ChevronRight className="h-4 w-4" />
         </Link>
       </div>
       {rows.length === 0 ? (
         <p className="px-5 pb-5 text-sm text-tis-muted">Nothing waiting in Needs attention.</p>
       ) : (
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="border-y border-slate-100 bg-slate-50/80 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className="border-y border-slate-100 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
               <tr>
                 <th className="px-5 py-2.5">Question</th>
                 <th className="px-5 py-2.5">Parent</th>
                 <th className="px-5 py-2.5">Asked</th>
                 <th className="px-5 py-2.5">Reason</th>
+                <th className="px-5 py-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -220,21 +258,18 @@ export function NeedsAttentionTable({
                 const reason = attentionReason(row.outcome);
                 return (
                   <tr key={row.id} className="border-b border-slate-50 last:border-0">
-                    <td className="max-w-md px-5 py-3 font-medium text-tis-navy">
-                      <Link
-                        href={`/chats/${row.session_id}`}
-                        className="line-clamp-2 hover:underline"
-                      >
+                    <td className="max-w-md px-5 py-3.5 font-medium text-tis-navy">
+                      <Link href={`/chats/${row.session_id}`} className="line-clamp-1 hover:underline">
                         {row.question}
                       </Link>
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3 text-tis-muted">
+                    <td className="whitespace-nowrap px-5 py-3.5 text-tis-muted">
                       {maskParent(row.wa_from)}
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3 text-tis-muted">
+                    <td className="whitespace-nowrap px-5 py-3.5 text-tis-muted">
                       {relativeTime(row.created_at)}
                     </td>
-                    <td className="px-5 py-3">
+                    <td className="px-5 py-3.5">
                       <span
                         className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                           reason.tone === "amber"
@@ -244,6 +279,15 @@ export function NeedsAttentionTable({
                       >
                         {reason.label}
                       </span>
+                    </td>
+                    <td className="px-5 py-3.5 text-right">
+                      <Link
+                        href={`/chats/${row.session_id}`}
+                        className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-xs font-semibold text-tis-navy transition hover:bg-slate-50"
+                      >
+                        Open
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      </Link>
                     </td>
                   </tr>
                 );

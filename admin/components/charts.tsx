@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
+import { ChevronDown, MessageCircle, Sparkles } from "lucide-react";
 
 type PerformancePoint = {
   label: string;
@@ -17,10 +18,61 @@ function niceCeil(n: number): number {
   return nice * mag;
 }
 
-export function PerformanceChart({ points }: { points: PerformancePoint[] }) {
-  const width = 720;
-  const height = 320;
-  const pad = { top: 16, right: 16, bottom: 32, left: 40 };
+export function ChartHeader({
+  icon,
+  title,
+  subtitle,
+  action,
+}: {
+  icon: ReactNode;
+  title: string;
+  subtitle: string;
+  action?: ReactNode;
+}) {
+  return (
+    <div className="mb-3 flex items-start justify-between gap-3">
+      <div className="flex items-center gap-2.5">
+        {icon}
+        <div>
+          <h2 className="text-lg font-bold text-tis-navy">{title}</h2>
+          <p className="text-sm text-tis-muted">{subtitle}</p>
+        </div>
+      </div>
+      {action}
+    </div>
+  );
+}
+
+export function IconWell({
+  children,
+  tone = "green",
+}: {
+  children: ReactNode;
+  tone?: "green" | "purple" | "blue" | "amber";
+}) {
+  const tones = {
+    green: "bg-[#e7f3ec] text-tis-navy",
+    purple: "bg-[#f3eeff] text-[#6b4fd8]",
+    blue: "bg-[#eef1ff] text-tis-blue",
+    amber: "bg-[#fff6e0] text-[#8a6500]",
+  } as const;
+  return (
+    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${tones[tone]}`}>
+      {children}
+    </span>
+  );
+}
+
+export function PerformanceChart({
+  points,
+  rangeLabel,
+}: {
+  points: PerformancePoint[];
+  rangeLabel?: string;
+}) {
+  const width = 760;
+  const height = 280;
+  const pad = { top: 10, right: 8, bottom: 28, left: 36 };
   const plotW = width - pad.left - pad.right;
   const plotH = height - pad.top - pad.bottom;
   const maxQ = Math.max(1, ...points.map((p) => p.questions));
@@ -30,10 +82,7 @@ export function PerformanceChart({ points }: { points: PerformancePoint[] }) {
     pad.left + (points.length <= 1 ? plotW / 2 : (i / (points.length - 1)) * plotW);
   const yPct = (v: number) => pad.top + plotH - (v / 100) * plotH;
   const yBar = (v: number) => pad.top + plotH - (v / niceMax) * plotH;
-  const barW = Math.max(
-    3,
-    Math.min(18, (plotW / Math.max(1, points.length)) * 0.55),
-  );
+  const barW = Math.max(3, Math.min(14, (plotW / Math.max(1, points.length)) * 0.42));
 
   const line = (key: "answeredPct" | "attentionPct") =>
     points
@@ -47,10 +96,10 @@ export function PerformanceChart({ points }: { points: PerformancePoint[] }) {
     if (hover == null || !points[hover]) return null;
     const p = points[hover];
     return {
-      index: hover,
       x: x(hover),
       label: p.label,
-      text: `${p.answeredPct}% answered · ${p.attentionPct}% attention · ${p.questions} questions`,
+      answered: `${p.answeredPct}% answered`,
+      questions: `${p.questions} questions`,
     };
   }, [hover, points]);
 
@@ -74,8 +123,25 @@ export function PerformanceChart({ points }: { points: PerformancePoint[] }) {
   const yTicks = [0, 25, 50, 75, 100];
 
   return (
-    <div className="flex h-full min-h-[280px] w-full flex-col">
-      <div className="mb-2 flex flex-wrap gap-4 text-xs font-medium text-tis-muted">
+    <div className="flex h-full min-h-[260px] w-full flex-col">
+      <ChartHeader
+        icon={
+          <IconWell>
+            <MessageCircle className="h-4 w-4" strokeWidth={2.25} />
+          </IconWell>
+        }
+        title="Tina performance over time"
+        subtitle="Share of questions answered by Tina"
+        action={
+          rangeLabel ? (
+            <span className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-tis-muted">
+              {rangeLabel}
+              <ChevronDown className="h-3.5 w-3.5" aria-hidden />
+            </span>
+          ) : null
+        }
+      />
+      <div className="mb-1 flex flex-wrap gap-4 text-xs font-medium text-tis-muted">
         <span className="inline-flex items-center gap-1.5">
           <span className="h-2 w-2 rounded-full bg-tis-navy" />
           Answered by Tina %
@@ -85,7 +151,7 @@ export function PerformanceChart({ points }: { points: PerformancePoint[] }) {
           Needs attention %
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="h-2 w-2 rounded-sm bg-tis-lilac/50" />
+          <span className="h-2 w-2 rounded-sm bg-[#cbbdff]" />
           Total questions
         </span>
       </div>
@@ -128,7 +194,7 @@ export function PerformanceChart({ points }: { points: PerformancePoint[] }) {
                 y={top}
                 width={barW}
                 height={Math.max(0, h)}
-                fill="rgba(155, 123, 255, 0.22)"
+                fill="#ddd4ff"
                 rx="3"
               />
             );
@@ -138,7 +204,7 @@ export function PerformanceChart({ points }: { points: PerformancePoint[] }) {
             d={line("answeredPct")}
             fill="none"
             stroke="#05513d"
-            strokeWidth="2.6"
+            strokeWidth="2.4"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -146,15 +212,15 @@ export function PerformanceChart({ points }: { points: PerformancePoint[] }) {
             d={line("attentionPct")}
             fill="none"
             stroke="#ffc857"
-            strokeWidth="2.6"
+            strokeWidth="2.4"
             strokeLinecap="round"
             strokeLinejoin="round"
           />
 
           {points.map((p, i) => (
             <g key={`dots-${p.label}-${i}`}>
-              <circle cx={x(i)} cy={yPct(p.answeredPct)} r="3.2" fill="#05513d" />
-              <circle cx={x(i)} cy={yPct(p.attentionPct)} r="3.2" fill="#ffc857" />
+              <circle cx={x(i)} cy={yPct(p.answeredPct)} r="3" fill="#05513d" />
+              <circle cx={x(i)} cy={yPct(p.attentionPct)} r="3" fill="#ffc857" />
             </g>
           ))}
 
@@ -165,7 +231,7 @@ export function PerformanceChart({ points }: { points: PerformancePoint[] }) {
               y1={pad.top}
               y2={pad.top + plotH}
               stroke="#05513d"
-              strokeOpacity="0.25"
+              strokeOpacity="0.2"
               strokeWidth="1.5"
               strokeDasharray="4 4"
             />
@@ -178,7 +244,7 @@ export function PerformanceChart({ points }: { points: PerformancePoint[] }) {
               <text
                 key={`lbl-${p.label}-${i}`}
                 x={x(i)}
-                y={height - 8}
+                y={height - 6}
                 textAnchor="middle"
                 className="fill-slate-400 text-[10px]"
               >
@@ -190,14 +256,15 @@ export function PerformanceChart({ points }: { points: PerformancePoint[] }) {
 
         {tooltip ? (
           <div
-            className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-full rounded-lg bg-tis-ink px-3 py-2 text-xs font-medium text-white shadow-soft"
+            className="pointer-events-none absolute z-20 -translate-x-1/2 rounded-xl border border-black/5 bg-white px-3 py-2 text-xs font-medium text-tis-navy shadow-soft"
             style={{
               left: `${(tooltip.x / width) * 100}%`,
-              top: "12%",
+              top: "8%",
             }}
           >
-            <p className="font-semibold">{tooltip.label}</p>
-            <p className="mt-0.5 text-white/85">{tooltip.text}</p>
+            <p className="text-[11px] text-tis-muted">{tooltip.label}</p>
+            <p className="font-semibold">{tooltip.answered}</p>
+            <p className="text-tis-muted">{tooltip.questions}</p>
           </div>
         ) : null}
       </div>
@@ -224,14 +291,19 @@ export function OutcomeDonut({
   ];
   const rawTotal = parts.reduce((s, p) => s + p.value, 0);
   const total = rawTotal || 1;
-  const radius = 54;
+  const radius = 52;
   const circ = 2 * Math.PI * radius;
   const [hover, setHover] = useState<string | null>(null);
 
   let offset = 0;
   const segments = parts.map((part) => {
     const len = (part.value / total) * circ;
-    const seg = { ...part, len, offset, pct: rawTotal === 0 ? 0 : Math.round((part.value / total) * 100) };
+    const seg = {
+      ...part,
+      len,
+      offset,
+      pct: rawTotal === 0 ? 0 : Math.round((part.value / total) * 100),
+    };
     offset += len;
     return seg;
   });
@@ -239,63 +311,74 @@ export function OutcomeDonut({
   const active = segments.find((s) => s.label === hover) ?? null;
 
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-5 sm:flex-row sm:items-center">
-      <div className="relative shrink-0">
-        <svg viewBox="0 0 140 140" className="h-44 w-44">
-          <circle cx="70" cy="70" r={radius} fill="none" stroke="#ecece8" strokeWidth="18" />
+    <div className="flex h-full flex-col">
+      <ChartHeader
+        icon={
+          <IconWell tone="purple">
+            <Sparkles className="h-4 w-4" strokeWidth={2.25} />
+          </IconWell>
+        }
+        title="Answer outcomes"
+        subtitle="How questions were handled in this period"
+      />
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 sm:flex-row sm:items-center">
+        <div className="relative shrink-0">
+          <svg viewBox="0 0 140 140" className="h-44 w-44">
+            <circle cx="70" cy="70" r={radius} fill="none" stroke="#ecece8" strokeWidth="20" />
+            {segments.map((part) => (
+              <circle
+                key={part.label}
+                cx="70"
+                cy="70"
+                r={radius}
+                fill="none"
+                stroke={part.color}
+                strokeWidth={hover === part.label ? 22 : 20}
+                strokeDasharray={`${part.len} ${circ - part.len}`}
+                strokeDashoffset={-part.offset}
+                transform="rotate(-90 70 70)"
+                className="cursor-pointer transition-[stroke-width]"
+                onMouseEnter={() => setHover(part.label)}
+                onMouseLeave={() => setHover(null)}
+              >
+                <title>{`${part.label}: ${part.value} (${part.pct}%)`}</title>
+              </circle>
+            ))}
+            <text x="70" y="64" textAnchor="middle" className="fill-tis-navy text-2xl font-bold">
+              {active ? active.value : rawTotal}
+            </text>
+            <text x="70" y="84" textAnchor="middle" className="fill-slate-400 text-[11px] font-medium">
+              {active ? active.pct + "%" : "questions"}
+            </text>
+          </svg>
+          {active ? (
+            <div className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-full rounded-lg bg-tis-ink px-2.5 py-1.5 text-[11px] font-medium text-white shadow-soft">
+              {active.label}: {active.value} ({active.pct}%)
+            </div>
+          ) : null}
+        </div>
+        <ul className="w-full space-y-2.5 text-sm">
           {segments.map((part) => (
-            <circle
+            <li
               key={part.label}
-              cx="70"
-              cy="70"
-              r={radius}
-              fill="none"
-              stroke={part.color}
-              strokeWidth={hover === part.label ? 20 : 18}
-              strokeDasharray={`${part.len} ${circ - part.len}`}
-              strokeDashoffset={-part.offset}
-              transform="rotate(-90 70 70)"
-              className="cursor-pointer transition-[stroke-width]"
+              className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg px-1 py-1 transition ${
+                hover === part.label ? "bg-slate-50" : ""
+              }`}
               onMouseEnter={() => setHover(part.label)}
               onMouseLeave={() => setHover(null)}
             >
-              <title>{`${part.label}: ${part.value} (${part.pct}%)`}</title>
-            </circle>
+              <span className="inline-flex items-center gap-2 text-tis-muted">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ background: part.color }} />
+                {part.label}
+              </span>
+              <span className="font-semibold text-tis-navy">
+                {part.value}
+                <span className="ml-1 text-xs font-medium text-slate-400">({part.pct}%)</span>
+              </span>
+            </li>
           ))}
-          <text x="70" y="64" textAnchor="middle" className="fill-tis-navy text-xl font-bold">
-            {active ? active.value : rawTotal}
-          </text>
-          <text x="70" y="82" textAnchor="middle" className="fill-slate-400 text-[10px] font-medium">
-            {active ? active.pct + "%" : "questions"}
-          </text>
-        </svg>
-        {active ? (
-          <div className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-full rounded-lg bg-tis-ink px-2.5 py-1.5 text-[11px] font-medium text-white shadow-soft">
-            {active.label}: {active.value} ({active.pct}%)
-          </div>
-        ) : null}
+        </ul>
       </div>
-      <ul className="w-full space-y-2.5 text-sm">
-        {segments.map((part) => (
-          <li
-            key={part.label}
-            className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg px-2 py-1.5 transition ${
-              hover === part.label ? "bg-slate-50" : ""
-            }`}
-            onMouseEnter={() => setHover(part.label)}
-            onMouseLeave={() => setHover(null)}
-          >
-            <span className="inline-flex items-center gap-2 text-tis-muted">
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: part.color }} />
-              {part.label}
-            </span>
-            <span className="font-semibold text-tis-navy">
-              {part.value}
-              <span className="ml-1 text-xs font-medium text-slate-400">({part.pct}%)</span>
-            </span>
-          </li>
-        ))}
-      </ul>
     </div>
   );
 }

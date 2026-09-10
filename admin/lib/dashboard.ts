@@ -288,5 +288,5 @@ export const KPI_DEFINITIONS = {
 export function attentionReason(outcome: string): { label: string; tone: "amber" | "rose" } {
   if (outcome === "low_confidence") return { label: "Low confidence", tone: "amber" };
   if (outcome === "no_evidence") return { label: "No knowledge", tone: "rose" };
-  return { label: "Needs review", tone: "rose" };
+  return { label: "No match", tone: "rose" };
 }
