@@ -19,6 +19,7 @@ import {
   percentChange,
   percentagePointChange,
   resolveDateRange,
+  tokyoDayStart,
   type InteractionRow,
 } from "@/lib/dashboard";
 import type { KnowledgeEntry } from "@/lib/types";
@@ -40,12 +41,7 @@ export default async function DashboardPage({
   const since = fetchSinceIso(from, to);
   const until = fetchUntilIso(to);
 
-  const [
-    { data: interactions },
-    unansweredRes,
-    { data: knowledgeRows },
-    { count: previousArticleCount },
-  ] = await Promise.all([
+  const [{ data: interactions }, unansweredRes, { data: knowledgeRows }] = await Promise.all([
     supabase
       .from("interactions")
       .select("created_at, outcome, question, human_replied_at")
@@ -62,11 +58,6 @@ export default async function DashboardPage({
       .select("id, origin, origin_interaction_id, created_at, status")
       .eq("status", "active")
       .limit(5000),
-    supabase
-      .from("knowledge_entries")
-      .select("id", { count: "exact", head: true })
-      .eq("status", "active")
-      .lt("created_at", since),
   ]);
 
   const dash = buildDashboardModel((interactions || []) as InteractionRow[], from, to);
@@ -78,20 +69,27 @@ export default async function DashboardPage({
     "id" | "origin" | "origin_interaction_id" | "created_at" | "status"
   >[];
 
+  const periodStartIso = tokyoDayStart(from).toISOString();
+  const inCurrent = (iso: string) => iso >= periodStartIso && iso <= until;
+
   const articles = entries.length;
-  const addedThisPeriod = entries.filter(
-    (e) => e.created_at >= since && e.created_at <= until,
+  const addedThisPeriod = entries.filter((e) => inCurrent(e.created_at)).length;
+  const fromParents = entries.filter((e) => e.origin === "inbox").length;
+  const fromParentsThisPeriod = entries.filter(
+    (e) => e.origin === "inbox" && inCurrent(e.created_at),
   ).length;
-  const fromParents = entries.filter(
-    (e) => e.origin === "inbox" && e.created_at >= since && e.created_at <= until,
+  const fromHumanThisPeriod = entries.filter(
+    (e) => e.origin === "inbox" && Boolean(e.origin_interaction_id) && inCurrent(e.created_at),
   ).length;
-  const groundedDenom = current.successCount + current.gapCount;
   const humanSlice = current.fixedCount;
   const attentionShare =
     current.questions > 0
       ? Math.round((unansweredCount / Math.max(current.questions, 1)) * 1000) / 10
       : 0;
   const dayLabels = days.map((d) => d.label);
+  const chartRangeLabel = `Last ${dayCount} ${periodNoun}`;
+  const vsPrevious = `vs previous ${dayCount} ${periodNoun}`;
+  const attentionDelta = current.gapCount - previous.gapCount;
 
   return (
     <AppShell email={user.email || ""} unansweredCount={unansweredCount}>
@@ -121,40 +119,37 @@ export default async function DashboardPage({
           sparkline={days.map((d) => d.questions)}
           sparklineLabels={dayLabels}
           delta={percentChange(current.questions, previous.questions)}
-          deltaLabel={`vs previous ${dayCount} ${periodNoun}`}
+          deltaLabel={vsPrevious}
         />
         <StatCard
           label="Answered by Tina"
           value={`${current.answeredByTinaPct}%`}
-          detail={`${current.successCount} of ${groundedDenom || current.questions} grounded vs gaps`}
+          detail={`${current.successCount} of ${current.questions}`}
           definition={KPI_DEFINITIONS.answeredByTina}
           accent="purple"
           sparkline={days.map((d) => d.answeredPct)}
           sparklineLabels={dayLabels}
           sparkFormat="percent"
           delta={percentagePointChange(current.answeredByTinaPct, previous.answeredByTinaPct)}
-          deltaLabel={`vs previous ${dayCount} ${periodNoun}`}
-          deltaUnit=" pp"
+          deltaLabel={vsPrevious}
+          deltaUnit=" percentage points"
         />
         <StatCard
           label="Needs attention"
           value={unansweredCount}
-          detail={
-            current.questions > 0
-              ? `${attentionShare}% of period volume · open queue`
-              : "Open queue"
-          }
+          detail={current.questions > 0 ? `${attentionShare}% of questions` : "Open queue"}
           definition={KPI_DEFINITIONS.needsAttention}
           accent="amber"
           sparkline={days.map((d) => d.gaps)}
           sparklineLabels={dayLabels}
-          delta={percentChange(current.gapCount, previous.gapCount)}
-          deltaLabel={`gap volume vs previous ${dayCount} ${periodNoun}`}
+          delta={attentionDelta}
+          deltaLabel={vsPrevious}
+          deltaUnit=""
         />
         <StatCard
           label="Knowledge coverage"
           value={`${current.knowledgeCoveragePct}%`}
-          detail="Grounded + fixed answers / questions"
+          detail="of questions covered"
           definition={KPI_DEFINITIONS.knowledgeCoverage}
           accent="blue"
           sparkline={days.map((d) =>
@@ -166,26 +161,16 @@ export default async function DashboardPage({
             current.knowledgeCoveragePct,
             previous.knowledgeCoveragePct,
           )}
-          deltaLabel={`vs previous ${dayCount} ${periodNoun}`}
-          deltaUnit=" pp"
+          deltaLabel={vsPrevious}
+          deltaUnit=" percentage points"
         />
       </div>
 
       <div className="mt-6 grid gap-6 xl:grid-cols-[1.7fr_1fr]">
         <section className="card flex min-h-[360px] flex-col">
-          <div className="mb-2 flex items-center justify-between gap-3">
-            <div>
-              <h2 className="text-lg font-bold text-tis-navy">Tina performance over time</h2>
-              <p className="text-sm text-tis-muted">
-                Automation vs attention for the selected {dayCount} {periodNoun}
-              </p>
-            </div>
-            <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-tis-muted">
-              Daily
-            </span>
-          </div>
           <div className="min-h-0 flex-1">
             <PerformanceChart
+              rangeLabel={chartRangeLabel}
               points={days.map((d) => ({
                 label: d.label,
                 questions: d.questions,
@@ -197,8 +182,6 @@ export default async function DashboardPage({
         </section>
 
         <section className="card flex min-h-[360px] flex-col">
-          <h2 className="mb-1 text-lg font-bold text-tis-navy">Answer outcomes</h2>
-          <p className="mb-4 text-sm text-tis-muted">How questions were handled in this period</p>
           <div className="min-h-0 flex-1">
             <OutcomeDonut
               success={current.successCount}
@@ -213,9 +196,7 @@ export default async function DashboardPage({
       <div className="mt-6 grid gap-6 lg:grid-cols-2 xl:grid-cols-3">
         <KnowledgeHealthCard
           articles={articles}
-          articlesDelta={
-            previousArticleCount == null ? addedThisPeriod : articles - (previousArticleCount || 0)
-          }
+          articlesDelta={addedThisPeriod}
           coveragePct={current.knowledgeCoveragePct}
           coverageDelta={percentagePointChange(
             current.knowledgeCoveragePct,
@@ -228,8 +209,11 @@ export default async function DashboardPage({
         <div className="flex flex-col gap-6 lg:col-span-2 xl:col-span-1">
           <TinaLearningCard
             addedToHub={addedThisPeriod}
-            nowCovered={fromParents}
-            fromHuman={fromParents}
+            nowCovered={fromParentsThisPeriod}
+            fromHuman={fromHumanThisPeriod}
+            addedDelta={addedThisPeriod}
+            coveredDelta={fromParentsThisPeriod}
+            humanDelta={fromHumanThisPeriod}
           />
         </div>
       </div>
