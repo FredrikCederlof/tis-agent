@@ -72,7 +72,7 @@ export function PerformanceChart({
 }) {
   const width = 760;
   const height = 280;
-  const pad = { top: 10, right: 8, bottom: 28, left: 36 };
+  const pad = { top: 10, right: 28, bottom: 32, left: 36 };
   const plotW = width - pad.left - pad.right;
   const plotH = height - pad.top - pad.bottom;
   const maxQ = Math.max(1, ...points.map((p) => p.questions));
