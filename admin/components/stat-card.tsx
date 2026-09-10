@@ -62,31 +62,50 @@ function BarSparkline({
   const barW = Math.max(4, (width - padX * 2 - gap * (series.length - 1)) / series.length);
   const [hover, setHover] = useState<number | null>(null);
 
+  function onMove(clientX: number, target: SVGSVGElement) {
+    const rect = target.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const rel = ((clientX - rect.left) / rect.width) * width;
+    let best = 0;
+    let bestDist = Infinity;
+    for (let i = 0; i < series.length; i++) {
+      const cx = padX + i * (barW + gap) + barW / 2;
+      const d = Math.abs(cx - rel);
+      if (d < bestDist) {
+        bestDist = d;
+        best = i;
+      }
+    }
+    setHover(best);
+  }
+
   return (
     <div className="relative shrink-0">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="h-[56px] w-[128px]"
+        className="h-[56px] w-[128px] cursor-crosshair"
         onMouseLeave={() => setHover(null)}
+        onMouseMove={(e) => onMove(e.clientX, e.currentTarget)}
         role="img"
         aria-label="Trend bars"
       >
         {series.map((v, i) => {
-          const h = Math.max(3, (v / max) * (height - padY * 2));
+          const h = Math.max(4, (v / max) * (height - padY * 2));
           const x = padX + i * (barW + gap);
           const y = height - padY - h;
           return (
-            <rect
-              key={i}
-              x={x}
-              y={y}
-              width={barW}
-              height={h}
-              rx={barW / 2}
-              fill={color}
-              opacity={hover == null || hover === i ? 1 : 0.45}
-              onMouseEnter={() => setHover(i)}
-            />
+            <g key={i}>
+              <rect x={x} y={0} width={barW} height={height} fill="transparent" />
+              <rect
+                x={x}
+                y={y}
+                width={barW}
+                height={h}
+                rx={barW / 2}
+                fill={color}
+                opacity={hover == null || hover === i ? 1 : 0.45}
+              />
+            </g>
           );
         })}
       </svg>

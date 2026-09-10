@@ -208,7 +208,7 @@ export default async function DashboardPage({
         <TopKnowledgeGapsCard gaps={topGaps} />
         <div className="flex flex-col gap-6 lg:col-span-2 xl:col-span-1">
           <TinaLearningCard
-            addedToHub={fromParents}
+            addedToHub={addedThisPeriod}
             nowCovered={fromParentsThisPeriod}
             fromHuman={fromHumanThisPeriod}
             addedDelta={addedThisPeriod}

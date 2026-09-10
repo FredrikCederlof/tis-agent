@@ -196,7 +196,7 @@ export function TinaLearningCard({
           <div key={item.label}>
             <p className="font-display text-3xl font-bold text-tis-navy">{item.value}</p>
             <p className="mt-1 text-xs leading-snug text-tis-muted">{item.label}</p>
-            {item.delta != null ? (
+            {item.delta ? (
               <p className="mt-1.5 text-xs font-semibold text-emerald-600">
                 {item.delta >= 0 ? "↑" : "↓"} {Math.abs(item.delta)} this period
               </p>
