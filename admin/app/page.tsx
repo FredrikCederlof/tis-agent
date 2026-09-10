@@ -64,7 +64,7 @@ export default async function DashboardPage({
 
   return (
     <AppShell email={user.email || ""} unansweredCount={unansweredCount}>
-      <div className="pb-10">
+      <div className="pb-16">
         <div className="mb-6 grid gap-4 sm:mb-8 lg:grid-cols-[1fr_auto] lg:items-start">
           <div>
             <h1 className="page-title">Dashboard</h1>
