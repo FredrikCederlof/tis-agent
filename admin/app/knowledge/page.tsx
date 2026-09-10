@@ -103,6 +103,7 @@ export default async function KnowledgeHubPage({
             value={addedThisPeriod}
             definition={KPI_DEFINITIONS.addedThisPeriod}
             accent="amber"
+            tipAlign="end"
           />
         </div>
         {justAdded && (

@@ -309,27 +309,17 @@ export function OutcomeDonut({
   ];
   const rawTotal = parts.reduce((s, p) => s + p.value, 0);
   const total = rawTotal || 1;
-  const radius = 52;
-  const circ = 2 * Math.PI * radius;
   const [hover, setHover] = useState<string | null>(null);
 
-  let offset = 0;
-  const segments = parts.map((part) => {
-    const len = (part.value / total) * circ;
-    const seg = {
-      ...part,
-      len,
-      offset,
-      pct: rawTotal === 0 ? 0 : Math.round((part.value / total) * 100),
-    };
-    offset += len;
-    return seg;
-  });
-
+  const segments = parts.map((part) => ({
+    ...part,
+    pct: rawTotal === 0 ? 0 : Math.round((part.value / total) * 100),
+  }));
   const active = segments.find((s) => s.label === hover) ?? null;
+  const visible = segments.filter((s) => s.value > 0);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-w-0 flex-col">
       <ChartHeader
         icon={
           <IconWell tone="purple">
@@ -339,43 +329,42 @@ export function OutcomeDonut({
         title="Answer outcomes"
         subtitle="How questions were handled in this period"
       />
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4">
-        <div className="relative shrink-0">
-          <svg viewBox="0 0 140 140" className="h-36 w-36 xl:h-40 xl:w-40">
-            <circle cx="70" cy="70" r={radius} fill="none" stroke="#ecece8" strokeWidth="20" />
-            {segments.map((part) => (
-              <circle
-                key={part.label}
-                cx="70"
-                cy="70"
-                r={radius}
-                fill="none"
-                stroke={part.color}
-                strokeWidth={hover === part.label ? 22 : 20}
-                strokeDasharray={`${part.len} ${circ - part.len}`}
-                strokeDashoffset={-part.offset}
-                transform="rotate(-90 70 70)"
-                className="cursor-pointer transition-[stroke-width]"
-                onMouseEnter={() => setHover(part.label)}
-                onMouseLeave={() => setHover(null)}
-              >
-                <title>{`${part.label}: ${part.value} (${part.pct}%)`}</title>
-              </circle>
-            ))}
-            <text x="70" y="64" textAnchor="middle" className="fill-tis-navy text-2xl font-bold">
-              {active ? active.value : rawTotal}
-            </text>
-            <text x="70" y="84" textAnchor="middle" className="fill-slate-400 text-[11px] font-medium">
-              {active ? active.pct + "%" : "questions"}
-            </text>
-          </svg>
-          {active ? (
-            <div className="pointer-events-none absolute left-1/2 top-0 z-10 -translate-x-1/2 -translate-y-full rounded-lg bg-tis-ink px-2.5 py-1.5 text-[11px] font-medium text-white shadow-soft">
-              {active.label}: {active.value} ({active.pct}%)
-            </div>
-          ) : null}
+      <div className="flex min-h-0 flex-1 flex-col justify-center gap-5">
+        <div>
+          <p className="font-display text-3xl font-bold tracking-tight text-tis-navy">
+            {active ? active.value : rawTotal}
+          </p>
+          <p className="text-xs text-tis-muted">
+            {active ? `${active.pct}% ${active.label.toLowerCase()}` : "questions"}
+          </p>
+          <div
+            className="mt-3 flex h-3.5 w-full overflow-hidden rounded-full bg-slate-100"
+            onMouseLeave={() => setHover(null)}
+          >
+            {visible.length === 0 ? (
+              <div className="h-full w-full rounded-full bg-slate-200" />
+            ) : (
+              visible.map((part) => (
+                <button
+                  key={part.label}
+                  type="button"
+                  aria-label={`${part.label}: ${part.value} (${part.pct}%)`}
+                  className="h-full min-w-0 border-0 p-0 transition-opacity"
+                  style={{
+                    flexGrow: part.value,
+                    flexBasis: 0,
+                    background: part.color,
+                    opacity: hover == null || hover === part.label ? 1 : 0.45,
+                  }}
+                  onMouseEnter={() => setHover(part.label)}
+                  onFocus={() => setHover(part.label)}
+                  onBlur={() => setHover(null)}
+                />
+              ))
+            )}
+          </div>
         </div>
-        <ul className="w-full space-y-2.5 text-sm">
+        <ul className="w-full min-w-0 space-y-2.5 text-sm">
           {segments.map((part) => (
             <li
               key={part.label}
@@ -385,11 +374,11 @@ export function OutcomeDonut({
               onMouseEnter={() => setHover(part.label)}
               onMouseLeave={() => setHover(null)}
             >
-              <span className="inline-flex items-center gap-2 text-tis-muted">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ background: part.color }} />
-                {part.label}
+              <span className="inline-flex min-w-0 items-center gap-2 text-tis-muted">
+                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: part.color }} />
+                <span className="truncate">{part.label}</span>
               </span>
-              <span className="font-semibold text-tis-navy">
+              <span className="shrink-0 font-semibold text-tis-navy">
                 {part.value}
                 <span className="ml-1 text-xs font-medium text-slate-400">({part.pct}%)</span>
               </span>

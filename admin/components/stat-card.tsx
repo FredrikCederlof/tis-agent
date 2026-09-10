@@ -83,7 +83,7 @@ function BarSparkline({
     <div className="relative shrink-0">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="h-[56px] w-[128px] cursor-crosshair"
+        className="h-[48px] w-[96px] max-w-full cursor-crosshair sm:h-[56px] sm:w-[112px]"
         onMouseLeave={() => setHover(null)}
         onMouseMove={(e) => onMove(e.clientX, e.currentTarget)}
         role="img"
@@ -156,6 +156,7 @@ export function StatCard({
   delta,
   deltaLabel = "vs previous 30 days",
   deltaUnit = "%",
+  tipAlign = "start",
 }: {
   label: string;
   value: string | number;
@@ -168,6 +169,7 @@ export function StatCard({
   delta?: number | null;
   deltaLabel?: string;
   deltaUnit?: string;
+  tipAlign?: "start" | "end";
 }) {
   const theme = ACCENTS[accent];
   const Icon = theme.Icon;
@@ -178,7 +180,7 @@ export function StatCard({
 
   return (
     <div
-      className={`relative z-0 flex min-h-[148px] flex-col justify-between rounded-2xl border p-4 shadow-card hover:z-30 focus-within:z-30 sm:p-5 ${theme.card}`}
+      className={`relative z-0 flex min-h-[148px] min-w-0 flex-col justify-between overflow-visible rounded-2xl border p-4 shadow-card hover:z-30 focus-within:z-30 sm:p-5 ${theme.card}`}
     >
       <div className="flex items-start gap-2">
         <span
@@ -188,10 +190,12 @@ export function StatCard({
         </span>
         <p className="min-w-0 pt-1 text-sm font-semibold text-tis-navy">{label}</p>
         <div className="relative z-40 mt-1 shrink-0">
-          <InfoTip label={label}>{definition}</InfoTip>
+          <InfoTip label={label} align={tipAlign}>
+            {definition}
+          </InfoTip>
         </div>
       </div>
-      <div className="mt-4 flex items-end justify-between gap-3">
+      <div className="mt-4 flex min-w-0 items-end justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-baseline gap-2">
             <p className="font-display text-3xl font-bold tracking-tight text-tis-navy">{value}</p>
