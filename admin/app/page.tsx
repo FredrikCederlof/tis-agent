@@ -64,7 +64,7 @@ export default async function DashboardPage({
 
   return (
     <AppShell email={user.email || ""} unansweredCount={unansweredCount}>
-      <div className="pb-16">
+      <div className="min-w-0 pb-24">
         <div className="mb-6 grid gap-4 sm:mb-8 lg:grid-cols-[1fr_auto] lg:items-start">
           <div>
             <h1 className="page-title">Dashboard</h1>
@@ -82,7 +82,7 @@ export default async function DashboardPage({
           </div>
         </div>
 
-        <div className="relative z-10 grid gap-4 overflow-visible sm:grid-cols-2 xl:grid-cols-4">
+        <div className="relative z-10 grid min-w-0 gap-4 overflow-visible sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Total questions"
             value={current.questions}
@@ -135,11 +135,12 @@ export default async function DashboardPage({
             )}
             deltaLabel={vsPrevious}
             deltaUnit=" percentage points"
+            tipAlign="end"
           />
         </div>
 
-        <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.9fr)_minmax(0,1fr)]">
-          <section className="card flex min-h-[340px] flex-col">
+        <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.9fr)_minmax(0,1fr)]">
+          <section className="card flex min-h-[340px] min-w-0 flex-col">
             <div className="min-h-0 flex-1">
               <PerformanceChart
                 rangeLabel={chartRangeLabel}
@@ -153,7 +154,7 @@ export default async function DashboardPage({
             </div>
           </section>
 
-          <section className="card flex min-h-[340px] flex-col">
+          <section className="card flex min-h-[340px] min-w-0 flex-col">
             <div className="min-h-0 flex-1">
               <OutcomeDonut
                 success={current.successCount}
@@ -167,7 +168,7 @@ export default async function DashboardPage({
           <TopKnowledgeGapsCard gaps={topGaps} />
         </div>
 
-        <div className="mt-6">
+        <div className="mt-6 min-w-0">
           <NeedsAttentionTable
             rows={(unansweredRes.data || []) as {
               id: string;

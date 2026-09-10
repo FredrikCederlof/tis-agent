@@ -1,6 +1,14 @@
 import { Info } from "lucide-react";
 
-export function InfoTip({ label, children }: { label: string; children: string }) {
+export function InfoTip({
+  label,
+  children,
+  align = "start",
+}: {
+  label: string;
+  children: string;
+  align?: "start" | "end";
+}) {
   const id = `metric-def-${label.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}`;
 
   return (
@@ -16,7 +24,9 @@ export function InfoTip({ label, children }: { label: string; children: string }
       <span
         id={id}
         role="tooltip"
-        className="pointer-events-none invisible absolute bottom-[calc(100%+8px)] left-0 z-[80] w-64 rounded-lg bg-tis-ink px-3 py-2 text-left text-xs font-medium leading-relaxed text-white opacity-0 shadow-soft transition-opacity peer-hover:visible peer-hover:opacity-100 peer-focus:visible peer-focus:opacity-100 peer-focus-visible:visible peer-focus-visible:opacity-100"
+        className={`pointer-events-none invisible absolute bottom-[calc(100%+8px)] z-[80] w-64 max-w-[min(16rem,calc(100vw-2rem))] rounded-lg bg-tis-ink px-3 py-2 text-left text-xs font-medium leading-relaxed text-white opacity-0 shadow-soft transition-opacity peer-hover:visible peer-hover:opacity-100 peer-focus:visible peer-focus:opacity-100 peer-focus-visible:visible peer-focus-visible:opacity-100 ${
+          align === "end" ? "right-0" : "left-0"
+        }`}
       >
         {children}
       </span>

@@ -25,7 +25,7 @@ function maskParent(waFrom: string | null | undefined): string {
 
 export function TopKnowledgeGapsCard({ gaps }: { gaps: KnowledgeGap[] }) {
   return (
-    <section className="card flex h-full flex-col">
+    <section className="card flex h-full min-w-0 flex-col">
       <div className="flex items-center gap-2.5">
         <IconWell tone="blue">
           <Search className="h-4 w-4" strokeWidth={2.25} />
@@ -103,15 +103,15 @@ export function NeedsAttentionTable({
       {rows.length === 0 ? (
         <p className="px-5 pb-5 text-sm text-tis-muted">Nothing waiting in Needs attention.</p>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[720px] text-left text-sm">
+        <div className="overflow-x-hidden">
+          <table className="w-full table-fixed text-left text-sm">
             <thead className="border-y border-slate-100 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
               <tr>
-                <th className="px-5 py-2.5">Question</th>
-                <th className="px-5 py-2.5">Parent</th>
-                <th className="px-5 py-2.5">Asked</th>
-                <th className="px-5 py-2.5">Reason</th>
-                <th className="px-5 py-2.5 text-right">Actions</th>
+                <th className="w-[42%] px-5 py-2.5">Question</th>
+                <th className="w-[16%] px-3 py-2.5">Parent</th>
+                <th className="w-[12%] px-3 py-2.5">Asked</th>
+                <th className="w-[16%] px-3 py-2.5">Reason</th>
+                <th className="w-[14%] px-5 py-2.5 text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -119,20 +119,18 @@ export function NeedsAttentionTable({
                 const reason = attentionReason(row.outcome);
                 return (
                   <tr key={row.id} className="border-b border-slate-50 last:border-0">
-                    <td className="max-w-md px-5 py-3.5 font-medium text-tis-navy">
-                      <Link href={`/chats/${row.session_id}`} className="line-clamp-1 hover:underline">
+                    <td className="px-5 py-3.5 font-medium text-tis-navy">
+                      <Link href={`/chats/${row.session_id}`} className="block truncate hover:underline">
                         {row.question}
                       </Link>
                     </td>
-                    <td className="whitespace-nowrap px-5 py-3.5 text-tis-muted">
-                      {maskParent(row.wa_from)}
-                    </td>
-                    <td className="whitespace-nowrap px-5 py-3.5 text-tis-muted">
+                    <td className="truncate px-3 py-3.5 text-tis-muted">{maskParent(row.wa_from)}</td>
+                    <td className="whitespace-nowrap px-3 py-3.5 text-tis-muted">
                       {relativeTime(row.created_at)}
                     </td>
-                    <td className="px-5 py-3.5">
+                    <td className="px-3 py-3.5">
                       <span
-                        className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        className={`inline-flex max-w-full truncate rounded-full px-2.5 py-0.5 text-xs font-semibold ${
                           reason.tone === "amber"
                             ? "bg-amber-50 text-amber-700"
                             : "bg-rose-50 text-tis-danger"
