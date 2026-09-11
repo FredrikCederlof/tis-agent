@@ -58,6 +58,7 @@ export function AppShell({
   const [collapsed, setCollapsed] = useState(false);
   const [fetchedUnread, setFetchedUnread] = useState(0);
   const unreadChats = chatsUnreadCount ?? fetchedUnread;
+  const fillCanvas = pathname.startsWith("/chats");
 
   useEffect(() => {
     setCollapsed(window.localStorage.getItem(NAV_COLLAPSED_KEY) === "1");
@@ -273,7 +274,7 @@ export function AppShell({
       </aside>
 
       <main className="admin-main">
-        <div className="admin-canvas">{children}</div>
+        <div className={`admin-canvas${fillCanvas ? " admin-canvas-fill" : ""}`}>{children}</div>
       </main>
     </div>
   );
@@ -288,8 +289,14 @@ export function PageHeader({
   subtitle?: string;
   actions?: React.ReactNode;
 }) {
+  const pathname = usePathname();
+  const compact = pathname.startsWith("/chats");
   return (
-    <div className="mb-6 flex shrink-0 flex-col gap-4 sm:mb-8 sm:flex-row sm:items-end sm:justify-between">
+    <div
+      className={`flex shrink-0 flex-col gap-4 sm:flex-row sm:items-end sm:justify-between ${
+        compact ? "mb-3" : "mb-6 sm:mb-8"
+      }`}
+    >
       <div>
         <h1 className="page-title">{title}</h1>
         {subtitle && <p className="page-subtitle">{subtitle}</p>}

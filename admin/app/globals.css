@@ -84,8 +84,8 @@ body {
     @apply w-full min-w-0;
   }
 
-  .admin-canvas > *:last-child {
-    @apply min-h-0 flex-1;
+  .admin-canvas-fill {
+    @apply pb-4 lg:pb-5;
   }
 
   .tis-day-picker {

@@ -14,7 +14,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { ReplyComposer } from "@/components/reply-composer";
+import { ReplyComposer, ReplyWindowBadge } from "@/components/reply-composer";
 import { WaMessage } from "@/components/wa-message";
 import {
   PAGE_SIZE,
@@ -32,8 +32,10 @@ import {
   formatRelativeTime,
   pageCount,
   paginate,
-  parentHue,
+  parentColor,
+  parentInitials,
   parentLabel,
+  questionCountBadge,
   replyTarget,
 } from "@/lib/chats";
 
@@ -46,7 +48,6 @@ const OUTCOME_LABELS: Record<string, string> = {
 };
 
 function ParentAvatar({ waFrom, size = 40 }: { waFrom: string; size?: number }) {
-  const hue = parentHue(waFrom);
   return (
     <span
       className="inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white"
@@ -54,11 +55,11 @@ function ParentAvatar({ waFrom, size = 40 }: { waFrom: string; size?: number }) 
         width: size,
         height: size,
         fontSize: Math.max(11, size * 0.36),
-        backgroundColor: `hsl(${hue} 42% 42%)`,
+        backgroundColor: parentColor(waFrom),
       }}
       aria-hidden
     >
-      P
+      {parentInitials(waFrom)}
     </span>
   );
 }
@@ -130,6 +131,9 @@ export function ChatsWorkspace({
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
   const [showInfo, setShowInfo] = useState(true);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
 
   function setFilter<K extends keyof SessionFilters>(key: K, value: SessionFilters[K]) {
     setFilters((current) => ({ ...current, [key]: value }));
@@ -165,10 +169,41 @@ export function ChatsWorkspace({
     setFilters({ query: "", read: "", language: "", outcome: "", from: "", to: "" });
   }
 
+  function toggleSelected(id: string, checked: boolean) {
+    setSelectedIds((current) => {
+      if (checked) return current.includes(id) ? current : [...current, id];
+      return current.filter((item) => item !== id);
+    });
+  }
+
+  async function deleteSelected() {
+    if (!selectedIds.length) return;
+    if (
+      !window.confirm(
+        `Delete ${selectedIds.length} conversation${selectedIds.length === 1 ? "" : "s"}?\nThis permanently removes them from Tina Admin.`,
+      )
+    ) {
+      return;
+    }
+    setBulkDeleting(true);
+    setBulkError(null);
+    const supabase = createClient();
+    const { error } = await supabase.from("chat_sessions").delete().in("id", selectedIds);
+    setBulkDeleting(false);
+    if (error) {
+      setBulkError(error.message);
+      return;
+    }
+    const removedOpen = selectedId ? selectedIds.includes(selectedId) : false;
+    setSelectedIds([]);
+    if (removedOpen) router.push("/chats");
+    else router.refresh();
+  }
+
   return (
-    <div className="grid h-full min-h-0 flex-1 overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-card lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]">
+    <div className="grid h-full min-h-0 flex-1 overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-card lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
       <aside
-        className={`flex min-h-0 flex-col border-slate-100 bg-white lg:border-r ${
+        className={`flex min-h-0 flex-col border-slate-100 bg-slate-50 lg:border-r ${
           selectedId ? "hidden lg:flex" : "flex"
         }`}
       >
@@ -285,58 +320,104 @@ export function ChatsWorkspace({
         ) : filtered.length === 0 ? (
           <p className="px-4 pb-4 text-sm text-tis-muted">No sessions match these filters.</p>
         ) : (
-          <ul className="min-h-0 flex-1 overflow-y-auto px-2">
+          <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-2">
             {visible.map((row) => {
               const active = row.id === selectedId;
+              const questions = questionCountBadge(row.message_count);
+              const checked = selectedIds.includes(row.id);
               return (
                 <li key={row.id}>
-                  <Link
-                    href={`/chats/${row.id}`}
-                    className={`relative flex items-start gap-3 rounded-2xl px-2.5 py-3 transition ${
-                      active ? "bg-tis-mist text-tis-navy" : "hover:bg-slate-50"
+                  <div
+                    className={`flex items-start gap-1 rounded-2xl border shadow-sm transition ${
+                      active
+                        ? "border-tis-navy/20 bg-tis-mist"
+                        : "border-black/[0.06] bg-white hover:bg-white"
                     }`}
                   >
-                    {row.unread && (
-                      <span
-                        className="absolute left-0 top-1/2 h-1.5 w-1.5 -translate-y-1/2 rounded-full bg-tis-unread"
-                        aria-label="Unread"
+                    <label
+                      className="flex cursor-pointer items-start px-2.5 pt-4"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <span className="sr-only">Select conversation</span>
+                      <input
+                        type="checkbox"
+                        className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                        checked={checked}
+                        onChange={(e) => toggleSelected(row.id, e.target.checked)}
                       />
-                    )}
-                    <ParentAvatar waFrom={row.wa_from} size={40} />
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-baseline justify-between gap-2">
-                        <p
-                          className={`truncate text-sm text-tis-navy ${
-                            row.unread ? "font-bold" : "font-semibold"
-                          }`}
-                        >
-                          {parentLabel(row.wa_from)}
-                        </p>
-                        <span className="shrink-0 text-[11px] text-slate-400">
-                          {formatRelativeTime(row.last_message_at)}
-                        </span>
-                      </div>
-                      <p
-                        className={`mt-0.5 truncate text-[13px] ${
-                          row.unread ? "font-medium text-tis-ink" : "text-tis-muted"
-                        }`}
-                      >
-                        {row.last_question || "No messages"}
-                      </p>
-                      {row.needs_attention && (
-                        <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">
-                          <AlertCircle className="h-3 w-3" />
-                          Needs attention
-                        </span>
+                    </label>
+                    <Link
+                      href={`/chats/${row.id}`}
+                      className="relative flex min-w-0 flex-1 items-start gap-3 py-3 pr-3"
+                    >
+                      {row.unread && (
+                        <span
+                          className="absolute left-0 top-1/2 h-1.5 w-1.5 -translate-x-1 -translate-y-1/2 rounded-full bg-tis-unread"
+                          aria-label="Unread"
+                        />
                       )}
-                    </div>
-                  </Link>
+                      <ParentAvatar waFrom={row.wa_from} size={40} />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <p
+                            className={`truncate text-sm text-tis-navy ${
+                              row.unread ? "font-bold" : "font-semibold"
+                            }`}
+                          >
+                            {parentLabel(row.wa_from)}
+                          </p>
+                          <span className="shrink-0 text-[11px] text-slate-400">
+                            {formatRelativeTime(row.last_message_at)}
+                          </span>
+                        </div>
+                        <div className="mt-0.5 flex items-center gap-2">
+                          <p
+                            className={`min-w-0 flex-1 truncate text-[13px] ${
+                              row.unread ? "font-medium text-tis-ink" : "text-tis-muted"
+                            }`}
+                          >
+                            {row.last_question || "No messages"}
+                          </p>
+                          {questions != null ? (
+                            <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-tis-unread px-1.5 text-[10px] font-bold text-white">
+                              {questions}
+                            </span>
+                          ) : null}
+                        </div>
+                        {row.needs_attention && (
+                          <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">
+                            <AlertCircle className="h-3 w-3" />
+                            Needs attention
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  </div>
                 </li>
               );
             })}
           </ul>
         )}
 
+        {selectedIds.length > 0 && (
+          <div className="flex items-center justify-between gap-2 border-t border-slate-200 bg-white px-3 py-2.5">
+            <p className="text-xs font-semibold text-tis-navy">
+              {selectedIds.length} selected
+            </p>
+            <button
+              type="button"
+              className="secondary !px-3 !py-1.5 text-xs text-tis-danger"
+              disabled={bulkDeleting}
+              onClick={() => void deleteSelected()}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              {bulkDeleting ? "Deleting…" : "Delete"}
+            </button>
+          </div>
+        )}
+        {bulkError ? (
+          <p className="px-3 pb-2 text-xs text-tis-danger">{bulkError}</p>
+        ) : null}
         {pages > 1 && (
           <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs">
             <button
@@ -609,9 +690,12 @@ function ChatThread({
         <footer className="border-t border-slate-100 bg-white px-4 py-3 sm:px-5">
           {target ? (
             <div className="rounded-2xl border border-slate-200 bg-white p-3">
-              <p className="mb-2 truncate text-xs text-tis-muted">
-                Replying to <span className="font-semibold text-tis-navy">{target.question}</span>
-              </p>
+              <div className="mb-2 flex items-start justify-between gap-3">
+                <p className="min-w-0 truncate text-xs text-tis-muted">
+                  Replying to <span className="font-semibold text-tis-navy">{target.question}</span>
+                </p>
+                <ReplyWindowBadge lastInboundAt={lastInboundAt} />
+              </div>
               <ReplyComposer
                 interactionId={target.id}
                 question={target.question}
@@ -754,7 +838,7 @@ function Bubble({
           alt="Tina"
           width={32}
           height={32}
-          className="shrink-0 rounded-full object-cover ring-2 ring-tis-ink"
+          className="shrink-0 rounded-full object-cover ring-1 ring-tis-ink"
         />
       )}
     </div>
