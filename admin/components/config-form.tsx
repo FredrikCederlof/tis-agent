@@ -9,6 +9,11 @@ import {
 } from "@/lib/default-system-prompt";
 import { createClient } from "@/lib/supabase/client";
 import type { AgentConfigRow } from "@/lib/types";
+import {
+  MAX_MINUTES_SAVED_PER_QUESTION,
+  MIN_MINUTES_SAVED_PER_QUESTION,
+  clampMinutesPerQuestion,
+} from "@/lib/time-saved";
 
 const DEFAULT_GREETING =
   "Hi — I'm Tina. Ask me about the calendar, absences, school times, " +
@@ -76,6 +81,9 @@ export function ConfigForm({
   const [noEvidenceMessages, setNoEvidenceMessages] = useState(
     messagesToTextarea(config.no_evidence_messages, config.no_evidence_message),
   );
+  const [minutesSavedPerQuestion, setMinutesSavedPerQuestion] = useState(
+    String(clampMinutesPerQuestion(config.minutes_saved_per_question)),
+  );
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -116,6 +124,20 @@ export function ConfigForm({
       return;
     }
 
+    const parsedMinutes = Number(minutesSavedPerQuestion);
+    if (
+      !Number.isFinite(parsedMinutes) ||
+      parsedMinutes < MIN_MINUTES_SAVED_PER_QUESTION ||
+      parsedMinutes > MAX_MINUTES_SAVED_PER_QUESTION
+    ) {
+      setError(
+        `Estimated time saved per question must be between ${MIN_MINUTES_SAVED_PER_QUESTION} and ${MAX_MINUTES_SAVED_PER_QUESTION} minutes.`,
+      );
+      setSaving(false);
+      return;
+    }
+    const minutesSaved = clampMinutesPerQuestion(parsedMinutes);
+
     const supabase = createClient();
     const { error: updateError } = await supabase
       .from("agent_config")
@@ -127,6 +149,7 @@ export function ConfigForm({
         greeting_message: greeting,
         no_evidence_messages: fallbacks,
         no_evidence_message: fallbacks[0],
+        minutes_saved_per_question: minutesSaved,
         updated_at: new Date().toISOString(),
         updated_by: userEmail,
       })
@@ -134,7 +157,10 @@ export function ConfigForm({
 
     setSaving(false);
     if (updateError) {
-      setError(updateError.message);
+      const extra = /minutes_saved/i.test(updateError.message)
+        ? " Run sql/015_minutes_saved.sql in Supabase, then try again."
+        : "";
+      setError(`${updateError.message}${extra}`);
       return;
     }
     setMessage("Saved. Tina will pick up changes within about a minute.");
@@ -208,6 +234,30 @@ export function ConfigForm({
             avoids repeating the same line twice in a row. Keep them short and parent-focused —
             no technical jargon. Do not invent answers here.
           </p>
+        </div>
+        <div>
+          <label className="label" htmlFor="minutes-saved">
+            Estimated time saved per question
+          </label>
+          <p className="mb-2 text-sm text-tis-muted">
+            How many minutes of manual work is typically saved when Tina successfully answers a
+            parent question without human intervention.
+          </p>
+          <div className="flex max-w-xs items-center gap-2">
+            <input
+              id="minutes-saved"
+              type="number"
+              inputMode="numeric"
+              min={MIN_MINUTES_SAVED_PER_QUESTION}
+              max={MAX_MINUTES_SAVED_PER_QUESTION}
+              step={1}
+              value={minutesSavedPerQuestion}
+              onChange={(e) => setMinutesSavedPerQuestion(e.target.value)}
+              className="w-24"
+            />
+            <span className="text-sm font-medium text-tis-navy">minutes</span>
+          </div>
+          <p className="hint">Used to calculate the Time saved KPI on the Dashboard.</p>
         </div>
       </section>
 

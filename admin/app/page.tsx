@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
@@ -11,11 +12,16 @@ import {
   buildDashboardModel,
   fetchSinceIso,
   fetchUntilIso,
-  percentChange,
   percentagePointChange,
   resolveDateRange,
   type InteractionRow,
 } from "@/lib/dashboard";
+import {
+  clampMinutesPerQuestion,
+  formatSavedTime,
+  formatSavedTimeDelta,
+  timeSavedMinutes,
+} from "@/lib/time-saved";
 
 export const dynamic = "force-dynamic";
 
@@ -34,23 +40,30 @@ export default async function DashboardPage({
   const since = fetchSinceIso(from, to);
   const until = fetchUntilIso(to);
 
-  const [{ data: interactions }, unansweredRes] = await Promise.all([
-    supabase
-      .from("interactions")
-      .select("created_at, outcome, question, human_replied_at")
-      .gte("created_at", since)
-      .lte("created_at", until)
-      .limit(10000),
-    supabase
-      .from("unanswered_interactions")
-      .select("id, session_id, question, outcome, created_at, wa_from", { count: "exact" })
-      .order("created_at", { ascending: false })
-      .limit(5),
-  ]);
+  const [{ data: interactions, error: interactionsError }, unansweredRes, configRes] =
+    await Promise.all([
+      supabase
+        .from("interactions")
+        .select("created_at, outcome, question, human_replied_at")
+        .gte("created_at", since)
+        .lte("created_at", until)
+        .limit(10000),
+      supabase
+        .from("unanswered_interactions")
+        .select("id, session_id, question, outcome, created_at, wa_from", { count: "exact" })
+        .order("created_at", { ascending: false })
+        .limit(5),
+      supabase.from("agent_config").select("minutes_saved_per_question").eq("id", 1).maybeSingle(),
+    ]);
 
+  const minutesPerQuestion = clampMinutesPerQuestion(
+    configRes.data?.minutes_saved_per_question,
+  );
   const dash = buildDashboardModel((interactions || []) as InteractionRow[], from, to);
   const { current, previous, days, dayCount, topGaps } = dash;
   const unansweredCount = unansweredRes.count ?? 0;
+  const currentSaved = timeSavedMinutes(current.tinaHandledCount, minutesPerQuestion);
+  const previousSaved = timeSavedMinutes(previous.tinaHandledCount, minutesPerQuestion);
   const periodNoun = dayCount === 1 ? "day" : "days";
   const humanSlice = current.fixedCount;
   const attentionShare =
@@ -82,15 +95,23 @@ export default async function DashboardPage({
           </div>
         </div>
 
+        {interactionsError ? (
+          <p className="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-tis-danger">
+            Could not load dashboard interactions: {interactionsError.message}
+          </p>
+        ) : null}
+
         <div className="relative z-10 grid min-w-0 gap-4 overflow-visible sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            label="Total questions"
-            value={current.questions}
-            definition={KPI_DEFINITIONS.totalQuestions}
+            label="Time saved"
+            value={formatSavedTime(currentSaved)}
+            icon={Clock}
+            definition={KPI_DEFINITIONS.timeSaved}
             accent="green"
-            sparkline={days.map((d) => d.questions)}
+            sparkline={days.map((d) => timeSavedMinutes(d.tinaHandled, minutesPerQuestion))}
             sparklineLabels={dayLabels}
-            delta={percentChange(current.questions, previous.questions)}
+            sparkFormat="duration"
+            deltaFormatted={formatSavedTimeDelta(currentSaved, previousSaved)}
             deltaLabel={vsPrevious}
           />
           <StatCard

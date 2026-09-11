@@ -7,6 +7,7 @@ export type AgentConfigRow = {
   no_evidence_message?: string;
   no_evidence_messages?: string[] | { en?: string[] };
   greeting_message?: string | null;
+  minutes_saved_per_question?: number | null;
   updated_at: string;
   updated_by: string | null;
 };

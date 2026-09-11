@@ -1,3 +1,5 @@
+import { isTinaHandled, TIME_SAVED_DEFINITION } from "@/lib/time-saved";
+
 /** Tokyo-calendar analytics for the admin dashboard. Japan has no DST. */
 
 export const TOKYO = "Asia/Tokyo";
@@ -106,6 +108,7 @@ export type DailyPoint = {
   questions: number;
   gaps: number;
   success: number;
+  tinaHandled: number;
   answeredPct: number;
   attentionPct: number;
 };
@@ -121,6 +124,8 @@ export type PeriodStats = {
   /** (grounded + fixed) ÷ all questions in period. */
   knowledgeCoveragePct: number;
   humanReplyCount: number;
+  /** Grounded Tina answers with no human reply. */
+  tinaHandledCount: number;
 };
 
 export type InteractionRow = {
@@ -179,6 +184,9 @@ function statsFor(interactions: InteractionRow[]): PeriodStats {
   const fixedCount = interactions.filter((i) => i.outcome === "fixed_answer").length;
   const errorCount = interactions.filter((i) => i.outcome === "error").length;
   const humanReplyCount = interactions.filter((i) => Boolean(i.human_replied_at)).length;
+  const tinaHandledCount = interactions.filter((i) =>
+    isTinaHandled(i.outcome, i.human_replied_at),
+  ).length;
   const questions = interactions.length;
   return {
     questions,
@@ -189,6 +197,7 @@ function statsFor(interactions: InteractionRow[]): PeriodStats {
     answeredByTinaPct: answeredByTinaPct(successCount, gapCount),
     knowledgeCoveragePct: knowledgeCoveragePct(successCount, fixedCount, questions),
     humanReplyCount,
+    tinaHandledCount,
   };
 }
 
@@ -236,6 +245,7 @@ export function buildDashboardModel(
       questions: 0,
       gaps: 0,
       success: 0,
+      tinaHandled: 0,
       answeredPct: 0,
       attentionPct: 0,
     });
@@ -252,6 +262,7 @@ export function buildDashboardModel(
     if (!byDay[key]) continue;
     byDay[key].questions += 1;
     if (item.outcome === "success") byDay[key].success += 1;
+    if (isTinaHandled(item.outcome, item.human_replied_at)) byDay[key].tinaHandled += 1;
     if (isGap(item.outcome)) byDay[key].gaps += 1;
   }
 
@@ -283,6 +294,7 @@ export const KPI_DEFINITIONS = {
     "Open items in Needs attention right now (auto gaps + manually flagged). Not limited to the date range.",
   knowledgeCoverage:
     "Share of period questions that received a grounded or fixed answer (excludes open gaps and system errors from the numerator).",
+  timeSaved: TIME_SAVED_DEFINITION,
   knowledgeArticles: "Active Q&A entries in the Knowledge Hub that Tina can retrieve.",
   addedFromParents: "Knowledge Hub entries created from parent questions in Needs attention.",
   addedThisPeriod: "Knowledge Hub entries created during the current date range (last 30 days by default).",

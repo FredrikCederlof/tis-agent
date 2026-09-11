@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { AlertTriangle, BookOpen, MessageCircle, Sparkles, type LucideIcon } from "lucide-react";
 import { InfoTip } from "@/components/info-tip";
+import { formatSavedTime } from "@/lib/time-saved";
 
 type Accent = "green" | "purple" | "amber" | "blue";
 
@@ -150,10 +151,12 @@ export function StatCard({
   detail,
   definition,
   accent = "green",
+  icon,
   sparkline,
   sparklineLabels,
   sparkFormat = "number",
   delta,
+  deltaFormatted,
   deltaLabel = "vs previous 30 days",
   deltaUnit = "%",
   tipAlign = "start",
@@ -163,18 +166,24 @@ export function StatCard({
   detail?: string;
   definition: string;
   accent?: Accent;
+  icon?: LucideIcon;
   sparkline?: number[];
   sparklineLabels?: string[];
-  sparkFormat?: "number" | "percent";
+  sparkFormat?: "number" | "percent" | "duration";
   delta?: number | null;
+  deltaFormatted?: string | null;
   deltaLabel?: string;
   deltaUnit?: string;
   tipAlign?: "start" | "end";
 }) {
   const theme = ACCENTS[accent];
-  const Icon = theme.Icon;
+  const Icon = icon ?? theme.Icon;
   const formatter = useMemo(
-    () => (v: number) => (sparkFormat === "percent" ? `${v}%` : String(v)),
+    () => (v: number) => {
+      if (sparkFormat === "percent") return `${v}%`;
+      if (sparkFormat === "duration") return formatSavedTime(v);
+      return String(v);
+    },
     [sparkFormat],
   );
 
@@ -201,7 +210,22 @@ export function StatCard({
             <p className="font-display text-3xl font-bold tracking-tight text-tis-navy">{value}</p>
             {detail ? <p className="text-xs text-tis-muted">{detail}</p> : null}
           </div>
-          {delta !== undefined ? (
+          {deltaFormatted !== undefined ? (
+            <div className="mt-1.5">
+              {deltaFormatted == null ? (
+                <p className="text-xs font-medium text-tis-muted">New this period</p>
+              ) : (
+                <p
+                  className={`text-xs font-semibold leading-snug ${
+                    deltaFormatted.startsWith("→") ? "text-tis-muted" : "text-emerald-600"
+                  }`}
+                >
+                  {deltaFormatted}
+                  <span className="mt-0.5 block font-medium text-tis-muted">{deltaLabel}</span>
+                </p>
+              )}
+            </div>
+          ) : delta !== undefined ? (
             <div className="mt-1.5">
               <Delta value={delta} label={deltaLabel} unit={deltaUnit} />
             </div>
