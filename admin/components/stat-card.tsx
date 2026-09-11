@@ -1,11 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, BookOpen, MessageCircle, Sparkles, type LucideIcon } from "lucide-react";
+import { AlertTriangle, BookOpen, Clock, MessageCircle, Sparkles, type LucideIcon } from "lucide-react";
 import { InfoTip } from "@/components/info-tip";
 import { formatSavedTime } from "@/lib/time-saved";
 
 type Accent = "green" | "purple" | "amber" | "blue";
+type IconName = "clock" | "message" | "sparkles" | "alert" | "book";
+
+const ICONS: Record<IconName, LucideIcon> = {
+  clock: Clock,
+  message: MessageCircle,
+  sparkles: Sparkles,
+  alert: AlertTriangle,
+  book: BookOpen,
+};
 
 const ACCENTS: Record<
   Accent,
@@ -151,7 +160,7 @@ export function StatCard({
   detail,
   definition,
   accent = "green",
-  icon,
+  iconName,
   sparkline,
   sparklineLabels,
   sparkFormat = "number",
@@ -166,7 +175,7 @@ export function StatCard({
   detail?: string;
   definition: string;
   accent?: Accent;
-  icon?: LucideIcon;
+  iconName?: IconName;
   sparkline?: number[];
   sparklineLabels?: string[];
   sparkFormat?: "number" | "percent" | "duration";
@@ -177,7 +186,7 @@ export function StatCard({
   tipAlign?: "start" | "end";
 }) {
   const theme = ACCENTS[accent];
-  const Icon = icon ?? theme.Icon;
+  const Icon = iconName ? ICONS[iconName] : theme.Icon;
   const formatter = useMemo(
     () => (v: number) => {
       if (sparkFormat === "percent") return `${v}%`;

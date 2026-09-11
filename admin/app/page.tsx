@@ -1,5 +1,4 @@
 import { redirect } from "next/navigation";
-import { Clock } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/app-shell";
 import { StatCard } from "@/components/stat-card";
@@ -105,7 +104,7 @@ export default async function DashboardPage({
           <StatCard
             label="Time saved"
             value={formatSavedTime(currentSaved)}
-            icon={Clock}
+            iconName="clock"
             definition={KPI_DEFINITIONS.timeSaved}
             accent="green"
             sparkline={days.map((d) => timeSavedMinutes(d.tinaHandled, minutesPerQuestion))}
