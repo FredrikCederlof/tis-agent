@@ -14,6 +14,23 @@ Parents ask Tina in WhatsApp. Answers must come from official TIS documents stor
 
 Drop PDFs or Google Docs into the Drive folder. The nightly job uploads new/changed files and re-vectorizes them.
 
+## Schema changes
+
+`SUPABASE_URL` + `SUPABASE_SECRET_KEY` are the Data API. They can read/write rows. They cannot `ALTER TABLE`, create views, or run other DDL.
+
+When a feature needs a new table, column, view, function, or constraint:
+
+1. Add `sql/NNN_name.sql` in the repo (next number after the latest file in `sql/`).
+2. Apply it with the **Supabase MCP** against project `ixjsiwedssgutrmegyzv`:
+   - DDL (`CREATE` / `ALTER` / new constraints): `apply_migration` with a snake_case `name` and the file’s SQL as `query`.
+   - Checks (`select`, `\d`-style inspection): `execute_sql`.
+3. Confirm the change (column/table exists, or a `select` against it works). PostgREST “column does not exist” means the migration did not land — apply it; do not ask Fredrik to paste SQL.
+4. Do **not** ask Fredrik to run SQL in the SQL Editor unless MCP `apply_migration` fails (MCP disconnected, wrong project, or the tool returns an error). Then paste the file path and the error.
+
+This writes to production. Keep the `.sql` file in git so the change is reviewable. Nightly Drive/web/bulletin jobs must not apply migrations.
+
+Tina WhatsApp and Admin keep using `SUPABASE_URL` / `SUPABASE_SECRET_KEY` only. Do not put a Postgres URI in the app.
+
 ## Nightly sync procedure
 
 1. Read `decisions.md` for product constraints.
