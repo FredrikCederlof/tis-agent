@@ -65,8 +65,9 @@ export function SyncPanel({
           <div>
             <h3 className="text-lg font-bold text-tis-navy">Sync knowledge sources</h3>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-tis-muted">
-              Re-fetch the public IT portal (Google Sites), parent calendar (iCal), and school
-              uniform page into Supabase. Drive PDFs still sync via the nightly Cloud Agent.
+              Re-fetch the public IT portal (Google Sites), parent calendar (iCal), school
+              uniform page, and TIS Times into Supabase. The nightly Cloud Agent also runs
+              this automatically after Drive PDFs.
             </p>
           </div>
           <button type="button" className="primary shrink-0" disabled={running} onClick={runWebSync}>

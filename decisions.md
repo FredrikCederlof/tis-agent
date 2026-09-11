@@ -59,7 +59,7 @@ Google Drive folder → Supabase Storage (`tis-ass`) → pgvector sync, with a n
 
 - Drive folder id: `1P0XZLFtIBivKEx55BjvUZH6_xsWZUDZa`
 - Sync tracks `drive_file_id`, `drive_modified_time`, and `content_hash` on `documents`
-- Nightly agent uses Google Drive MCP + `python -m tis_agent sync file ...`
+- Nightly agent uses Google Drive MCP + `python -m tis_agent sync file ...`, then `python -m tis_agent sync web` (calendar, Tech Portal, uniform page, TIS Times)
 - Run `sql/002_sync.sql` once after `001_rag.sql`
 - Nested Drive subfolders are in scope (e.g. `Curriculum Guides`). Nightly sync must walk recursively.
 
@@ -70,5 +70,5 @@ WhatsApp test preview via Meta Cloud API test number.
 - Webhook: `python -m tis_agent whatsapp` (FastAPI; local `:8080`, Railway uses `$PORT`)
 - Flow: inbound WhatsApp text → `answer_question` → Cloud API reply
 - Production-style hosting: Railway (stable HTTPS for Meta). Local cloudflared only for ad-hoc debug.
-- Nightly Drive sync remains on Cursor Cloud Agents, not Railway.
+- Nightly Drive + web/calendar sync remains on Cursor Cloud Agents, not Railway. Railway `tis-agent` is WhatsApp only; do not run a `tis-sync-web` cron.
 - No parent-facing web app
