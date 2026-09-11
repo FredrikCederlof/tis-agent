@@ -25,11 +25,54 @@ def parent_label(wa_from: str | None) -> str:
     return "Parent"
 
 
-def parent_hue(wa_from: str | None) -> int:
-    """Stable 0–359 hue so the same parent always gets the same avatar color."""
+PARENT_COLORS = (
+    "#05513d",
+    "#4d6bff",
+    "#9b7bff",
+    "#c2410c",
+    "#0f766e",
+    "#7c3aed",
+    "#be185d",
+    "#0369a1",
+    "#b45309",
+    "#15803d",
+    "#1d4ed8",
+    "#9f1239",
+    "#115e59",
+    "#6d28d9",
+    "#a16207",
+    "#0e7490",
+    "#b91c1c",
+    "#3f6212",
+    "#4338ca",
+    "#7e22ce",
+)
+
+
+def parent_color_index(wa_from: str | None) -> int:
+    """Stable 0–19 slot so the same phone number always gets the same avatar color."""
     text = wa_from or ""
-    total = sum(ord(ch) for ch in text)
-    return total % 360
+    hashed = 0
+    for ch in text:
+        hashed = (hashed * 31 + ord(ch)) & 0xFFFFFFFF
+    return hashed % len(PARENT_COLORS)
+
+
+def parent_color(wa_from: str | None) -> str:
+    return PARENT_COLORS[parent_color_index(wa_from)]
+
+
+def parent_initials(wa_from: str | None) -> str:
+    digits = "".join(ch for ch in (wa_from or "") if ch.isdigit())
+    if len(digits) >= 2:
+        return digits[-2:]
+    if len(digits) == 1:
+        return f"0{digits}"
+    return "P"
+
+
+def question_count_badge(count: int) -> int | None:
+    return count if count > 1 else None
 
 
 def needs_attention(interaction: dict) -> bool:

@@ -3,11 +3,15 @@
 from datetime import datetime, timezone
 
 from tis_agent.chat_sessions_ui import (
+    PARENT_COLORS,
     build_timeline,
     is_unread,
     needs_attention,
-    parent_hue,
+    parent_color,
+    parent_color_index,
+    parent_initials,
     parent_label,
+    question_count_badge,
     reply_target,
     same_parent_other_sessions_remain,
 )
@@ -50,9 +54,21 @@ def test_parent_label_uses_last_four_digits() -> None:
     assert parent_label("") == "Parent"
 
 
-def test_parent_avatar_hue_is_stable() -> None:
-    assert parent_hue("46701234567") == parent_hue("46701234567")
-    assert parent_hue("46701234567") != parent_hue("46709999999")
+def test_parent_avatar_color_is_stable_and_capped() -> None:
+    assert len(PARENT_COLORS) == 20
+    assert parent_color_index("46701234567") == parent_color_index("46701234567")
+    assert 0 <= parent_color_index("46701234567") < 20
+    assert parent_color("46701234567") == PARENT_COLORS[parent_color_index("46701234567")]
+    assert parent_color_index("46701234567") != parent_color_index("46709999999")
+    assert parent_initials("46701234567") == "67"
+    assert parent_initials("") == "P"
+
+
+def test_question_count_badge_only_when_multiple() -> None:
+    assert question_count_badge(1) is None
+    assert question_count_badge(0) is None
+    assert question_count_badge(2) == 2
+    assert question_count_badge(11) == 11
 
 
 def test_needs_attention_only_for_unreviewed_gaps() -> None:

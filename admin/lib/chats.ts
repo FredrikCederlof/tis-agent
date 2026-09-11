@@ -130,11 +130,52 @@ export function parentLabel(waFrom: string | null | undefined): string {
   return "Parent";
 }
 
-export function parentHue(waFrom: string | null | undefined): number {
+/** Distinct avatar fills — same phone number always maps to the same slot. */
+export const PARENT_COLORS = [
+  "#05513d",
+  "#4d6bff",
+  "#9b7bff",
+  "#c2410c",
+  "#0f766e",
+  "#7c3aed",
+  "#be185d",
+  "#0369a1",
+  "#b45309",
+  "#15803d",
+  "#1d4ed8",
+  "#9f1239",
+  "#115e59",
+  "#6d28d9",
+  "#a16207",
+  "#0e7490",
+  "#b91c1c",
+  "#3f6212",
+  "#4338ca",
+  "#7e22ce",
+] as const;
+
+export function parentColorIndex(waFrom: string | null | undefined): number {
   const text = waFrom || "";
-  let total = 0;
-  for (let i = 0; i < text.length; i += 1) total += text.charCodeAt(i);
-  return total % 360;
+  let hash = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    hash = (hash * 31 + text.charCodeAt(i)) >>> 0;
+  }
+  return hash % PARENT_COLORS.length;
+}
+
+export function parentColor(waFrom: string | null | undefined): string {
+  return PARENT_COLORS[parentColorIndex(waFrom)];
+}
+
+export function parentInitials(waFrom: string | null | undefined): string {
+  const digits = (waFrom || "").replace(/\D/g, "");
+  if (digits.length >= 2) return digits.slice(-2);
+  if (digits.length === 1) return `0${digits}`;
+  return "P";
+}
+
+export function questionCountBadge(count: number): number | null {
+  return count > 1 ? count : null;
 }
 
 export function formatMessageTime(iso: string): string {
