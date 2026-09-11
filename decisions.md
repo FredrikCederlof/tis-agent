@@ -48,6 +48,7 @@ Admin, analytics, and configurable Tina behavior.
 - **Phase C:** Admin web UI (`admin/`) — Supabase Auth, prompt editor, answer policy (strict grounding), unanswered inbox, analytics. SQL: `sql/005_admin.sql`.
 - **Phase D (next):** Weekly email summary of gaps.
 - **Time saved KPI:** Dashboard estimates admin time avoided as grounded Tina successes (`interactions.outcome = success` with no human reply) × configurable minutes per question. Default 5 minutes. Not total question volume. SQL: `sql/015_minutes_saved.sql`.
+- **Schema changes:** New tables/columns are `sql/NNN_*.sql` plus Supabase MCP `apply_migration` on project `ixjsiwedssgutrmegyzv`. The Tina Data API key cannot run DDL. Do not require pasting SQL in the dashboard unless MCP apply fails.
 
 ## Milestone 1
 
