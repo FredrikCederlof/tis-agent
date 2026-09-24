@@ -111,7 +111,7 @@ export async function notifyNeedsAttention(interactionId: string): Promise<Notif
   for (const profile of profiles || []) {
     previewByUser.set(
       profile.user_id as string,
-      Boolean(profile.notify_message_previews),
+      profile.notify_message_previews !== false,
     );
   }
 
@@ -140,7 +140,10 @@ export async function notifyNeedsAttention(interactionId: string): Promise<Notif
       continue;
     }
 
-    const showPreview = previewByUser.get(userId) === true;
+    // Default ON: include the parent question unless the user opted out.
+    const showPreview = previewByUser.has(userId)
+      ? previewByUser.get(userId) === true
+      : true;
     const payload = notificationPayloadForInteraction({
       interactionId,
       sessionId,

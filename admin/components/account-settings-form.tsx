@@ -324,7 +324,7 @@ export function AccountSettingsForm({
       </section>
 
       <AccountNotificationsCard
-        initialShowPreviews={Boolean(profile.notify_message_previews)}
+        initialShowPreviews={profile.notify_message_previews !== false}
       />
     </div>
   );
