@@ -33,7 +33,7 @@ export async function ensureAdminProfile(
 ): Promise<AdminProfile> {
   const { data: existing } = await supabase
     .from("admin_profiles")
-    .select("user_id, email, first_name, last_name, avatar_path, role")
+    .select("user_id, email, first_name, last_name, avatar_path, role, notify_message_previews")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -51,12 +51,13 @@ export async function ensureAdminProfile(
     ),
     role,
     status: "active",
+    notify_message_previews: false,
   };
 
   const { data: created, error } = await supabase
     .from("admin_profiles")
     .upsert(row, { onConflict: "user_id" })
-    .select("user_id, email, first_name, last_name, avatar_path, role")
+    .select("user_id, email, first_name, last_name, avatar_path, role, notify_message_previews")
     .single();
 
   if (error || !created) {
@@ -67,6 +68,7 @@ export async function ensureAdminProfile(
       last_name: "",
       avatar_path: null,
       role,
+      notify_message_previews: false,
     };
   }
   return created as AdminProfile;

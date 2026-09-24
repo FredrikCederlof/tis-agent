@@ -56,8 +56,12 @@ export default async function ChatSessionPage({
   const selected =
     ((sessions || []) as ChatSessionRow[]).find((row) => row.id === params.id) || null;
 
+  if (!selected) {
+    redirect("/inbox?notice=unavailable");
+  }
+
   let parentStats = emptyParentHistoryStats();
-  if (selected?.wa_from) {
+  if (selected.wa_from) {
     const waFrom = selected.wa_from;
     const [
       { data: parentSessions },

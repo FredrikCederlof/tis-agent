@@ -1,10 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  NOTIFY_BODY_GENERIC,
   NOTIFY_CHOICE_KEY,
+  NOTIFY_TITLE,
+  chatSessionPath,
   deliveryIdempotencyKey,
   isNeedsAttentionUnanswered,
   notificationPayloadForInteraction,
+  previewQuestion,
   readNotifyChoice,
   resolveNotifyUiState,
   validatePushSubscriptionPayload,
@@ -134,19 +138,54 @@ describe("needs attention eligibility", () => {
   });
 });
 
-describe("idempotency and payload", () => {
+describe("preview and payload", () => {
   it("builds a stable user+message key", () => {
     assert.equal(deliveryIdempotencyKey("u1", "i1"), "u1:i1");
   });
 
-  it("keeps notification text free of message content", () => {
-    const payload = notificationPayloadForInteraction("abc");
-    assert.equal(payload.title, "Tina Admin");
-    assert.match(payload.body, /needs attention/i);
-    assert.equal(payload.tag, "needs-attention-abc");
-    assert.equal(payload.data.url, "/inbox");
-    assert.equal(payload.data.interactionId, "abc");
+  it("shortens long questions and strips newlines", () => {
+    assert.equal(previewQuestion("When does term start?"), "When does term start?");
+    assert.equal(previewQuestion("Line one\n\nLine two"), "Line one Line two");
+    const long = "A".repeat(120);
+    const preview = previewQuestion(long, 100);
+    assert.ok(preview);
+    assert.equal(preview!.endsWith("…"), true);
+    assert.ok(preview!.length <= 100);
+  });
+
+  it("uses generic body when previews are off", () => {
+    const payload = notificationPayloadForInteraction({
+      interactionId: "abc",
+      sessionId: "sess-1",
+      question: "Secret question content",
+      showPreview: false,
+    });
+    assert.equal(payload.title, NOTIFY_TITLE);
+    assert.equal(payload.body, NOTIFY_BODY_GENERIC);
+    assert.equal(payload.data.url, "/chats/sess-1");
+    assert.equal(payload.body.includes("Secret"), false);
     assert.equal(payload.body.includes("abc"), false);
+  });
+
+  it("includes a preview when enabled and falls back safely", () => {
+    const withPreview = notificationPayloadForInteraction({
+      interactionId: "abc",
+      sessionId: "sess-1",
+      question: "When does the autumn term start?",
+      showPreview: true,
+    });
+    assert.equal(withPreview.title, NOTIFY_TITLE);
+    assert.equal(withPreview.body, "When does the autumn term start?");
+    assert.equal(withPreview.data.interactionId, "abc");
+
+    const empty = notificationPayloadForInteraction({
+      interactionId: "abc",
+      question: "   ",
+      showPreview: true,
+    });
+    assert.equal(empty.body, NOTIFY_BODY_GENERIC);
+    assert.equal(empty.data.url, "/inbox");
+    assert.equal(chatSessionPath(null), "/inbox");
   });
 
   it("validates subscription payloads", () => {
