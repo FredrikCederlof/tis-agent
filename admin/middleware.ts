@@ -13,8 +13,8 @@ function allowedEmails(): Set<string> {
 }
 
 export async function middleware(request: NextRequest) {
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseUrl = (process.env.NEXT_PUBLIC_SUPABASE_URL || "").trim();
+  const supabaseAnonKey = (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "").trim();
 
   // Missing env crashes createServerClient on Edge and yields MIDDLEWARE_INVOCATION_FAILED.
   if (!supabaseUrl || !supabaseAnonKey) {
