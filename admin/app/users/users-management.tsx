@@ -6,6 +6,7 @@ import { UserPlus } from "lucide-react";
 import { roleLabel, type AdminRole } from "@/lib/account";
 import {
   buildUserList,
+  isValidEmail,
   roleDescription,
   userListStatusLabel,
   type AdminInvitationRow,
@@ -208,17 +209,16 @@ export function UsersManagement({
                       <td className="px-4 py-3">
                         {row.kind === "profile" && !isSelf && row.status === "active" ? (
                           <select
-                            className="max-w-[140px]"
+                            className="max-w-[9rem]"
                             value={row.role}
                             disabled={busy}
-                            title={roleDescription(row.role)}
                             onChange={(e) =>
                               void changeRole(row, e.target.value as AdminRole)
                             }
                             aria-label={`Role for ${row.email}`}
                           >
-                            <option value="admin">Admin — {roleDescription("admin")}</option>
-                            <option value="member">Member — {roleDescription("member")}</option>
+                            <option value="member">Member</option>
+                            <option value="admin">Admin</option>
                           </select>
                         ) : (
                           <span>{roleLabel(row.role)}</span>
@@ -313,6 +313,28 @@ function StatusPill({ status }: { status: UserListItem["status"] }) {
   );
 }
 
+type InviteFieldErrors = {
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+};
+
+function inviteFieldErrors(args: {
+  firstName: string;
+  lastName: string;
+  email: string;
+}): InviteFieldErrors {
+  const errors: InviteFieldErrors = {};
+  if (!args.firstName.trim()) errors.firstName = "First name is required.";
+  if (!args.lastName.trim()) errors.lastName = "Last name is required.";
+  if (!args.email.trim()) {
+    errors.email = "Email is required.";
+  } else if (!isValidEmail(args.email)) {
+    errors.email = "Enter a valid email address.";
+  }
+  return errors;
+}
+
 function InviteDialog({
   onClose,
   onSent,
@@ -327,10 +349,44 @@ function InviteDialog({
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<AdminRole>("member");
   const [busy, setBusy] = useState(false);
+  const [touched, setTouched] = useState<InviteFieldErrors>({});
   const [localError, setLocalError] = useState<string | null>(null);
+
+  const fieldErrors = inviteFieldErrors({ firstName, lastName, email });
+  const formValid = Object.keys(fieldErrors).length === 0;
+  const canSubmit = formValid && !busy;
+
+  function markTouched(field: keyof InviteFieldErrors) {
+    setTouched((prev) => {
+      const err = fieldErrors[field];
+      if (!err) {
+        if (!prev[field]) return prev;
+        const next = { ...prev };
+        delete next[field];
+        return next;
+      }
+      return { ...prev, [field]: err };
+    });
+  }
+
+  function clearFieldTouch(field: keyof InviteFieldErrors) {
+    setTouched((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    setTouched({
+      firstName: fieldErrors.firstName,
+      lastName: fieldErrors.lastName,
+      email: fieldErrors.email,
+    });
+    if (!formValid) return;
+
     setBusy(true);
     setLocalError(null);
     try {
@@ -372,9 +428,12 @@ function InviteDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="invite-title"
-        className="relative z-10 w-full max-w-md overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-soft"
+        className="relative z-10 w-full max-w-md rounded-2xl border border-slate-200 bg-white shadow-soft"
       >
-        <form onSubmit={(e) => void submit(e)} className="space-y-4 p-5">
+        <form
+          onSubmit={(e) => void submit(e)}
+          className="max-h-[min(90dvh,40rem)] space-y-4 overflow-y-auto p-5"
+        >
           <div>
             <h2 id="invite-title" className="text-lg font-bold text-tis-navy">
               Add user
@@ -383,63 +442,109 @@ function InviteDialog({
               Send a secure invitation. They create their own password — you never see it.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
-            <div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="min-w-0">
               <label className="label" htmlFor="invite-first">
                 First name
               </label>
               <input
                 id="invite-first"
+                type="text"
+                name="first_name"
+                autoComplete="given-name"
                 required
                 value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
+                aria-invalid={Boolean(touched.firstName)}
+                aria-describedby={touched.firstName ? "invite-first-error" : undefined}
+                onBlur={() => markTouched("firstName")}
+                onChange={(e) => {
+                  setFirstName(e.target.value);
+                  clearFieldTouch("firstName");
+                  setLocalError(null);
+                }}
               />
+              {touched.firstName && (
+                <p id="invite-first-error" className="mt-1 text-xs text-tis-danger">
+                  {touched.firstName}
+                </p>
+              )}
             </div>
-            <div>
+            <div className="min-w-0">
               <label className="label" htmlFor="invite-last">
                 Last name
               </label>
               <input
                 id="invite-last"
+                type="text"
+                name="last_name"
+                autoComplete="family-name"
                 required
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
+                aria-invalid={Boolean(touched.lastName)}
+                aria-describedby={touched.lastName ? "invite-last-error" : undefined}
+                onBlur={() => markTouched("lastName")}
+                onChange={(e) => {
+                  setLastName(e.target.value);
+                  clearFieldTouch("lastName");
+                  setLocalError(null);
+                }}
               />
+              {touched.lastName && (
+                <p id="invite-last-error" className="mt-1 text-xs text-tis-danger">
+                  {touched.lastName}
+                </p>
+              )}
             </div>
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="label" htmlFor="invite-email">
               Email
             </label>
             <input
               id="invite-email"
               type="email"
+              name="email"
+              autoComplete="email"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              aria-invalid={Boolean(touched.email)}
+              aria-describedby={touched.email ? "invite-email-error" : undefined}
+              onBlur={() => markTouched("email")}
+              onChange={(e) => {
+                setEmail(e.target.value);
+                clearFieldTouch("email");
+                setLocalError(null);
+              }}
             />
+            {touched.email && (
+              <p id="invite-email-error" className="mt-1 text-xs text-tis-danger">
+                {touched.email}
+              </p>
+            )}
           </div>
-          <div>
+          <div className="min-w-0">
             <label className="label" htmlFor="invite-role">
               Role
             </label>
             <select
               id="invite-role"
+              name="role"
+              className="w-full max-w-full"
               value={role}
               onChange={(e) => setRole(e.target.value as AdminRole)}
             >
-              <option value="member">Member — {roleDescription("member")}</option>
-              <option value="admin">Admin — {roleDescription("admin")}</option>
+              <option value="member">Member</option>
+              <option value="admin">Admin</option>
             </select>
           </div>
           {localError && (
             <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-tis-danger">{localError}</p>
           )}
-          <div className="flex justify-end gap-2 pt-1">
+          <div className="flex flex-wrap justify-end gap-2 pt-1">
             <button type="button" className="secondary" onClick={onClose} disabled={busy}>
               Cancel
             </button>
-            <button type="submit" className="primary" disabled={busy}>
+            <button type="submit" className="primary" disabled={!canSubmit}>
               {busy ? "Sending…" : "Send invitation"}
             </button>
           </div>
