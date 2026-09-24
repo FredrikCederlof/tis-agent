@@ -3,28 +3,20 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { NeedsAttentionNotifications } from "@/components/needs-attention-notifications";
 import {
   avatarInitial,
   avatarPublicUrl,
-  displayFirstName,
   roleLabel,
   validateAvatarFile,
   type AdminProfile,
-  type AdminRole,
 } from "@/lib/account";
-
-type TeamMember = Pick<
-  AdminProfile,
-  "user_id" | "email" | "first_name" | "last_name" | "role"
->;
 
 export function AccountSettingsForm({
   profile,
-  teamMembers,
   supabaseUrl,
 }: {
   profile: AdminProfile;
-  teamMembers: TeamMember[];
   supabaseUrl: string;
 }) {
   const router = useRouter();
@@ -39,16 +31,12 @@ export function AccountSettingsForm({
   const [avatarErr, setAvatarErr] = useState<string | null>(null);
   const [passwordMsg, setPasswordMsg] = useState<string | null>(null);
   const [passwordErr, setPasswordErr] = useState<string | null>(null);
-  const [roleMsg, setRoleMsg] = useState<string | null>(null);
-  const [roleErr, setRoleErr] = useState<string | null>(null);
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingAvatar, setSavingAvatar] = useState(false);
   const [savingPassword, setSavingPassword] = useState(false);
-  const [savingRoleId, setSavingRoleId] = useState<string | null>(null);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [members, setMembers] = useState(teamMembers);
 
   const avatarSrc = useMemo(() => {
     if (previewUrl) return previewUrl;
@@ -148,35 +136,6 @@ export function AccountSettingsForm({
       setSavingPassword(false);
     }
   }
-
-  async function changeMemberRole(userId: string, role: AdminRole) {
-    setSavingRoleId(userId);
-    setRoleMsg(null);
-    setRoleErr(null);
-    try {
-      const response = await fetch("/api/account/role", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, role }),
-      });
-      const result = await response.json().catch(() => ({}));
-      if (!response.ok) {
-        setRoleErr(result.detail || "Could not update role.");
-        return;
-      }
-      setMembers((rows) =>
-        rows.map((row) => (row.user_id === userId ? { ...row, role } : row)),
-      );
-      setRoleMsg(result.message || "Role updated.");
-    } catch {
-      setRoleErr("Could not update role.");
-    } finally {
-      setSavingRoleId(null);
-    }
-  }
-
-  const isAdmin = profile.role === "admin";
-  const others = members.filter((row) => row.user_id !== profile.user_id);
 
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -279,7 +238,7 @@ export function AccountSettingsForm({
               disabled
               className="cursor-not-allowed bg-tis-mist/60"
             />
-            <p className="hint">Only an administrator can change roles for other people.</p>
+            <p className="hint">Administrators manage roles under Settings → Users.</p>
           </div>
           {profileMsg && (
             <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-tis-success">
@@ -364,59 +323,7 @@ export function AccountSettingsForm({
         </form>
       </section>
 
-      {isAdmin && (
-        <section className="card space-y-4">
-          <div>
-            <h2 className="text-lg font-bold text-tis-navy">Team roles</h2>
-            <p className="mt-1 text-sm text-tis-muted">
-              Assign Admin or Member for other Tina Admin users. You cannot change your own
-              role.
-            </p>
-          </div>
-          {others.length === 0 ? (
-            <p className="text-sm text-tis-muted">No other team members yet.</p>
-          ) : (
-            <ul className="divide-y divide-black/[0.06]">
-              {others.map((member) => (
-                <li
-                  key={member.user_id}
-                  className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-semibold text-tis-ink">
-                      {displayFirstName(member)}
-                      {member.last_name ? ` ${member.last_name}` : ""}
-                    </p>
-                    <p className="truncate text-xs text-tis-muted">{member.email}</p>
-                  </div>
-                  <select
-                    className="sm:max-w-[160px]"
-                    value={member.role}
-                    disabled={savingRoleId === member.user_id}
-                    onChange={(e) =>
-                      void changeMemberRole(member.user_id, e.target.value as AdminRole)
-                    }
-                    aria-label={`Role for ${member.email}`}
-                  >
-                    <option value="admin">Admin</option>
-                    <option value="member">Member</option>
-                  </select>
-                </li>
-              ))}
-            </ul>
-          )}
-          {roleMsg && (
-            <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm text-tis-success">
-              {roleMsg}
-            </p>
-          )}
-          {roleErr && (
-            <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-tis-danger">
-              {roleErr}
-            </p>
-          )}
-        </section>
-      )}
+      <NeedsAttentionNotifications variant="settings" />
     </div>
   );
 }

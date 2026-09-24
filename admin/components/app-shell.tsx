@@ -15,27 +15,36 @@ import {
   RefreshCw,
   Settings,
   Settings2,
+  Users,
   X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { NeedsAttentionNotifications } from "@/components/needs-attention-notifications";
 import {
   avatarInitial,
   avatarPublicUrl,
   displayFirstName,
+  isAdminRole,
   roleLabel,
   type AdminProfile,
 } from "@/lib/account";
 
 const NAV_COLLAPSED_KEY = "tis-admin-nav-collapsed";
 
-const sections = [
+type NavLink = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  badge?: "chats" | "inbox";
+  adminOnly?: boolean;
+};
+
+const sections: { label: string; links: NavLink[] }[] = [
   {
     label: "Overview",
     links: [
       { href: "/", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/chats", label: "Chats", icon: MessageCircle, badge: "chats" as const },
-      { href: "/inbox", label: "Needs attention", icon: Inbox, badge: "inbox" as const },
+      { href: "/chats", label: "Chats", icon: MessageCircle, badge: "chats" },
+      { href: "/inbox", label: "Needs attention", icon: Inbox, badge: "inbox" },
     ],
   },
   {
@@ -47,7 +56,10 @@ const sections = [
   },
   {
     label: "Settings",
-    links: [{ href: "/config", label: "Tina config", icon: Settings2 }],
+    links: [
+      { href: "/users", label: "Users", icon: Users, adminOnly: true },
+      { href: "/config", label: "Tina config", icon: Settings2, adminOnly: true },
+    ],
   },
 ];
 
@@ -77,6 +89,13 @@ export function AppShell({
   const firstName = displayFirstName(profile || { first_name: "", email });
   const roleText = roleLabel(profile?.role);
   const avatarUrl = avatarPublicUrl(supabaseUrl, profile?.avatar_path);
+  const showAdminLinks = isAdminRole(profile?.role);
+  const visibleSections = sections
+    .map((section) => ({
+      ...section,
+      links: section.links.filter((link) => !link.adminOnly || showAdminLinks),
+    }))
+    .filter((section) => section.links.length > 0);
 
   useEffect(() => {
     setProfile(profileProp || null);
@@ -96,23 +115,7 @@ export function AppShell({
         .select("user_id, email, first_name, last_name, avatar_path, role")
         .eq("user_id", user.id)
         .maybeSingle();
-      if (data) {
-        setProfile(data as AdminProfile);
-        return;
-      }
-      const inferred = (user.email || "Admin").split("@")[0] || "Admin";
-      const { data: created } = await supabase
-        .from("admin_profiles")
-        .upsert({
-          user_id: user.id,
-          email: user.email || "",
-          first_name: inferred,
-          last_name: "",
-          role: "admin",
-        })
-        .select("user_id, email, first_name, last_name, avatar_path, role")
-        .single();
-      if (created) setProfile(created as AdminProfile);
+      if (data) setProfile(data as AdminProfile);
     });
   }, [profileProp, pathname]);
 
@@ -133,6 +136,21 @@ export function AppShell({
       .eq("unread", true)
       .then(({ count }) => setFetchedUnread(count ?? 0));
   }, [chatsUnreadCount, pathname]);
+
+  useEffect(() => {
+    const supabase = createClient();
+    function poll() {
+      void supabase
+        .from("unanswered_interactions")
+        .select("id", { count: "exact", head: true })
+        .then(({ count, error }) => {
+          if (!error) setLiveUnanswered(count ?? 0);
+        });
+    }
+    poll();
+    const timer = window.setInterval(poll, 45_000);
+    return () => window.clearInterval(timer);
+  }, [pathname]);
 
   // The mobile drawer is always full width, so labels stay visible there.
   const iconsOnly = collapsed && !open;
@@ -224,7 +242,7 @@ export function AppShell({
         </div>
 
         <nav className="flex flex-1 flex-col gap-4 overflow-y-auto pt-2 lg:pt-0">
-          {sections.map((section) => (
+          {visibleSections.map((section) => (
             <div key={section.label} className="space-y-0.5">
               {iconsOnly ? (
                 <div className="mx-auto mb-1 h-px w-6 bg-white/20" aria-hidden />
@@ -293,58 +311,72 @@ export function AppShell({
         </nav>
 
         <div className="mt-3 space-y-2 border-t border-white/15 pt-3">
-          <NeedsAttentionNotifications
-            iconsOnly={iconsOnly}
-            onCountChange={setLiveUnanswered}
-          />
-          <div
-            className={`flex items-center gap-2 rounded-xl bg-white/10 py-2 ${
-              iconsOnly ? "justify-center px-0" : "px-2"
-            }`}
-          >
-            {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={avatarUrl}
-                alt=""
-                className="h-9 w-9 shrink-0 rounded-full border border-white object-cover"
-              />
-            ) : (
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white bg-tis-acid text-sm font-bold text-tis-ink">
-                {avatarInitial(profile || { first_name: firstName, email })}
-              </span>
-            )}
-            {!iconsOnly && (
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-bold text-white">{firstName}</p>
-                <p className="text-[11px] text-white/60">{roleText}</p>
+          {iconsOnly ? (
+            <div className="flex flex-col items-center gap-2">
+              <Link
+                href="/account"
+                onClick={() => setOpen(false)}
+                className={`rounded-xl p-2.5 text-white/75 transition hover:bg-white/10 hover:text-white ${
+                  pathname.startsWith("/account") ? "bg-white/15 text-white" : ""
+                }`}
+                title="Account settings"
+                aria-label="Account settings"
+              >
+                <Settings className="h-4 w-4" />
+              </Link>
+              <form action="/auth/signout" method="post" className="w-full">
+                <button
+                  type="submit"
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-white/20 bg-transparent py-2.5 text-white transition hover:bg-white/10"
+                  title="Sign out"
+                  aria-label="Sign out"
+                >
+                  <LogOut className="h-4 w-4" />
+                </button>
+              </form>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2 rounded-xl bg-white/10 px-2 py-2">
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarUrl}
+                    alt=""
+                    className="h-9 w-9 shrink-0 rounded-full border border-white object-cover"
+                  />
+                ) : (
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white bg-tis-acid text-sm font-bold text-tis-ink">
+                    {avatarInitial(profile || { first_name: firstName, email })}
+                  </span>
+                )}
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-xs font-bold text-white">{firstName}</p>
+                  <p className="text-[11px] text-white/60">{roleText}</p>
+                </div>
+                <Link
+                  href="/account"
+                  onClick={() => setOpen(false)}
+                  className={`rounded-lg p-2 text-white/75 transition hover:bg-white/10 hover:text-white ${
+                    pathname.startsWith("/account") ? "bg-white/15 text-white" : ""
+                  }`}
+                  title="Account settings"
+                  aria-label="Account settings"
+                >
+                  <Settings className="h-4 w-4" />
+                </Link>
               </div>
-            )}
-            <Link
-              href="/account"
-              onClick={() => setOpen(false)}
-              className={`rounded-lg p-2 text-white/75 transition hover:bg-white/10 hover:text-white ${
-                pathname.startsWith("/account") ? "bg-white/15 text-white" : ""
-              }`}
-              title="Account settings"
-              aria-label="Account settings"
-            >
-              <Settings className="h-4 w-4" />
-            </Link>
-          </div>
-          <form action="/auth/signout" method="post">
-            <button
-              type="submit"
-              className={`inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 bg-transparent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 ${
-                iconsOnly ? "!px-0" : ""
-              }`}
-              title={iconsOnly ? "Sign out" : undefined}
-              aria-label={iconsOnly ? "Sign out" : undefined}
-            >
-              <LogOut className="h-4 w-4" />
-              {!iconsOnly && "Sign out"}
-            </button>
-          </form>
+              <form action="/auth/signout" method="post">
+                <button
+                  type="submit"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 bg-transparent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </button>
+              </form>
+            </>
+          )}
         </div>
       </aside>
 
