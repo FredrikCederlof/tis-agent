@@ -19,7 +19,7 @@ export default async function SyncPage() {
   ]);
 
   const apiUrl = process.env.NEXT_PUBLIC_TINA_API_URL || "";
-  const syncSecret = process.env.ADMIN_SYNC_SECRET || "";
+  const syncSecret = (process.env.ADMIN_SYNC_SECRET || "").trim();
 
   return (
     <AppShell email={user.email || ""} unansweredCount={count ?? 0}>

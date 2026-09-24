@@ -21,7 +21,8 @@ export async function POST(request: Request) {
   }
 
   const apiUrl = (process.env.NEXT_PUBLIC_TINA_API_URL || "").replace(/\/$/, "");
-  const secret = process.env.ADMIN_SYNC_SECRET || "";
+  // Trim: env paste often includes a trailing newline; HTTP forbids it in Authorization.
+  const secret = (process.env.ADMIN_SYNC_SECRET || "").trim();
   if (!apiUrl || !secret) {
     return NextResponse.json(
       {

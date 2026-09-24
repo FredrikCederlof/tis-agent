@@ -17,12 +17,17 @@ function bearerSecret(request: Request): string {
   return match?.[1]?.trim() || "";
 }
 
+/** Trim: Vercel env paste often includes a trailing newline; Railway already strips. */
+function configuredSyncSecret(): string {
+  return (process.env.ADMIN_SYNC_SECRET || "").trim();
+}
+
 /**
  * Trigger Web Push for a Needs attention transition.
  * Auth: logged-in admin session OR ADMIN_SYNC_SECRET (Railway → Vercel).
  */
 export async function POST(request: Request) {
-  const secret = process.env.ADMIN_SYNC_SECRET || "";
+  const secret = configuredSyncSecret();
   const provided = bearerSecret(request);
   let authorized = Boolean(secret && provided && provided === secret);
 

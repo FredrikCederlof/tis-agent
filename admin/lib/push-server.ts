@@ -14,9 +14,9 @@ export type NotifyResult = {
 };
 
 function configureVapid(): { ok: true } | { ok: false; reason: string } {
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
-  const privateKey = process.env.VAPID_PRIVATE_KEY || "";
-  const subject = process.env.VAPID_SUBJECT || "mailto:admin@tokyois.com";
+  const publicKey = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "").trim();
+  const privateKey = (process.env.VAPID_PRIVATE_KEY || "").trim();
+  const subject = (process.env.VAPID_SUBJECT || "mailto:admin@tokyois.com").trim();
   if (!publicKey || !privateKey) {
     return { ok: false, reason: "vapid_not_configured" };
   }

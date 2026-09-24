@@ -44,7 +44,7 @@ export default async function NewKnowledgePage({
         originInteractionId={fromId || null}
         userEmail={user.email || ""}
         apiUrl={process.env.NEXT_PUBLIC_TINA_API_URL || ""}
-        syncSecret={process.env.ADMIN_SYNC_SECRET || ""}
+        syncSecret={(process.env.ADMIN_SYNC_SECRET || "").trim()}
       />
     </AppShell>
   );
