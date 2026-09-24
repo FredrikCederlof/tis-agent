@@ -7,10 +7,7 @@ type GlassToggleProps = {
   "aria-label": string;
 };
 
-/**
- * Compact Apple Liquid Glass-style switch.
- * ON: translucent Tina racing green. OFF: frosted white glass.
- */
+/** Compact pill switch. ON: #054F3B. OFF: light gray. */
 export function GlassToggle({
   checked,
   onCheckedChange,
@@ -28,34 +25,19 @@ export function GlassToggle({
         if (!disabled) onCheckedChange(!checked);
       }}
       className={[
-        "glass-toggle relative isolate h-[31px] w-[51px] shrink-0 overflow-hidden rounded-full",
-        "border border-white/70",
-        "shadow-[0_1px_2px_rgba(26,25,27,0.06),0_4px_12px_rgba(26,25,27,0.08),inset_0_1px_0_rgba(255,255,255,0.75),inset_0_-1px_1px_rgba(26,25,27,0.06)]",
-        "backdrop-blur-[10px] backdrop-saturate-150",
-        "transition-[background-color,box-shadow,border-color] duration-300",
-        "ease-[cubic-bezier(0.22,1,0.36,1)]",
+        "relative h-[31px] w-[51px] shrink-0 rounded-full",
+        "transition-colors duration-200 ease-out",
         "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-navy",
         "disabled:cursor-not-allowed disabled:opacity-45",
-        checked
-          ? "border-[#05513D]/25 bg-[color-mix(in_srgb,#05513D_68%,white)]"
-          : "bg-[color-mix(in_srgb,white_55%,transparent)]",
+        checked ? "bg-[#054F3B]" : "bg-[#E5E7EB]",
       ].join(" ")}
     >
-      {/* Soft glass sheen */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute inset-0 rounded-full bg-gradient-to-b from-white/45 via-transparent to-black/[0.04]"
-      />
       <span
         aria-hidden
         className={[
-          "pointer-events-none absolute top-[2px] left-[2px] z-10 h-[25px] w-[25px] rounded-full",
-          "bg-gradient-to-b from-white via-[#fbfbfa] to-[#ecece8]",
-          "border border-white/80",
-          "shadow-[0_2px_6px_rgba(26,25,27,0.2),0_1px_1px_rgba(26,25,27,0.08),inset_0_1px_0_rgba(255,255,255,1),inset_0_-1px_1px_rgba(26,25,27,0.04)]",
-          "transition-transform duration-300",
-          "ease-[cubic-bezier(0.34,1.45,0.64,1)]",
-          "will-change-transform",
+          "absolute top-[2px] left-[2px] h-[27px] w-[27px] rounded-full bg-white",
+          "shadow-[0_1px_3px_rgba(0,0,0,0.18)]",
+          "transition-transform duration-200 ease-out",
           checked ? "translate-x-[20px]" : "translate-x-0",
         ].join(" ")}
       />

@@ -202,7 +202,7 @@ export function AccountNotificationsCard({
       )}
 
       {supported && (
-        <div className="divide-y divide-black/[0.05] overflow-hidden rounded-[22px] border border-white/70 bg-white/35 shadow-[0_8px_28px_rgba(26,25,27,0.06),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-xl backdrop-saturate-150">
+        <div className="divide-y divide-black/[0.06] overflow-hidden rounded-2xl border border-black/[0.06] bg-white">
           <SettingRow
             title="Alerts for Needs attention"
             description={
@@ -258,9 +258,7 @@ function SettingRow({
         <p className="text-sm font-semibold text-tis-navy">{title}</p>
         <p className="mt-0.5 text-xs leading-relaxed text-tis-muted">{description}</p>
       </div>
-      <div className="shrink-0 rounded-[18px] border border-white/75 bg-white/40 p-2.5 shadow-[0_4px_18px_rgba(26,25,27,0.07),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-md">
-        {children}
-      </div>
+      <div className="shrink-0">{children}</div>
     </div>
   );
 }
