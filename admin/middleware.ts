@@ -1,5 +1,6 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { isApiPath, isPublicPath } from "@/lib/middleware-paths";
 
 function allowedEmails(): Set<string> {
   const raw = process.env.ADMIN_EMAILS || "";
@@ -9,23 +10,6 @@ function allowedEmails(): Set<string> {
       .map((e) => e.trim().toLowerCase())
       .filter(Boolean),
   );
-}
-
-function isPublicPath(pathname: string): boolean {
-  return (
-    pathname.startsWith("/login") ||
-    pathname.startsWith("/auth/callback") ||
-    pathname.startsWith("/auth/preview-login") ||
-    pathname === "/favicon.ico" ||
-    // Railway calls this with ADMIN_SYNC_SECRET (no session cookie).
-    // Auth is enforced inside the route handler.
-    pathname === "/api/push/notify"
-  );
-}
-
-/** API routes should get JSON 401s, not HTML login redirects. */
-function isApiPath(pathname: string): boolean {
-  return pathname.startsWith("/api/");
 }
 
 export async function middleware(request: NextRequest) {
@@ -81,21 +65,64 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
-  if (user) {
-    const allowed = allowedEmails();
+  if (user && !isPublic) {
     const email = user.email?.toLowerCase() || "";
-    if (allowed.size > 0 && !allowed.has(email)) {
+    const allowed = allowedEmails();
+
+    const { data: profile } = await supabase
+      .from("admin_profiles")
+      .select("status")
+      .eq("user_id", user.id)
+      .maybeSingle();
+
+    if (profile?.status === "deactivated") {
+      await supabase.auth.signOut();
+      if (isApiPath(request.nextUrl.pathname)) {
+        return NextResponse.json({ detail: "Account deactivated." }, { status: 403 });
+      }
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("error", "deactivated");
+      return NextResponse.redirect(url);
+    }
+
+    const hasActiveProfile = profile?.status === "active";
+    const onAllowlist = allowed.size === 0 || allowed.has(email);
+
+    // Invited users get an active profile during onboarding.
+    // Bootstrap allowlist still works for early admins without a profile row yet.
+    if (!hasActiveProfile && !onAllowlist) {
+      await supabase.auth.signOut();
+      if (isApiPath(request.nextUrl.pathname)) {
+        return NextResponse.json({ detail: "Not authorized." }, { status: 403 });
+      }
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      url.searchParams.set("error", "not_allowed");
+      return NextResponse.redirect(url);
+    }
+
+    // When allowlist is set, non-profile users must still be on it (handled above).
+    // Active invited members are allowed even if not on ADMIN_EMAILS.
+    if (!hasActiveProfile && allowed.size > 0 && !allowed.has(email)) {
       await supabase.auth.signOut();
       const url = request.nextUrl.clone();
       url.pathname = "/login";
       url.searchParams.set("error", "not_allowed");
       return NextResponse.redirect(url);
     }
+
     if (isLogin) {
       const url = request.nextUrl.clone();
       url.pathname = "/";
       return NextResponse.redirect(url);
     }
+  }
+
+  if (user && isLogin) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/";
+    return NextResponse.redirect(url);
   }
 
   return supabaseResponse;
