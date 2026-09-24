@@ -12,10 +12,11 @@ Web admin for Tina — edit prompts, answer policy, review gaps, view analytics.
 | `/sync` | Manual web & calendar sync + document list |
 | `/knowledge` | Knowledge Hub — curated Q&A ingested into the RAG store |
 | `/inbox` | Needs attention — auto gaps and manually flagged questions |
+| `/account` | Personal account settings — name, email, photo, password, roles |
 
 ## Setup
 
-1. Run `sql/005_admin.sql`, `sql/010_knowledge_hub.sql`, `sql/012_chat_sessions_admin.sql`, `sql/013_human_reply.sql`, `sql/014_manual_attention.sql`, `sql/015_minutes_saved.sql`, and `sql/016_push_notifications.sql` in [Supabase SQL Editor](https://supabase.com/dashboard/project/ixjsiwedssgutrmegyzv/sql/new).
+1. Run `sql/005_admin.sql`, `sql/010_knowledge_hub.sql`, `sql/012_chat_sessions_admin.sql`, `sql/013_human_reply.sql`, `sql/014_manual_attention.sql`, `sql/015_minutes_saved.sql`, `sql/016_push_notifications.sql`, and `sql/017_admin_profiles.sql` in [Supabase SQL Editor](https://supabase.com/dashboard/project/ixjsiwedssgutrmegyzv/sql/new).
 2. In Supabase → Authentication → Providers: enable **Email** (magic link).
 3. In Supabase → Authentication → URL configuration, add redirect URL:
    - Local: `http://localhost:3000/auth/callback`

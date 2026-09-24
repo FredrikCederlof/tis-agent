@@ -13,11 +13,19 @@ import {
   MessageCircle,
   PanelLeft,
   RefreshCw,
+  Settings,
   Settings2,
   X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { NeedsAttentionNotifications } from "@/components/needs-attention-notifications";
+import {
+  avatarInitial,
+  avatarPublicUrl,
+  displayFirstName,
+  roleLabel,
+  type AdminProfile,
+} from "@/lib/account";
 
 const NAV_COLLAPSED_KEY = "tis-admin-nav-collapsed";
 
@@ -47,11 +55,13 @@ export function AppShell({
   email,
   unansweredCount = 0,
   chatsUnreadCount,
+  profile: profileProp,
   children,
 }: {
   email: string;
   unansweredCount?: number;
   chatsUnreadCount?: number;
+  profile?: AdminProfile | null;
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
@@ -59,13 +69,52 @@ export function AppShell({
   const [collapsed, setCollapsed] = useState(false);
   const [fetchedUnread, setFetchedUnread] = useState(0);
   const [liveUnanswered, setLiveUnanswered] = useState<number | null>(null);
+  const [profile, setProfile] = useState<AdminProfile | null>(profileProp || null);
   const unreadChats = chatsUnreadCount ?? fetchedUnread;
   const inboxCount = liveUnanswered ?? unansweredCount;
   const fillCanvas = pathname.startsWith("/chats");
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+  const firstName = displayFirstName(profile || { first_name: "", email });
+  const roleText = roleLabel(profile?.role);
+  const avatarUrl = avatarPublicUrl(supabaseUrl, profile?.avatar_path);
+
+  useEffect(() => {
+    setProfile(profileProp || null);
+  }, [profileProp]);
 
   useEffect(() => {
     setCollapsed(window.localStorage.getItem(NAV_COLLAPSED_KEY) === "1");
   }, []);
+
+  useEffect(() => {
+    if (profileProp) return;
+    const supabase = createClient();
+    void supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      const { data } = await supabase
+        .from("admin_profiles")
+        .select("user_id, email, first_name, last_name, avatar_path, role")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (data) {
+        setProfile(data as AdminProfile);
+        return;
+      }
+      const inferred = (user.email || "Admin").split("@")[0] || "Admin";
+      const { data: created } = await supabase
+        .from("admin_profiles")
+        .upsert({
+          user_id: user.id,
+          email: user.email || "",
+          first_name: inferred,
+          last_name: "",
+          role: "admin",
+        })
+        .select("user_id, email, first_name, last_name, avatar_path, role")
+        .single();
+      if (created) setProfile(created as AdminProfile);
+    });
+  }, [profileProp, pathname]);
 
   function toggleCollapsed() {
     setCollapsed((current) => {
@@ -249,20 +298,39 @@ export function AppShell({
             onCountChange={setLiveUnanswered}
           />
           <div
-            className={`flex items-center gap-2.5 rounded-xl bg-white/10 py-2.5 ${
-              iconsOnly ? "justify-center px-0" : "px-2.5"
+            className={`flex items-center gap-2 rounded-xl bg-white/10 py-2 ${
+              iconsOnly ? "justify-center px-0" : "px-2"
             }`}
-            title={iconsOnly ? email : undefined}
           >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-tis-acid text-sm font-bold text-tis-ink">
-              {(email || "?").slice(0, 1).toUpperCase()}
-            </span>
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={avatarUrl}
+                alt=""
+                className="h-9 w-9 shrink-0 rounded-full border border-white object-cover"
+              />
+            ) : (
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white bg-tis-acid text-sm font-bold text-tis-ink">
+                {avatarInitial(profile || { first_name: firstName, email })}
+              </span>
+            )}
             {!iconsOnly && (
-              <div className="min-w-0">
-                <p className="truncate text-xs font-bold text-white">{email}</p>
-                <p className="text-[11px] text-white/60">Admin</p>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-bold text-white">{firstName}</p>
+                <p className="text-[11px] text-white/60">{roleText}</p>
               </div>
             )}
+            <Link
+              href="/account"
+              onClick={() => setOpen(false)}
+              className={`rounded-lg p-2 text-white/75 transition hover:bg-white/10 hover:text-white ${
+                pathname.startsWith("/account") ? "bg-white/15 text-white" : ""
+              }`}
+              title="Account settings"
+              aria-label="Account settings"
+            >
+              <Settings className="h-4 w-4" />
+            </Link>
           </div>
           <form action="/auth/signout" method="post">
             <button

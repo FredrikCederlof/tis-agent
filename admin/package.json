@@ -5,7 +5,7 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start -p 3000",
-    "test": "node --experimental-strip-types --test lib/notifications.test.ts"
+    "test": "node --experimental-strip-types --test lib/notifications.test.ts lib/account.test.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
