@@ -16,8 +16,16 @@ function isPublicPath(pathname: string): boolean {
     pathname.startsWith("/login") ||
     pathname.startsWith("/auth/callback") ||
     pathname.startsWith("/auth/preview-login") ||
-    pathname === "/favicon.ico"
+    pathname === "/favicon.ico" ||
+    // Railway calls this with ADMIN_SYNC_SECRET (no session cookie).
+    // Auth is enforced inside the route handler.
+    pathname === "/api/push/notify"
   );
+}
+
+/** API routes should get JSON 401s, not HTML login redirects. */
+function isApiPath(pathname: string): boolean {
+  return pathname.startsWith("/api/");
 }
 
 export async function middleware(request: NextRequest) {
@@ -65,6 +73,9 @@ export async function middleware(request: NextRequest) {
   }
 
   if (!user && !isPublic) {
+    if (isApiPath(request.nextUrl.pathname)) {
+      return NextResponse.json({ detail: "Not signed in" }, { status: 401 });
+    }
     const url = request.nextUrl.clone();
     url.pathname = "/login";
     return NextResponse.redirect(url);
