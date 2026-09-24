@@ -1,29 +1,16 @@
 import { NextResponse } from "next/server";
-import { createClient } from "@/lib/supabase/server";
+import { parseAdminRole } from "@/lib/account";
+import { requireApiAdmin, writeAuditEvent } from "@/lib/authz";
 import { createServiceClient } from "@/lib/supabase/service";
-import { ensureAdminProfile } from "@/lib/ensure-profile";
-import { isAdminRole, parseAdminRole } from "@/lib/account";
+import { wouldLeaveNoAdmin, type AdminProfileManaged } from "@/lib/users";
 
 /**
  * Administrators only: assign another user's role.
  * Callers cannot change their own role through this endpoint.
  */
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) {
-    return NextResponse.json({ detail: "Not signed in" }, { status: 401 });
-  }
-
-  const caller = await ensureAdminProfile(supabase, user);
-  if (!isAdminRole(caller.role)) {
-    return NextResponse.json(
-      { detail: "Only administrators can change roles." },
-      { status: 403 },
-    );
-  }
+  const auth = await requireApiAdmin();
+  if (!auth.ok) return auth.response;
 
   const body = await request.json().catch(() => ({}));
   const targetUserId = String(body?.user_id || "").trim();
@@ -31,7 +18,7 @@ export async function POST(request: Request) {
   if (!targetUserId || !role) {
     return NextResponse.json({ detail: "user_id and role are required." }, { status: 400 });
   }
-  if (targetUserId === user.id) {
+  if (targetUserId === auth.user.id) {
     return NextResponse.json(
       { detail: "You cannot change your own role." },
       { status: 400 },
@@ -45,14 +32,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ detail: "Role updates are not configured." }, { status: 503 });
   }
 
-  const { data: target, error: loadError } = await service
+  const { data: profiles, error: listError } = await service
     .from("admin_profiles")
-    .select("user_id")
-    .eq("user_id", targetUserId)
-    .maybeSingle();
+    .select("user_id, email, first_name, last_name, role, status, deactivated_at");
 
-  if (loadError || !target) {
+  if (listError) {
+    return NextResponse.json({ detail: "Could not load users." }, { status: 500 });
+  }
+
+  const rows = (profiles || []) as AdminProfileManaged[];
+  const target = rows.find((row) => row.user_id === targetUserId);
+  if (!target) {
     return NextResponse.json({ detail: "User not found." }, { status: 404 });
+  }
+
+  if (
+    wouldLeaveNoAdmin({
+      profiles: rows,
+      targetUserId,
+      nextRole: role,
+    })
+  ) {
+    return NextResponse.json(
+      { detail: "Tina Admin must keep at least one active administrator." },
+      { status: 400 },
+    );
   }
 
   const { error } = await service
@@ -63,6 +67,14 @@ export async function POST(request: Request) {
   if (error) {
     return NextResponse.json({ detail: "Could not update role." }, { status: 500 });
   }
+
+  await writeAuditEvent({
+    action: "role_changed",
+    actorUserId: auth.user.id,
+    targetUserId,
+    targetEmail: target.email,
+    metadata: { from: target.role, to: role },
+  });
 
   return NextResponse.json({ status: "ok", message: "Role updated." });
 }
