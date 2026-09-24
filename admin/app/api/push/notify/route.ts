@@ -17,14 +17,50 @@ function bearerSecret(request: Request): string {
   return match?.[1]?.trim() || "";
 }
 
+/** Trim: Vercel env paste often includes a trailing newline; Railway already strips. */
+function configuredSyncSecret(): string {
+  return (process.env.ADMIN_SYNC_SECRET || "").trim();
+}
+
+function debugLog(payload: Record<string, unknown>) {
+  // #region agent log
+  const line = JSON.stringify({
+    timestamp: Date.now(),
+    location: "api/push/notify/route.ts",
+    ...payload,
+  });
+  console.info(line);
+  try {
+    require("fs").appendFileSync("/opt/cursor/logs/debug.log", line + "\n");
+  } catch {
+    /* local-only path; ignore on Vercel */
+  }
+  // #endregion
+}
+
 /**
  * Trigger Web Push for a Needs attention transition.
  * Auth: logged-in admin session OR ADMIN_SYNC_SECRET (Railway → Vercel).
  */
 export async function POST(request: Request) {
-  const secret = process.env.ADMIN_SYNC_SECRET || "";
+  const secret = configuredSyncSecret();
   const provided = bearerSecret(request);
   let authorized = Boolean(secret && provided && provided === secret);
+
+  // #region agent log
+  debugLog({
+    message: "notify_auth",
+    hypothesisId: "C",
+    data: {
+      hasSecret: Boolean(secret),
+      secretLen: secret.length,
+      hasProvided: Boolean(provided),
+      providedLen: provided.length,
+      secretMatch: Boolean(secret && provided && secret === provided),
+      authorizedViaSecret: authorized,
+    },
+  });
+  // #endregion
 
   if (!authorized) {
     const supabase = await createClient();
@@ -37,6 +73,9 @@ export async function POST(request: Request) {
   }
 
   if (!authorized) {
+    // #region agent log
+    debugLog({ message: "notify_unauthorized", hypothesisId: "C", data: { status: 401 } });
+    // #endregion
     return NextResponse.json({ detail: "Unauthorized" }, { status: 401 });
   }
 
@@ -48,6 +87,14 @@ export async function POST(request: Request) {
 
   try {
     const result = await notifyNeedsAttention(interactionId);
+    // #region agent log
+    debugLog({
+      message: "notify_result",
+      hypothesisId: "A",
+      data: { interactionId, ...result },
+      runId: "post-fix",
+    });
+    // #endregion
     return NextResponse.json({ status: "ok", ...result });
   } catch (error) {
     console.info(

@@ -14,9 +14,9 @@ export type NotifyResult = {
 };
 
 function configureVapid(): { ok: true } | { ok: false; reason: string } {
-  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "";
-  const privateKey = process.env.VAPID_PRIVATE_KEY || "";
-  const subject = process.env.VAPID_SUBJECT || "mailto:admin@tokyois.com";
+  const publicKey = (process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "").trim();
+  const privateKey = (process.env.VAPID_PRIVATE_KEY || "").trim();
+  const subject = (process.env.VAPID_SUBJECT || "mailto:admin@tokyois.com").trim();
   if (!publicKey || !privateKey) {
     return { ok: false, reason: "vapid_not_configured" };
   }
@@ -33,6 +33,29 @@ function logStage(stage: string, meta: Record<string, unknown> = {}) {
  * Send Web Push to all subscribed admins when an interaction enters Needs attention.
  * Failures never throw — callers must not break message processing.
  */
+function agentDebugLog(
+  message: string,
+  hypothesisId: string,
+  data: Record<string, unknown>,
+) {
+  // #region agent log
+  const line = JSON.stringify({
+    timestamp: Date.now(),
+    location: "lib/push-server.ts",
+    message,
+    hypothesisId,
+    data,
+  });
+  console.info(line);
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    require("fs").appendFileSync("/opt/cursor/logs/debug.log", line + "\n");
+  } catch {
+    /* local-only path; ignore on Vercel */
+  }
+  // #endregion
+}
+
 export async function notifyNeedsAttention(interactionId: string): Promise<NotifyResult> {
   const empty: NotifyResult = { notified: 0, skipped: 0, failed: 0 };
   if (!interactionId) {
@@ -40,8 +63,15 @@ export async function notifyNeedsAttention(interactionId: string): Promise<Notif
     return { ...empty, reason: "missing_interaction_id" };
   }
 
+  // #region agent log
+  agentDebugLog("notify_enter", "A", { interactionId });
+  // #endregion
+
   const vapid = configureVapid();
   if (!vapid.ok) {
+    // #region agent log
+    agentDebugLog("vapid_skip", "A", { reason: vapid.reason, interactionId });
+    // #endregion
     logStage("skip", { reason: vapid.reason, interactionId });
     return { ...empty, reason: vapid.reason };
   }
@@ -67,11 +97,26 @@ export async function notifyNeedsAttention(interactionId: string): Promise<Notif
     .maybeSingle();
 
   if (rowError) {
+    // #region agent log
+    agentDebugLog("load_interaction_error", "A", {
+      interactionId,
+      code: rowError.code,
+      message: rowError.message,
+    });
+    // #endregion
     logStage("error", { stage: "load_interaction", interactionId, code: rowError.code });
     return { ...empty, reason: "load_failed" };
   }
 
   if (!isNeedsAttentionUnanswered(row)) {
+    // #region agent log
+    agentDebugLog("not_needs_attention", "A", {
+      interactionId,
+      outcome: row?.outcome ?? null,
+      hasReviewed: Boolean(row?.reviewed_at),
+      hasHumanReply: Boolean(row?.human_replied_at),
+    });
+    // #endregion
     logStage("skip", { reason: "not_needs_attention", interactionId });
     return { ...empty, reason: "not_needs_attention" };
   }
@@ -102,10 +147,20 @@ export async function notifyNeedsAttention(interactionId: string): Promise<Notif
   }
 
   const userIds = [...byUser.keys()];
-  const { data: profiles } = await sb
+  const { data: profiles, error: profileError } = await sb
     .from("admin_profiles")
     .select("user_id, notify_message_previews")
     .in("user_id", userIds);
+
+  // #region agent log
+  agentDebugLog("profiles_loaded", "A", {
+    interactionId,
+    userCount: userIds.length,
+    profileCount: (profiles || []).length,
+    profileError: profileError?.code || null,
+    subCount: subscriptions.length,
+  });
+  // #endregion
 
   const previewByUser = new Map<string, boolean>();
   for (const profile of profiles || []) {
@@ -132,10 +187,21 @@ export async function notifyNeedsAttention(interactionId: string): Promise<Notif
       // Unique violation → already notified this user for this message.
       if (claimError.code === "23505") {
         skipped += 1;
+        // #region agent log
+        agentDebugLog("claim_dedupe", "D", { interactionId, userId });
+        // #endregion
         logStage("dedupe", { interactionId, userId });
         continue;
       }
       failed += 1;
+      // #region agent log
+      agentDebugLog("claim_failed", "D", {
+        interactionId,
+        userId,
+        code: claimError.code,
+        message: claimError.message,
+      });
+      // #endregion
       logStage("error", { stage: "claim_delivery", interactionId, code: claimError.code });
       continue;
     }
