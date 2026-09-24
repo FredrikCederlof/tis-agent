@@ -287,7 +287,7 @@ export function buildDashboardModel(
 }
 
 export const KPI_DEFINITIONS = {
-  totalQuestions: "Parent messages Tina received during this period.",
+  totalQuestions: "Total parent questions Tina received during this period.",
   answeredByTina:
     "Share of questions Tina answered from official TIS sources. Grounded answers ÷ (grounded answers + knowledge gaps).",
   needsAttention:
