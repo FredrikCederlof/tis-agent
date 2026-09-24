@@ -15,7 +15,7 @@ Web admin for Tina — edit prompts, answer policy, review gaps, view analytics.
 
 ## Setup
 
-1. Run `sql/005_admin.sql`, `sql/010_knowledge_hub.sql`, `sql/012_chat_sessions_admin.sql`, `sql/013_human_reply.sql`, `sql/014_manual_attention.sql`, and `sql/015_minutes_saved.sql` in [Supabase SQL Editor](https://supabase.com/dashboard/project/ixjsiwedssgutrmegyzv/sql/new).
+1. Run `sql/005_admin.sql`, `sql/010_knowledge_hub.sql`, `sql/012_chat_sessions_admin.sql`, `sql/013_human_reply.sql`, `sql/014_manual_attention.sql`, `sql/015_minutes_saved.sql`, and `sql/016_push_notifications.sql` in [Supabase SQL Editor](https://supabase.com/dashboard/project/ixjsiwedssgutrmegyzv/sql/new).
 2. In Supabase → Authentication → Providers: enable **Email** (magic link).
 3. In Supabase → Authentication → URL configuration, add redirect URL:
    - Local: `http://localhost:3000/auth/callback`
@@ -37,12 +37,17 @@ Open http://localhost:3000 — sign in with an email listed in `ADMIN_EMAILS`.
 2. Env vars:
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY` (publishable key from Supabase)
+   - `SUPABASE_SECRET_KEY` (service role — push delivery)
    - `ADMIN_EMAILS` (comma-separated staff emails)
    - `NEXT_PUBLIC_TINA_API_URL` (Railway app URL)
    - `ADMIN_SYNC_SECRET` (same secret as Railway `ADMIN_SYNC_SECRET`)
+   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` (Web Push)
 3. Add the Vercel URL to Supabase Auth redirect URLs.
 
-On **Railway** (WhatsApp + admin sync API), also set `TIS_PORTAL_USERNAME` and `TIS_PORTAL_PASSWORD` so TIS Times can sync from the login-gated parent portal.
+On **Railway** (WhatsApp + admin sync API), also set:
+- `TIS_PORTAL_USERNAME` and `TIS_PORTAL_PASSWORD` so TIS Times can sync from the login-gated parent portal.
+- `TINA_ADMIN_URL` (Vercel admin origin, e.g. `https://admin-lac-zeta.vercel.app`) so gap outcomes can trigger Web Push via `/api/push/notify`.
+- `ADMIN_SYNC_SECRET` (same value as Vercel).
 
 For automatic updates, add a **second Railway service** with cron `30 18 * * 2,5` (Wed/Sat 03:30 JST) and start command `python -m tis_agent sync web`. See root `AGENTS.md`.
 

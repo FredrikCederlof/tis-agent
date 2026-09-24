@@ -185,8 +185,11 @@ def log_interaction(
     wa_message_id: str | None = None,
     channel: str = "whatsapp",
     settings: Settings | None = None,
-) -> None:
-    """Persist one parent question + Tina reply. Failures are logged, not raised."""
+) -> str | None:
+    """Persist one parent question + Tina reply. Failures are logged, not raised.
+
+    Returns the new interaction id when insert succeeds.
+    """
     settings = settings or get_settings()
     row = {
         "session_id": session_id,
@@ -205,6 +208,19 @@ def log_interaction(
 
     try:
         sb = make_supabase(settings)
-        sb.table("interactions").insert(row).execute()
+        result = sb.table("interactions").insert(row).select("id").execute()
+        rows = result.data or []
+        interaction_id = str(rows[0]["id"]) if rows else None
+        if interaction_id:
+            try:
+                from tis_agent.push_notify import notify_needs_attention
+
+                notify_needs_attention(interaction_id, outcome=outcome)
+            except Exception:
+                logger.exception(
+                    "push notify hook failed for interaction %s", interaction_id
+                )
+        return interaction_id
     except Exception:
         logger.exception("Failed to log interaction for session %s", session_id)
+        return None
