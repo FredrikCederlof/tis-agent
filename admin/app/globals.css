@@ -52,7 +52,9 @@ body {
   input[type="text"],
   input[type="email"],
   input[type="number"],
-  input[type="date"] {
+  input[type="date"],
+  input[type="password"],
+  input[type="file"] {
     @apply w-full rounded-xl border border-black/[0.08] bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm outline-none transition placeholder:text-slate-400 focus:border-tis-navy focus:ring-4 focus:ring-tis-navy/15;
   }
 
