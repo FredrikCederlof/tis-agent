@@ -51,7 +51,7 @@ export async function ensureAdminProfile(
     ),
     role,
     status: "active",
-    notify_message_previews: false,
+    notify_message_previews: true,
   };
 
   const { data: created, error } = await supabase
@@ -68,7 +68,7 @@ export async function ensureAdminProfile(
       last_name: "",
       avatar_path: null,
       role,
-      notify_message_previews: false,
+      notify_message_previews: true,
     };
   }
   return created as AdminProfile;
