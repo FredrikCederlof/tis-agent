@@ -586,6 +586,12 @@ function ChatThread({
       window.alert(`Could not mark needs attention: ${error.message}`);
       return;
     }
+    // Fire-and-forget Web Push; failures must not block the inbox UI.
+    void fetch("/api/push/notify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ interaction_id: interactionId }),
+    }).catch(() => undefined);
     router.refresh();
   }
 

@@ -2,14 +2,13 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   NOTIFY_CHOICE_KEY,
-  NOTIFY_SEEN_KEY,
-  diffAttentionNotifications,
-  notificationBodyForCount,
+  deliveryIdempotencyKey,
+  isNeedsAttentionUnanswered,
+  notificationPayloadForInteraction,
   readNotifyChoice,
-  readSeenIds,
-  seedSeenIds,
+  resolveNotifyUiState,
+  validatePushSubscriptionPayload,
   writeNotifyChoice,
-  writeSeenIds,
 } from "./notifications.ts";
 
 function memoryStorage(initial: Record<string, string> = {}): Storage {
@@ -47,64 +46,124 @@ describe("notify choice persistence", () => {
     writeNotifyChoice("enabled", storage);
     assert.equal(readNotifyChoice(storage), "enabled");
     assert.equal(storage.getItem(NOTIFY_CHOICE_KEY), "enabled");
-
     writeNotifyChoice("dismissed", storage);
     assert.equal(readNotifyChoice(storage), "dismissed");
   });
-
-  it("ignores unknown stored values", () => {
-    const storage = memoryStorage({ [NOTIFY_CHOICE_KEY]: "maybe" });
-    assert.equal(readNotifyChoice(storage), null);
-  });
 });
 
-describe("seen ids", () => {
-  it("seeds backlog so existing queue items do not notify", () => {
-    const seeded = seedSeenIds(["a", "b"], []);
-    assert.deepEqual(seeded, ["a", "b"]);
-    const again = diffAttentionNotifications(["a", "b"], seeded);
-    assert.deepEqual(again.notifyIds, []);
-    assert.deepEqual(again.nextSeen, ["a", "b"]);
-  });
-
-  it("notifies only new ids and marks them seen", () => {
-    const { notifyIds, nextSeen } = diffAttentionNotifications(["a", "b", "c"], ["a", "b"]);
-    assert.deepEqual(notifyIds, ["c"]);
-    assert.deepEqual(nextSeen, ["a", "b", "c"]);
-  });
-
-  it("does not duplicate notifications for the same id", () => {
-    const first = diffAttentionNotifications(["x"], []);
-    assert.deepEqual(first.notifyIds, ["x"]);
-    const second = diffAttentionNotifications(["x"], first.nextSeen);
-    assert.deepEqual(second.notifyIds, []);
-  });
-
-  it("prunes left-queue ids so a later re-flag can notify again", () => {
-    const afterLeave = diffAttentionNotifications([], ["old"]);
-    assert.deepEqual(afterLeave.notifyIds, []);
-    assert.deepEqual(afterLeave.nextSeen, []);
-    const reflagged = diffAttentionNotifications(["old"], afterLeave.nextSeen);
-    assert.deepEqual(reflagged.notifyIds, ["old"]);
-  });
-
-  it("round-trips seen ids through storage", () => {
-    const storage = memoryStorage();
-    writeSeenIds(["1", "2"], storage);
-    assert.equal(storage.getItem(NOTIFY_SEEN_KEY), JSON.stringify(["1", "2"]));
-    assert.deepEqual(readSeenIds(storage), ["1", "2"]);
-  });
-});
-
-describe("notification copy", () => {
-  it("avoids message content and stays generic", () => {
+describe("UI states", () => {
+  it("maps permission and choice to stable labels", () => {
     assert.equal(
-      notificationBodyForCount(1),
-      "A parent message needs attention in Tina Admin.",
+      resolveNotifyUiState({ supported: false, choice: null, permission: null }),
+      "unsupported",
     );
     assert.equal(
-      notificationBodyForCount(3),
-      "3 parent messages need attention in Tina Admin.",
+      resolveNotifyUiState({ supported: true, choice: null, permission: "default" }),
+      "prompt",
+    );
+    assert.equal(
+      resolveNotifyUiState({
+        supported: true,
+        choice: "enabled",
+        permission: "granted",
+      }),
+      "enabled",
+    );
+    assert.equal(
+      resolveNotifyUiState({ supported: true, choice: "dismissed", permission: "denied" }),
+      "blocked",
+    );
+    assert.equal(
+      resolveNotifyUiState({
+        supported: true,
+        choice: "dismissed",
+        permission: "default",
+      }),
+      "not_enabled",
+    );
+  });
+});
+
+describe("needs attention eligibility", () => {
+  it("notifies for unanswered gap outcomes and manual flags", () => {
+    assert.equal(
+      isNeedsAttentionUnanswered({
+        id: "1",
+        outcome: "no_evidence",
+        reviewed_at: null,
+        human_replied_at: null,
+      }),
+      true,
+    );
+    assert.equal(
+      isNeedsAttentionUnanswered({
+        id: "2",
+        outcome: "success",
+        manual_attention_at: "2026-09-24T00:00:00Z",
+        reviewed_at: null,
+      }),
+      true,
+    );
+  });
+
+  it("skips answered, reviewed, or non-attention messages", () => {
+    assert.equal(
+      isNeedsAttentionUnanswered({
+        id: "3",
+        outcome: "success",
+        reviewed_at: null,
+      }),
+      false,
+    );
+    assert.equal(
+      isNeedsAttentionUnanswered({
+        id: "4",
+        outcome: "no_evidence",
+        reviewed_at: "2026-09-24T00:00:00Z",
+      }),
+      false,
+    );
+    assert.equal(
+      isNeedsAttentionUnanswered({
+        id: "5",
+        outcome: "no_evidence",
+        human_replied_at: "2026-09-24T00:00:00Z",
+      }),
+      false,
+    );
+  });
+});
+
+describe("idempotency and payload", () => {
+  it("builds a stable user+message key", () => {
+    assert.equal(deliveryIdempotencyKey("u1", "i1"), "u1:i1");
+  });
+
+  it("keeps notification text free of message content", () => {
+    const payload = notificationPayloadForInteraction("abc");
+    assert.equal(payload.title, "Tina Admin");
+    assert.match(payload.body, /needs attention/i);
+    assert.equal(payload.tag, "needs-attention-abc");
+    assert.equal(payload.data.url, "/inbox");
+    assert.equal(payload.data.interactionId, "abc");
+    assert.equal(payload.body.includes("abc"), false);
+  });
+
+  it("validates subscription payloads", () => {
+    assert.equal(validatePushSubscriptionPayload(null).ok, false);
+    assert.equal(
+      validatePushSubscriptionPayload({
+        endpoint: "https://fcm.googleapis.com/fcm/send/x",
+        keys: { p256dh: "p", auth: "a" },
+      }).ok,
+      true,
+    );
+    assert.equal(
+      validatePushSubscriptionPayload({
+        endpoint: "http://insecure",
+        keys: { p256dh: "p", auth: "a" },
+      }).ok,
+      false,
     );
   });
 });
