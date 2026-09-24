@@ -2,17 +2,20 @@
 
 import Image from "next/image";
 import { Suspense, useState } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
 function LoginForm() {
+  const router = useRouter();
   const searchParams = useSearchParams();
+  const [mode, setMode] = useState<"magic" | "password">("magic");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function onSubmit(e: React.FormEvent) {
+  async function onMagicLink(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError(null);
@@ -29,6 +32,24 @@ function LoginForm() {
       return;
     }
     setSent(true);
+  }
+
+  async function onPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    const supabase = createClient();
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    setLoading(false);
+    if (signInError) {
+      setError(signInError.message);
+      return;
+    }
+    router.replace("/");
+    router.refresh();
   }
 
   return (
@@ -83,12 +104,17 @@ function LoginForm() {
 
           <h2 className="text-2xl font-bold text-tis-navy">Sign in</h2>
           <p className="mt-2 text-sm text-tis-muted">
-            Use your staff email. We’ll send a magic link — no password needed.
+            Use your staff email with a magic link or the password you set during onboarding.
           </p>
 
           {searchParams.get("error") === "not_allowed" && (
             <p className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-sm text-tis-danger">
               This email is not authorized for admin access.
+            </p>
+          )}
+          {searchParams.get("error") === "deactivated" && (
+            <p className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-sm text-tis-danger">
+              This account has been deactivated. Contact an administrator.
             </p>
           )}
           {searchParams.get("error") === "misconfigured" && (
@@ -97,12 +123,41 @@ function LoginForm() {
             </p>
           )}
 
-          {sent ? (
+          <div className="mt-5 flex gap-2 rounded-xl bg-tis-mist/70 p-1">
+            <button
+              type="button"
+              className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                mode === "magic" ? "bg-white text-tis-navy shadow-sm" : "text-tis-muted"
+              }`}
+              onClick={() => {
+                setMode("magic");
+                setError(null);
+                setSent(false);
+              }}
+            >
+              Magic link
+            </button>
+            <button
+              type="button"
+              className={`flex-1 rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                mode === "password" ? "bg-white text-tis-navy shadow-sm" : "text-tis-muted"
+              }`}
+              onClick={() => {
+                setMode("password");
+                setError(null);
+                setSent(false);
+              }}
+            >
+              Password
+            </button>
+          </div>
+
+          {mode === "magic" && sent ? (
             <p className="mt-6 rounded-xl bg-emerald-50 px-3 py-3 text-sm font-medium text-tis-success">
               Check your email for a sign-in link.
             </p>
-          ) : (
-            <form onSubmit={onSubmit} className="mt-6 space-y-4">
+          ) : mode === "magic" ? (
+            <form onSubmit={(e) => void onMagicLink(e)} className="mt-6 space-y-4">
               <div>
                 <label className="label" htmlFor="email">
                   Email
@@ -121,6 +176,41 @@ function LoginForm() {
               )}
               <button type="submit" className="primary w-full" disabled={loading}>
                 {loading ? "Sending link…" : "Send magic link"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={(e) => void onPassword(e)} className="mt-6 space-y-4">
+              <div>
+                <label className="label" htmlFor="email-password">
+                  Email
+                </label>
+                <input
+                  id="email-password"
+                  type="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@school.edu"
+                />
+              </div>
+              <div>
+                <label className="label" htmlFor="password">
+                  Password
+                </label>
+                <input
+                  id="password"
+                  type="password"
+                  required
+                  autoComplete="current-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </div>
+              {error && (
+                <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-tis-danger">{error}</p>
+              )}
+              <button type="submit" className="primary w-full" disabled={loading}>
+                {loading ? "Signing in…" : "Sign in"}
               </button>
             </form>
           )}
