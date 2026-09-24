@@ -114,17 +114,17 @@ export default async function DashboardPage({
             deltaLabel={vsPrevious}
           />
           <StatCard
-            label="Answered by Tina"
-            value={`${current.answeredByTinaPct}%`}
-            detail={`${current.successCount} of ${current.questions}`}
-            definition={KPI_DEFINITIONS.answeredByTina}
+            label="Total Questions Asked"
+            value={current.questions}
+            definition={KPI_DEFINITIONS.totalQuestions}
             accent="purple"
-            sparkline={days.map((d) => d.answeredPct)}
+            iconName="message"
+            sparkline={days.map((d) => d.questions)}
             sparklineLabels={dayLabels}
-            sparkFormat="percent"
-            delta={percentagePointChange(current.answeredByTinaPct, previous.answeredByTinaPct)}
+            sparkFormat="number"
+            delta={current.questions - previous.questions}
             deltaLabel={vsPrevious}
-            deltaUnit=" percentage points"
+            deltaUnit=""
           />
           <StatCard
             label="Needs attention"
