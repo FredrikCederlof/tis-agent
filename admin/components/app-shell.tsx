@@ -17,6 +17,7 @@ import {
   X,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { NeedsAttentionNotifications } from "@/components/needs-attention-notifications";
 
 const NAV_COLLAPSED_KEY = "tis-admin-nav-collapsed";
 
@@ -57,7 +58,9 @@ export function AppShell({
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [fetchedUnread, setFetchedUnread] = useState(0);
+  const [liveUnanswered, setLiveUnanswered] = useState<number | null>(null);
   const unreadChats = chatsUnreadCount ?? fetchedUnread;
+  const inboxCount = liveUnanswered ?? unansweredCount;
   const fillCanvas = pathname.startsWith("/chats");
 
   useEffect(() => {
@@ -87,7 +90,7 @@ export function AppShell({
 
   function badgeFor(kind?: "chats" | "inbox"): number {
     if (kind === "chats") return unreadChats;
-    if (kind === "inbox") return unansweredCount;
+    if (kind === "inbox") return inboxCount;
     return 0;
   }
 
@@ -241,6 +244,10 @@ export function AppShell({
         </nav>
 
         <div className="mt-3 space-y-2 border-t border-white/15 pt-3">
+          <NeedsAttentionNotifications
+            iconsOnly={iconsOnly}
+            onCountChange={setLiveUnanswered}
+          />
           <div
             className={`flex items-center gap-2.5 rounded-xl bg-white/10 py-2.5 ${
               iconsOnly ? "justify-center px-0" : "px-2.5"
