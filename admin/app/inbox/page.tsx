@@ -6,7 +6,11 @@ import type { UnansweredRow } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
-export default async function InboxPage() {
+export default async function InboxPage({
+  searchParams,
+}: {
+  searchParams?: { notice?: string };
+}) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -36,12 +40,19 @@ export default async function InboxPage() {
     }
   }
 
+  const notice = searchParams?.notice;
+
   return (
     <AppShell email={user.email || ""} unansweredCount={count ?? rows.length}>
       <PageHeader
         title="Needs attention"
         subtitle="Automatic gaps and questions you marked for follow-up. Reply on WhatsApp, or turn the answer into knowledge."
       />
+      {notice === "unavailable" && (
+        <p className="mb-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          That conversation is no longer available. Review open items below.
+        </p>
+      )}
       {error ? (
         <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-tis-danger">{error.message}</p>
       ) : (

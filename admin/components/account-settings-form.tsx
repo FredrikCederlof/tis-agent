@@ -3,7 +3,6 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { NeedsAttentionNotifications } from "@/components/needs-attention-notifications";
 import {
   avatarInitial,
   avatarPublicUrl,
@@ -11,6 +10,7 @@ import {
   validateAvatarFile,
   type AdminProfile,
 } from "@/lib/account";
+import { AccountNotificationsCard } from "@/components/account-notifications-card";
 
 export function AccountSettingsForm({
   profile,
@@ -323,7 +323,9 @@ export function AccountSettingsForm({
         </form>
       </section>
 
-      <NeedsAttentionNotifications variant="settings" />
+      <AccountNotificationsCard
+        initialShowPreviews={Boolean(profile.notify_message_previews)}
+      />
     </div>
   );
 }

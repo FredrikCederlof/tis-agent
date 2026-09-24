@@ -46,17 +46,12 @@ export async function ensureAdminProfile(
     user_id: user.id,
     email: user.email || "",
     first_name: inferredFirstName(user),
-<<<<<<< HEAD
     last_name: String(
       ((user.user_metadata || {}) as Record<string, unknown>).last_name || "",
     ),
     role,
     status: "active",
-=======
-    last_name: "",
-    role: "admin" as AdminRole,
     notify_message_previews: false,
->>>>>>> c4a3e05 (Improve Needs attention push title, preview payload, and deep links.)
   };
 
   const { data: created, error } = await supabase
@@ -72,12 +67,8 @@ export async function ensureAdminProfile(
       first_name: inferredFirstName(user),
       last_name: "",
       avatar_path: null,
-<<<<<<< HEAD
       role,
-=======
-      role: "admin",
       notify_message_previews: false,
->>>>>>> c4a3e05 (Improve Needs attention push title, preview payload, and deep links.)
     };
   }
   return created as AdminProfile;

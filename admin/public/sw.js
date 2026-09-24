@@ -1,10 +1,10 @@
-/* Tina Admin Web Push service worker (INS-16). */
+/* Tina Admin Web Push service worker (INS-16 / INS-18). */
 /* eslint-disable no-restricted-globals */
 
 self.addEventListener("push", (event) => {
   let payload = {
-    title: "Tina Admin",
-    body: "A parent message needs attention.",
+    title: "New message needs attention",
+    body: "Open Tina Admin to review and reply.",
     tag: "needs-attention",
     data: { url: "/inbox" },
   };
@@ -25,7 +25,12 @@ self.addEventListener("push", (event) => {
     renotify: false,
   };
 
-  event.waitUntil(self.registration.showNotification(payload.title || "Tina Admin", options));
+  event.waitUntil(
+    self.registration.showNotification(
+      payload.title || "New message needs attention",
+      options,
+    ),
+  );
 });
 
 self.addEventListener("notificationclick", (event) => {
