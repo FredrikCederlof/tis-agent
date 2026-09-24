@@ -33,7 +33,7 @@ export async function ensureAdminProfile(
 ): Promise<AdminProfile> {
   const { data: existing } = await supabase
     .from("admin_profiles")
-    .select("user_id, email, first_name, last_name, avatar_path, role")
+    .select("user_id, email, first_name, last_name, avatar_path, role, notify_message_previews")
     .eq("user_id", user.id)
     .maybeSingle();
 
@@ -46,17 +46,23 @@ export async function ensureAdminProfile(
     user_id: user.id,
     email: user.email || "",
     first_name: inferredFirstName(user),
+<<<<<<< HEAD
     last_name: String(
       ((user.user_metadata || {}) as Record<string, unknown>).last_name || "",
     ),
     role,
     status: "active",
+=======
+    last_name: "",
+    role: "admin" as AdminRole,
+    notify_message_previews: false,
+>>>>>>> c4a3e05 (Improve Needs attention push title, preview payload, and deep links.)
   };
 
   const { data: created, error } = await supabase
     .from("admin_profiles")
     .upsert(row, { onConflict: "user_id" })
-    .select("user_id, email, first_name, last_name, avatar_path, role")
+    .select("user_id, email, first_name, last_name, avatar_path, role, notify_message_previews")
     .single();
 
   if (error || !created) {
@@ -66,7 +72,12 @@ export async function ensureAdminProfile(
       first_name: inferredFirstName(user),
       last_name: "",
       avatar_path: null,
+<<<<<<< HEAD
       role,
+=======
+      role: "admin",
+      notify_message_previews: false,
+>>>>>>> c4a3e05 (Improve Needs attention push title, preview payload, and deep links.)
     };
   }
   return created as AdminProfile;

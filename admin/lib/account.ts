@@ -18,6 +18,8 @@ export type AdminProfile = {
   last_name: string;
   avatar_path: string | null;
   role: AdminRole;
+  /** When true, Needs attention push notifications include a short question preview. Default false. */
+  notify_message_previews?: boolean;
 };
 
 export function roleLabel(role: AdminRole | string | null | undefined): string {

@@ -4,6 +4,9 @@ export const NOTIFY_CHOICE_KEY = "tis-admin-notify-choice";
 export const NEEDS_ATTENTION_INBOX_PATH = "/inbox";
 export const PUSH_SW_PATH = "/sw.js";
 export const GAP_OUTCOMES = ["no_evidence", "low_confidence"] as const;
+export const NOTIFY_TITLE = "New message needs attention";
+export const NOTIFY_BODY_GENERIC = "Open Tina Admin to review and reply.";
+export const NOTIFY_PREVIEW_MAX_CHARS = 100;
 
 export type NotifyChoice = "enabled" | "dismissed";
 export type NotifyUiState =
@@ -70,6 +73,8 @@ export type NeedsAttentionRow = {
   human_replied_at?: string | null;
   manual_attention_at?: string | null;
   outcome?: string | null;
+  session_id?: string | null;
+  question?: string | null;
 };
 
 /** True when the row currently belongs in Needs attention (unanswered). */
@@ -81,19 +86,56 @@ export function isNeedsAttentionUnanswered(row: NeedsAttentionRow | null | undef
   return GAP_OUTCOMES.includes(row.outcome as (typeof GAP_OUTCOMES)[number]);
 }
 
-export function notificationPayloadForInteraction(interactionId: string): {
+/** Collapse whitespace/newlines and shorten for lock-screen-safe previews. */
+export function previewQuestion(
+  question: string | null | undefined,
+  maxChars: number = NOTIFY_PREVIEW_MAX_CHARS,
+): string | null {
+  const cleaned = (question || "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!cleaned) return null;
+  if (cleaned.length <= maxChars) return cleaned;
+  const slice = cleaned.slice(0, Math.max(1, maxChars - 1)).trimEnd();
+  return `${slice}…`;
+}
+
+export function chatSessionPath(sessionId: string | null | undefined): string {
+  const id = (sessionId || "").trim();
+  if (!id) return NEEDS_ATTENTION_INBOX_PATH;
+  return `/chats/${encodeURIComponent(id)}`;
+}
+
+export function notificationPayloadForInteraction(args: {
+  interactionId: string;
+  sessionId?: string | null;
+  question?: string | null;
+  showPreview?: boolean;
+}): {
   title: string;
   body: string;
   tag: string;
-  data: { url: string; interactionId: string };
+  data: { url: string; interactionId: string; sessionId?: string };
 } {
+  const interactionId = args.interactionId;
+  const sessionId = (args.sessionId || "").trim() || undefined;
+  const url = chatSessionPath(sessionId);
+
+  let body = NOTIFY_BODY_GENERIC;
+  if (args.showPreview) {
+    const preview = previewQuestion(args.question);
+    if (preview) body = preview;
+  }
+
   return {
-    title: "Tina Admin",
-    body: "A parent message needs attention.",
+    title: NOTIFY_TITLE,
+    body,
     tag: `needs-attention-${interactionId}`,
     data: {
-      url: NEEDS_ATTENTION_INBOX_PATH,
+      url,
       interactionId,
+      ...(sessionId ? { sessionId } : {}),
     },
   };
 }

@@ -25,6 +25,7 @@ function configureVapid(): { ok: true } | { ok: false; reason: string } {
 }
 
 function logStage(stage: string, meta: Record<string, unknown> = {}) {
+  // Never log parent question text — previews may contain sensitive content.
   console.info(JSON.stringify({ scope: "push", stage, ...meta }));
 }
 
@@ -59,7 +60,9 @@ export async function notifyNeedsAttention(interactionId: string): Promise<Notif
 
   const { data: row, error: rowError } = await sb
     .from("interactions")
-    .select("id, reviewed_at, human_replied_at, manual_attention_at, outcome")
+    .select(
+      "id, reviewed_at, human_replied_at, manual_attention_at, outcome, session_id, question",
+    )
     .eq("id", interactionId)
     .maybeSingle();
 
@@ -72,6 +75,9 @@ export async function notifyNeedsAttention(interactionId: string): Promise<Notif
     logStage("skip", { reason: "not_needs_attention", interactionId });
     return { ...empty, reason: "not_needs_attention" };
   }
+
+  const sessionId = (row?.session_id as string | null | undefined) || null;
+  const question = (row?.question as string | null | undefined) || null;
 
   const { data: subs, error: subError } = await sb
     .from("admin_push_subscriptions")
@@ -95,8 +101,20 @@ export async function notifyNeedsAttention(interactionId: string): Promise<Notif
     byUser.set(sub.user_id, list);
   }
 
-  const payload = notificationPayloadForInteraction(interactionId);
-  const body = JSON.stringify(payload);
+  const userIds = [...byUser.keys()];
+  const { data: profiles } = await sb
+    .from("admin_profiles")
+    .select("user_id, notify_message_previews")
+    .in("user_id", userIds);
+
+  const previewByUser = new Map<string, boolean>();
+  for (const profile of profiles || []) {
+    previewByUser.set(
+      profile.user_id as string,
+      Boolean(profile.notify_message_previews),
+    );
+  }
+
   let notified = 0;
   let skipped = 0;
   let failed = 0;
@@ -122,6 +140,15 @@ export async function notifyNeedsAttention(interactionId: string): Promise<Notif
       continue;
     }
 
+    const showPreview = previewByUser.get(userId) === true;
+    const payload = notificationPayloadForInteraction({
+      interactionId,
+      sessionId,
+      question: showPreview ? question : null,
+      showPreview,
+    });
+    const body = JSON.stringify(payload);
+
     let anySent = false;
     let lastError: string | null = null;
 
@@ -136,7 +163,12 @@ export async function notifyNeedsAttention(interactionId: string): Promise<Notif
           { TTL: 60 * 60, urgency: "high" },
         );
         anySent = true;
-        logStage("sent", { interactionId, userId, subscriptionId: sub.id });
+        logStage("sent", {
+          interactionId,
+          userId,
+          subscriptionId: sub.id,
+          preview: showPreview,
+        });
       } catch (error) {
         const statusCode =
           error && typeof error === "object" && "statusCode" in error
@@ -167,6 +199,6 @@ export async function notifyNeedsAttention(interactionId: string): Promise<Notif
     }
   }
 
-  logStage("done", { interactionId, notified, skipped, failed });
+  logStage("done", { interactionId, notified, skipped, failed, hasSession: Boolean(sessionId) });
   return { notified, skipped, failed };
 }
