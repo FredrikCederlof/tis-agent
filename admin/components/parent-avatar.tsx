@@ -16,17 +16,26 @@ export function ParentAvatar({
 
   return (
     <span
-      className="relative inline-flex shrink-0 overflow-hidden rounded-full bg-slate-900 ring-1 ring-black/10"
-      style={{ width: size, height: size }}
+      className="relative inline-flex shrink-0 overflow-hidden rounded-full bg-white"
+      style={{
+        width: size,
+        height: size,
+        border: "1px solid #EBEBEB",
+      }}
       title={label}
       aria-label={label}
     >
+      {/* Scale past the circle so the bust fills edge-to-edge (no empty gap at the bottom). */}
       <Image
         src={avatar.src}
         alt=""
         width={size}
         height={size}
         className="h-full w-full object-cover"
+        style={{
+          transform: "scale(1.38)",
+          transformOrigin: "center 42%",
+        }}
         priority={size >= 48}
       />
     </span>
