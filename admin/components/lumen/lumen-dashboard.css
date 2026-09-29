@@ -23,10 +23,17 @@
   min-height: 100%;
 }
 
+/* Implicit grid columns are `auto`, which resolves to max-content and lets long
+   parent questions widen the whole dashboard. Every grid in here is capped. */
 .lumen-ui .l-dash {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 40px;
   padding: 28px 0 72px;
+}
+
+.lumen-ui .l-dash > * {
+  min-width: 0;
 }
 
 .lumen-ui .l-dash-head {
@@ -147,6 +154,7 @@
 
 .lumen-ui .l-rank {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: 0;
   padding: 0;
   margin: 0;
@@ -154,7 +162,12 @@
   flex: 1;
 }
 
+.lumen-ui .l-rank li {
+  min-width: 0;
+}
+
 .lumen-ui .l-rank a {
+  min-width: 0;
   display: flex;
   align-items: center;
   gap: 12px;
