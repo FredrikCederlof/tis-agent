@@ -3,10 +3,13 @@
 from datetime import datetime, timezone
 
 from tis_agent.chat_sessions_ui import (
+    PARENT_AVATARS,
     PARENT_COLORS,
     build_timeline,
     is_unread,
     needs_attention,
+    parent_avatar_id,
+    parent_avatar_index,
     parent_color,
     parent_color_index,
     parent_initials,
@@ -62,6 +65,14 @@ def test_parent_avatar_color_is_stable_and_capped() -> None:
     assert parent_color_index("46701234567") != parent_color_index("46709999999")
     assert parent_initials("46701234567") == "67"
     assert parent_initials("") == "P"
+
+
+def test_parent_animal_avatar_is_stable_across_sessions() -> None:
+    assert len(PARENT_AVATARS) == 15
+    assert parent_avatar_index("46704127043") == parent_avatar_index("46704127043")
+    assert parent_avatar_id("46704127043") == PARENT_AVATARS[parent_avatar_index("46704127043")]
+    assert parent_avatar_id("46704127043") != parent_avatar_id("46709999999")
+    assert 0 <= parent_avatar_index("46704127043") < 15
 
 
 def test_question_count_badge_only_when_multiple() -> None:
