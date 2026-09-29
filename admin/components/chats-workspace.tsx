@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { AttentionBadge, AttentionStatusCard } from "@/components/attention-badge";
+import { AdminEnglishText, useAdminEnglishMap } from "@/components/admin-english-text";
 import { LanguageBadge } from "@/components/language-badge";
 import { OutcomeBadge, OutcomeSummaryList } from "@/components/outcome-badge";
 import { ParentAvatar } from "@/components/parent-avatar";
@@ -147,6 +148,18 @@ export function ChatsWorkspace({
   const pages = pageCount(filtered.length);
   const safePage = Math.min(page, pages);
   const visible = paginate(filtered, safePage);
+  const previewTexts = useMemo(
+    () => visible.map((row) => row.last_question || "").filter(Boolean),
+    [visible],
+  );
+  const previewLanguages = useMemo(() => {
+    const map: Record<string, string | null | undefined> = {};
+    for (const row of visible) {
+      if (row.last_question) map[row.last_question] = row.primary_language;
+    }
+    return map;
+  }, [visible]);
+  const englishPreviews = useAdminEnglishMap(previewTexts, previewLanguages);
   const selected = sessions.find((row) => row.id === selectedId) || null;
   const advancedOn = Boolean(filters.language || filters.outcome || filters.from || filters.to);
 
@@ -363,7 +376,9 @@ export function ChatsWorkspace({
                               row.unread ? "font-medium text-tis-ink" : "text-tis-muted"
                             }`}
                           >
-                            {row.last_question || "No messages"}
+                            {row.last_question
+                              ? englishPreviews[row.last_question] || row.last_question
+                              : "No messages"}
                           </p>
                           {questions != null ? (
                             <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-tis-unread px-1.5 text-[10px] font-bold text-white">
@@ -669,6 +684,7 @@ function ChatThread({
                 <Bubble
                   message={message}
                   waFrom={session.wa_from}
+                  language={session.primary_language}
                   menuOpen={menuId === message.id}
                   flagging={flaggingId === message.interactionId}
                   onToggleMenu={() =>
@@ -690,7 +706,14 @@ function ChatThread({
             <div className="rounded-2xl border border-slate-200 bg-white p-3">
               <div className="mb-2 flex items-start justify-between gap-3">
                 <p className="min-w-0 truncate text-xs text-tis-muted">
-                  Replying to <span className="font-semibold text-tis-navy">{target.question}</span>
+                  Replying to{" "}
+                  <span className="font-semibold text-tis-navy">
+                    <AdminEnglishText
+                      text={target.question}
+                      language={session.primary_language}
+                      plain
+                    />
+                  </span>
                 </p>
                 <ReplyWindowBadge lastInboundAt={lastInboundAt} />
               </div>
@@ -729,6 +752,7 @@ function ChatThread({
 function Bubble({
   message,
   waFrom,
+  language,
   menuOpen,
   flagging,
   onToggleMenu,
@@ -736,6 +760,7 @@ function Bubble({
 }: {
   message: ChatMessage;
   waFrom: string;
+  language?: string | null;
   menuOpen: boolean;
   flagging?: boolean;
   onToggleMenu: () => void;
@@ -796,7 +821,7 @@ function Bubble({
             </div>
           </div>
           <div className="rounded-2xl rounded-tl-md border border-slate-200/70 bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm">
-            <WaMessage text={message.text} />
+            <AdminEnglishText text={message.text} language={language} />
           </div>
         </div>
       </div>
@@ -836,7 +861,11 @@ function Bubble({
                 : "bg-tis-navy text-white"
           }`}
         >
-          <WaMessage text={tinaBody} />
+          {isAdmin ? (
+            <WaMessage text={tinaBody} />
+          ) : (
+            <AdminEnglishText text={tinaBody} language={language} />
+          )}
           {!isAdmin && sources.titles.length > 0 ? (
             <SourceChip titles={sources.titles} quote={sources.quote} />
           ) : null}

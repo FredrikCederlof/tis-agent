@@ -67,6 +67,38 @@ def parent_color(wa_from: str | None) -> str:
     return PARENT_COLORS[parent_color_index(wa_from)]
 
 
+PARENT_AVATARS = (
+    "fox",
+    "red-panda",
+    "otter",
+    "fennec",
+    "bear",
+    "wolf",
+    "puppy",
+    "raccoon",
+    "owl",
+    "penguin",
+    "koala",
+    "capybara",
+    "deer",
+    "squirrel",
+    "tiger",
+)
+
+
+def parent_avatar_index(wa_from: str | None) -> int:
+    """Stable 0–14 animal slot — keep in sync with admin/lib/parent-avatars.ts."""
+    text = wa_from or ""
+    hashed = 0
+    for ch in text:
+        hashed = (hashed * 31 + ord(ch)) & 0xFFFFFFFF
+    return hashed % len(PARENT_AVATARS)
+
+
+def parent_avatar_id(wa_from: str | None) -> str:
+    return PARENT_AVATARS[parent_avatar_index(wa_from)]
+
+
 def parent_initials(wa_from: str | None) -> str:
     digits = "".join(ch for ch in (wa_from or "") if ch.isdigit())
     if len(digits) >= 2:
