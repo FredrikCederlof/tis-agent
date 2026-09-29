@@ -16,8 +16,13 @@ export function ParentAvatar({
 
   return (
     <span
-      className="relative inline-flex shrink-0 overflow-hidden rounded-full bg-slate-900 ring-1 ring-black/10"
-      style={{ width: size, height: size }}
+      className="relative inline-flex shrink-0 overflow-hidden rounded-full bg-white"
+      style={{
+        width: size,
+        height: size,
+        border: "1px solid #EBEBEB",
+        boxSizing: "border-box",
+      }}
       title={label}
       aria-label={label}
     >
