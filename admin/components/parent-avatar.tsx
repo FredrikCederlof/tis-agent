@@ -21,20 +21,26 @@ export function ParentAvatar({
         width: size,
         height: size,
         border: "1px solid #EBEBEB",
+        boxSizing: "border-box",
       }}
       title={label}
       aria-label={label}
     >
-      {/* Scale past the circle so the bust fills edge-to-edge (no empty gap at the bottom). */}
+      {/*
+        Art is a head-and-shoulders bust with transparent padding.
+        Scale up + nudge down so the character fills the circle edge-to-edge
+        (no empty band under the bust before the border).
+      */}
       <Image
         src={avatar.src}
         alt=""
         width={size}
         height={size}
-        className="h-full w-full object-cover"
+        className="pointer-events-none absolute left-1/2 top-1/2 max-w-none"
         style={{
-          transform: "scale(1.38)",
-          transformOrigin: "center 42%",
+          width: size * 1.55,
+          height: size * 1.55,
+          transform: "translate(-50%, -46%)",
         }}
         priority={size >= 48}
       />
