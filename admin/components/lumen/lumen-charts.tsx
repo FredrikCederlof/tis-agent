@@ -102,7 +102,7 @@ export function LumenSparkline({
               y={height - h}
               width={barW}
               height={h}
-              rx={barW / 2}
+              rx={Math.min(barW / 2, 2)}
               fill={fill}
               opacity={hover == null ? 0.85 : hover === i ? 1 : 0.3}
             />

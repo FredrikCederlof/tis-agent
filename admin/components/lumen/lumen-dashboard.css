@@ -13,8 +13,11 @@
   line-height: 1.05;
 }
 
-/* The preview paints its own canvas inside the existing admin shell. */
+/* The preview paints its own canvas inside the existing admin shell.
+   The kit only sets box-sizing on descendants, and the shell stretches this
+   element to width:100%, so the root needs it too or the padding overflows. */
 .lumen-ui.l-dash-root {
+  box-sizing: border-box;
   border-radius: 28px;
   padding-inline: 28px;
   min-height: 100%;
@@ -84,6 +87,10 @@
 
 .lumen-ui .l-delta.up {
   color: var(--l-success);
+}
+
+.lumen-ui .l-delta.down {
+  color: var(--l-warning);
 }
 
 .lumen-ui .l-delta.flat {

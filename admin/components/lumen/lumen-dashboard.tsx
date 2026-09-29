@@ -69,29 +69,48 @@ function maskParent(waFrom: string | null | undefined): string {
   return digits.length < 4 ? "—" : `•• •${digits.slice(-4)}`;
 }
 
-/** Lumen shows direction with an arrow and words, never colour alone. */
-function Delta({
-  value,
-  label,
-  unit = "%",
-}: {
-  value: number | null;
-  label: string;
-  unit?: string;
-}) {
-  if (value == null) {
-    return <p className="l-delta flat">New this period</p>;
-  }
-  const changed = value !== 0;
-  const arrow = value > 0 ? "↑" : value < 0 ? "↓" : "→";
+/**
+ * Direction is always carried by the arrow, never by colour alone.
+ * `goodDirection` flips the tone for KPIs where falling is the win, such as
+ * Needs attention.
+ */
+function deltaTone(value: number, goodDirection: "up" | "down"): string {
+  if (value === 0) return "flat";
+  const improving = goodDirection === "up" ? value > 0 : value < 0;
+  return improving ? "up" : "down";
+}
+
+function DeltaNote({ tone, children, label }: { tone: string; children: React.ReactNode; label: string }) {
   return (
-    <p className={`l-delta ${changed ? "up" : "flat"}`}>
-      {arrow} {Math.abs(value)}
-      {unit}
+    <p className={`l-delta ${tone}`}>
+      {children}
       <span className="l-small l-muted" style={{ display: "block", fontWeight: 500 }}>
         {label}
       </span>
     </p>
+  );
+}
+
+function Delta({
+  value,
+  label,
+  unit = "%",
+  goodDirection = "up",
+}: {
+  value: number | null;
+  label: string;
+  unit?: string;
+  goodDirection?: "up" | "down";
+}) {
+  if (value == null) {
+    return <p className="l-delta flat">New this period</p>;
+  }
+  const arrow = value > 0 ? "↑" : value < 0 ? "↓" : "→";
+  return (
+    <DeltaNote tone={deltaTone(value, goodDirection)} label={label}>
+      {arrow} {Math.abs(value)}
+      {unit}
+    </DeltaNote>
   );
 }
 
@@ -196,17 +215,18 @@ export function LumenDashboard(props: LumenDashboardProps) {
             {props.timeSavedDelta == null ? (
               <p className="l-delta flat">New this period</p>
             ) : (
-              <p
-                className={`l-delta ${props.timeSavedDelta.startsWith("→") ? "flat" : "up"}`}
+              <DeltaNote
+                tone={
+                  props.timeSavedDelta.startsWith("↑")
+                    ? "up"
+                    : props.timeSavedDelta.startsWith("↓")
+                      ? "down"
+                      : "flat"
+                }
+                label={vsPrevious}
               >
                 {props.timeSavedDelta}
-                <span
-                  className="l-small l-muted"
-                  style={{ display: "block", fontWeight: 500 }}
-                >
-                  {vsPrevious}
-                </span>
-              </p>
+              </DeltaNote>
             )}
           </Kpi>
 
@@ -239,7 +259,12 @@ export function LumenDashboard(props: LumenDashboardProps) {
               />
             }
           >
-            <Delta value={props.attentionDelta} label={vsPrevious} unit="" />
+            <Delta
+              value={props.attentionDelta}
+              label={vsPrevious}
+              unit=""
+              goodDirection="down"
+            />
           </Kpi>
 
           <Kpi
