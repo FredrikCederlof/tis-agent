@@ -14,9 +14,9 @@ import {
   Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
-import { AttentionBadge } from "@/components/attention-badge";
+import { AttentionBadge, AttentionStatusCard } from "@/components/attention-badge";
 import { LanguageBadge } from "@/components/language-badge";
-import { OutcomeBadge } from "@/components/outcome-badge";
+import { OutcomeBadge, OutcomeSummaryList } from "@/components/outcome-badge";
 import { ParentAvatar } from "@/components/parent-avatar";
 import { ReplyComposer, ReplyWindowBadge } from "@/components/reply-composer";
 import { SourceChip } from "@/components/source-chip";
@@ -899,16 +899,24 @@ function InfoPanel({
             {session.message_count === 1 ? "" : "s"}
           </p>
         </div>
+        <AttentionStatusCard
+          needsAttention={session.needs_attention}
+          count={session.needs_attention_count}
+        />
         {lastQuestion && (
           <div className="mt-1 grid w-full gap-2">
             <button
               type="button"
-              className="flex flex-col items-center gap-1 rounded-xl border border-slate-200 px-2 py-2.5 text-[11px] font-bold text-tis-navy transition hover:bg-slate-50 disabled:opacity-50"
-              disabled={flagging}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-2 text-[11px] font-bold text-tis-navy transition hover:bg-slate-50 disabled:opacity-50"
+              disabled={flagging || session.needs_attention}
               onClick={() => onMarkNeedsAttention(lastQuestion.id)}
             >
-              <AlertCircle className="h-4 w-4 text-tis-amber" />
-              {flagging ? "Marking…" : "Needs attention"}
+              <AlertCircle className="h-3.5 w-3.5 text-tis-amber" aria-hidden />
+              {flagging
+                ? "Marking…"
+                : session.needs_attention
+                  ? "Already flagged"
+                  : "Mark as needs attention"}
             </button>
             <Link
               href="/inbox"
@@ -927,14 +935,10 @@ function InfoPanel({
           <span className="shrink-0 text-slate-500">Language</span>
           <LanguageBadge language={session.primary_language} size="sm" />
         </div>
-        <div className="flex items-center justify-between gap-2 text-xs">
-          <span className="shrink-0 text-slate-500">Needs attention</span>
-          {session.needs_attention ? (
-            <AttentionBadge count={session.needs_attention_count} size="sm" />
-          ) : (
-            <span className="font-semibold text-tis-navy">None</span>
-          )}
-        </div>
+      </Section>
+
+      <Section title="Outcomes (this session)">
+        <OutcomeSummaryList outcomes={outcomes} />
       </Section>
 
       <Section title="Parent history">
@@ -951,23 +955,11 @@ function InfoPanel({
         />
       </Section>
 
-      <Section title="AI outcomes">
+      <Section title="AI outcomes (all sessions)">
         <Row label="Answered from knowledge" value={String(parentStats.answeredFromKnowledge)} />
         <Row label="AI couldn't answer" value={String(parentStats.aiCouldNotAnswer)} />
         <Row label="Human replies" value={String(parentStats.humanReplies)} />
         <Row label="Added to Knowledge Hub" value={String(parentStats.addedToKnowledgeHub)} />
-      </Section>
-
-      <Section title="Outcomes (this session)">
-        {Object.keys(outcomes).length === 0 ? (
-          <p className="text-xs text-tis-muted">No logged answers.</p>
-        ) : (
-          <div className="flex flex-wrap gap-1.5">
-            {Object.entries(outcomes).map(([outcome, count]) => (
-              <OutcomeBadge key={outcome} outcome={outcome} count={count} size="sm" />
-            ))}
-          </div>
-        )}
       </Section>
 
       <Section title="Human replies">

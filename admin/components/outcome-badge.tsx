@@ -56,3 +56,30 @@ export function OutcomeBadge({
     </span>
   );
 }
+
+/** Stacked outcome rows for Session information — label left, count right. */
+export function OutcomeSummaryList({
+  outcomes,
+}: {
+  outcomes: Record<string, number>;
+}) {
+  const entries = Object.entries(outcomes);
+  if (entries.length === 0) {
+    return <p className="text-xs text-tis-muted">No logged answers in this session.</p>;
+  }
+  return (
+    <ul className="space-y-1.5">
+      {entries.map(([outcome, count]) => (
+        <li
+          key={outcome}
+          className="flex items-center justify-between gap-2 rounded-lg border border-slate-100 bg-slate-50/80 px-2 py-1.5"
+        >
+          <OutcomeBadge outcome={outcome} size="sm" />
+          <span className="shrink-0 text-xs font-bold tabular-nums text-tis-navy">
+            {count}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
