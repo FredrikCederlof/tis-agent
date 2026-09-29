@@ -37,6 +37,7 @@ export type ChatInteraction = {
   human_replied_by: string | null;
   manual_attention_at?: string | null;
   manual_attention_by?: string | null;
+  document_titles?: string[] | null;
 };
 
 export type ParentHistoryStats = {
@@ -123,11 +124,17 @@ export function isUnread(
   return lastMessageAt > adminReadAt;
 }
 
-export function parentLabel(waFrom: string | null | undefined): string {
+/** Masked trailing digits, e.g. ••4567 — no personal data beyond last four. */
+export function parentMaskedId(waFrom: string | null | undefined): string {
   const digits = (waFrom || "").replace(/\D/g, "");
-  if (digits.length >= 4) return `Parent ·••${digits.slice(-4)}`;
-  if (digits) return `Parent ·••${digits}`;
+  if (digits.length >= 4) return `••${digits.slice(-4)}`;
+  if (digits) return `••${digits}`;
   return "Parent";
+}
+
+export function parentLabel(waFrom: string | null | undefined): string {
+  const masked = parentMaskedId(waFrom);
+  return masked === "Parent" ? "Parent" : `Parent · ${masked}`;
 }
 
 /** Distinct avatar fills — same phone number always maps to the same slot. */
@@ -210,6 +217,7 @@ export type ChatMessage = {
   needsAttention: boolean;
   status?: "sent" | "failed";
   sentBy?: string | null;
+  documentTitles?: string[];
 };
 
 export function needsAttention(row: {
@@ -239,6 +247,9 @@ export function buildTimeline(
       needsAttention: needsAttention(item),
     });
     if (item.reply) {
+      const titles = Array.isArray(item.document_titles)
+        ? item.document_titles.filter((t): t is string => typeof t === "string" && Boolean(t.trim()))
+        : [];
       messages.push({
         id: `${item.id}:tina`,
         kind: "tina",
@@ -247,6 +258,7 @@ export function buildTimeline(
         interactionId: item.id,
         outcome: item.outcome,
         needsAttention: false,
+        documentTitles: titles,
       });
     }
   }
