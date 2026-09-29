@@ -26,22 +26,12 @@ export function ParentAvatar({
       title={label}
       aria-label={label}
     >
-      {/*
-        Art is a head-and-shoulders bust with transparent padding.
-        Scale up + nudge down so the character fills the circle edge-to-edge
-        (no empty band under the bust before the border).
-      */}
       <Image
         src={avatar.src}
         alt=""
         width={size}
         height={size}
-        className="pointer-events-none absolute left-1/2 top-1/2 max-w-none"
-        style={{
-          width: size * 1.55,
-          height: size * 1.55,
-          transform: "translate(-50%, -46%)",
-        }}
+        className="h-full w-full object-cover"
         priority={size >= 48}
       />
     </span>
