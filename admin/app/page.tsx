@@ -6,6 +6,7 @@ import { OutcomeDonut, PerformanceChart } from "@/components/charts";
 import { RefreshButton } from "@/components/refresh-button";
 import { DashboardDateRange } from "@/components/dashboard-date-range";
 import { NeedsAttentionTable, TopKnowledgeGapsCard } from "@/components/dashboard-panels";
+import { LumenDashboard, type LumenAttentionRow } from "@/components/lumen/lumen-dashboard";
 import {
   KPI_DEFINITIONS,
   buildDashboardModel,
@@ -27,7 +28,7 @@ export const dynamic = "force-dynamic";
 export default async function DashboardPage({
   searchParams,
 }: {
-  searchParams?: { from?: string; to?: string };
+  searchParams?: { from?: string; to?: string; ui?: string };
 }) {
   const supabase = await createClient();
   const {
@@ -73,6 +74,64 @@ export default async function DashboardPage({
   const chartRangeLabel = `Last ${dayCount} ${periodNoun}`;
   const vsPrevious = `vs previous ${dayCount} ${periodNoun}`;
   const attentionDelta = current.gapCount - previous.gapCount;
+  const attentionRows = (unansweredRes.data || []) as LumenAttentionRow[];
+
+  // Opt-in design preview: /?ui=lumen. The default dashboard is untouched.
+  if (searchParams?.ui === "lumen") {
+    return (
+      <AppShell email={user.email || ""} unansweredCount={unansweredCount}>
+        <LumenDashboard
+          from={from}
+          to={to}
+          dayCount={dayCount}
+          periodNoun={periodNoun}
+          vsPrevious={vsPrevious}
+          loadError={interactionsError?.message}
+          timeSavedLabel={formatSavedTime(currentSaved)}
+          timeSavedDelta={formatSavedTimeDelta(currentSaved, previousSaved)}
+          timeSavedSeries={days.map((d) =>
+            timeSavedMinutes(d.tinaHandled, minutesPerQuestion),
+          )}
+          dayLabels={dayLabels}
+          answeredPct={current.answeredByTinaPct}
+          answeredDetail={`${current.successCount} of ${current.questions}`}
+          answeredDelta={percentagePointChange(
+            current.answeredByTinaPct,
+            previous.answeredByTinaPct,
+          )}
+          answeredSeries={days.map((d) => d.answeredPct)}
+          attentionCount={unansweredCount}
+          attentionDetail={
+            current.questions > 0 ? `${attentionShare}% of questions` : "Open queue"
+          }
+          attentionDelta={attentionDelta}
+          attentionSeries={days.map((d) => d.gaps)}
+          coveragePct={current.knowledgeCoveragePct}
+          coverageDelta={percentagePointChange(
+            current.knowledgeCoveragePct,
+            previous.knowledgeCoveragePct,
+          )}
+          coverageSeries={days.map((d) =>
+            d.questions > 0 ? Math.round((d.success / d.questions) * 100) : 0,
+          )}
+          performancePoints={days.map((d) => ({
+            label: d.label,
+            questions: d.questions,
+            answeredPct: d.answeredPct,
+            attentionPct: d.attentionPct,
+          }))}
+          outcomes={{
+            success: current.successCount,
+            gaps: current.gapCount,
+            human: humanSlice,
+            errors: current.errorCount,
+          }}
+          topGaps={topGaps}
+          attentionRows={attentionRows}
+        />
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell email={user.email || ""} unansweredCount={unansweredCount}>
@@ -189,17 +248,7 @@ export default async function DashboardPage({
         </div>
 
         <div className="mt-6 min-w-0">
-          <NeedsAttentionTable
-            rows={(unansweredRes.data || []) as {
-              id: string;
-              session_id: string;
-              question: string;
-              outcome: string;
-              created_at: string;
-              wa_from?: string | null;
-            }[]}
-            total={unansweredCount}
-          />
+          <NeedsAttentionTable rows={attentionRows} total={unansweredCount} />
         </div>
       </div>
     </AppShell>
