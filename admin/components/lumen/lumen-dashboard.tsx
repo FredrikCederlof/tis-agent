@@ -31,10 +31,9 @@ export type LumenDashboardProps = {
   timeSavedDelta: string | null;
   timeSavedSeries: number[];
   dayLabels: string[];
-  answeredPct: number;
-  answeredDetail: string;
-  answeredDelta: number | null;
-  answeredSeries: number[];
+  questionsTotal: number;
+  questionsDelta: number;
+  questionsSeries: number[];
   attentionCount: number;
   attentionDetail: string;
   attentionDelta: number | null;
@@ -231,18 +230,12 @@ export function LumenDashboard(props: LumenDashboardProps) {
           </Kpi>
 
           <Kpi
-            label="Answered by Tina"
-            value={`${props.answeredPct}%`}
-            detail={props.answeredDetail}
-            spark={
-              <LumenSparkline
-                values={props.answeredSeries}
-                labels={dayLabels}
-                format="percent"
-              />
-            }
+            label="Total questions asked"
+            value={props.questionsTotal}
+            detail={`Parent messages in the last ${dayCount} ${periodNoun}`}
+            spark={<LumenSparkline values={props.questionsSeries} labels={dayLabels} />}
           >
-            <Delta value={props.answeredDelta} label={vsPrevious} unit="pp" />
+            <Delta value={props.questionsDelta} label={vsPrevious} unit="" />
           </Kpi>
 
           <Kpi

@@ -93,13 +93,9 @@ export default async function DashboardPage({
             timeSavedMinutes(d.tinaHandled, minutesPerQuestion),
           )}
           dayLabels={dayLabels}
-          answeredPct={current.answeredByTinaPct}
-          answeredDetail={`${current.successCount} of ${current.questions}`}
-          answeredDelta={percentagePointChange(
-            current.answeredByTinaPct,
-            previous.answeredByTinaPct,
-          )}
-          answeredSeries={days.map((d) => d.answeredPct)}
+          questionsTotal={current.questions}
+          questionsDelta={current.questions - previous.questions}
+          questionsSeries={days.map((d) => d.questions)}
           attentionCount={unansweredCount}
           attentionDetail={
             current.questions > 0 ? `${attentionShare}% of questions` : "Open queue"
