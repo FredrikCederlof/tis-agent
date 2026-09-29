@@ -14,8 +14,20 @@ import {
   Trash2,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { AttentionBadge } from "@/components/attention-badge";
+import { LanguageBadge } from "@/components/language-badge";
+import { OutcomeBadge } from "@/components/outcome-badge";
+import { ParentAvatar } from "@/components/parent-avatar";
 import { ReplyComposer, ReplyWindowBadge } from "@/components/reply-composer";
+import { SourceChip } from "@/components/source-chip";
 import { WaMessage } from "@/components/wa-message";
+import {
+  adminDisplayName,
+  isKnowledgeCandidateQuestion,
+  knowledgeHubUrl,
+  sourceTitles,
+  stripSourceLines,
+} from "@/lib/chat-presentation";
 import {
   PAGE_SIZE,
   type AdminReply,
@@ -32,37 +44,10 @@ import {
   formatRelativeTime,
   pageCount,
   paginate,
-  parentColor,
-  parentInitials,
   parentLabel,
   questionCountBadge,
   replyTarget,
 } from "@/lib/chats";
-
-const OUTCOME_LABELS: Record<string, string> = {
-  success: "Answered from sources",
-  no_evidence: "No evidence found",
-  low_confidence: "Low confidence",
-  fixed_answer: "Fixed answer",
-  error: "Error",
-};
-
-function ParentAvatar({ waFrom, size = 40 }: { waFrom: string; size?: number }) {
-  return (
-    <span
-      className="inline-flex shrink-0 items-center justify-center rounded-full font-bold text-white"
-      style={{
-        width: size,
-        height: size,
-        fontSize: Math.max(11, size * 0.36),
-        backgroundColor: parentColor(waFrom),
-      }}
-      aria-hidden
-    >
-      {parentInitials(waFrom)}
-    </span>
-  );
-}
 
 function IconButton({
   label,
@@ -329,10 +314,12 @@ export function ChatsWorkspace({
                 <li key={row.id}>
                   <div
                     className={`flex items-start gap-1 rounded-2xl border shadow-sm transition ${
-                      active
-                        ? "border-tis-navy/20 bg-tis-mist"
-                        : "border-black/[0.06] bg-white hover:bg-white"
-                    }`}
+                      row.needs_attention && !active
+                        ? "border-amber-200/80 bg-amber-50/50 hover:bg-amber-50/70"
+                        : active
+                          ? "border-tis-navy/20 bg-tis-mist"
+                          : "border-black/[0.06] bg-white hover:bg-white"
+                    } ${row.needs_attention && active ? "ring-1 ring-amber-300/70" : ""}`}
                   >
                     <label
                       className="flex cursor-pointer items-start px-2.5 pt-4"
@@ -384,12 +371,15 @@ export function ChatsWorkspace({
                             </span>
                           ) : null}
                         </div>
-                        {row.needs_attention && (
-                          <span className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">
-                            <AlertCircle className="h-3 w-3" />
-                            Needs attention
-                          </span>
-                        )}
+                        <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                          <LanguageBadge language={row.primary_language} size="sm" />
+                          {row.last_outcome ? (
+                            <OutcomeBadge outcome={row.last_outcome} size="sm" />
+                          ) : null}
+                          {row.needs_attention ? (
+                            <AttentionBadge count={row.needs_attention_count} size="sm" />
+                          ) : null}
+                        </div>
                       </div>
                     </Link>
                   </div>
@@ -631,17 +621,19 @@ function ChatThread({
             <ParentAvatar waFrom={session.wa_from} />
             <div className="min-w-0">
               <p className="truncate font-bold text-tis-navy">{parentLabel(session.wa_from)}</p>
-              <p className="truncate text-xs text-tis-muted">
-                {session.message_count} question{session.message_count === 1 ? "" : "s"} ·{" "}
-                {session.primary_language || "en"} · started {formatMessageTime(session.started_at)}
-              </p>
+              <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-tis-muted">
+                <span>
+                  {session.message_count} question{session.message_count === 1 ? "" : "s"}
+                </span>
+                <LanguageBadge language={session.primary_language} size="sm" />
+                <span>· started {formatMessageTime(session.started_at)}</span>
+              </div>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-1.5">
             {session.needs_attention && (
-              <span className="mr-1 hidden items-center gap-1 rounded-full bg-tis-amber/30 px-2.5 py-1 text-xs font-bold text-tis-ink sm:inline-flex">
-                <AlertCircle className="h-3.5 w-3.5" />
-                {session.needs_attention_count} needs attention
+              <span className="mr-1 hidden sm:inline-flex">
+                <AttentionBadge count={session.needs_attention_count} />
               </span>
             )}
             <IconButton label="Delete session" disabled={deleting} onClick={() => void onDelete()}>
@@ -750,35 +742,41 @@ function Bubble({
   onMarkNeedsAttention?: () => void;
 }) {
   if (message.kind === "parent") {
+    const canAddToHub =
+      Boolean(message.interactionId) && isKnowledgeCandidateQuestion(message.text);
+
     return (
       <div className="flex items-start gap-2.5">
         <ParentAvatar waFrom={waFrom} size={32} />
         <div className="min-w-0 max-w-[85%] sm:max-w-[68%]">
-          <div className="mb-1 flex items-center gap-2">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
             <span className="text-[13px] font-bold text-tis-navy">Parent</span>
             <span className="text-[11px] text-slate-400">{timeOnly(message.at)}</span>
-            {message.needsAttention && (
-              <span className="rounded-full bg-tis-amber/35 px-1.5 py-0.5 text-[10px] font-bold text-tis-ink">
-                {OUTCOME_LABELS[message.outcome || ""] || "Needs attention"}
-              </span>
-            )}
+            {message.needsAttention && message.outcome ? (
+              <OutcomeBadge outcome={message.outcome} size="sm" />
+            ) : message.needsAttention ? (
+              <AttentionBadge size="sm" />
+            ) : null}
             <div className="relative">
               <button
                 type="button"
                 className="rounded p-0.5 text-slate-400 hover:bg-slate-200/70 hover:text-tis-navy"
                 aria-label="Parent message actions"
+                aria-expanded={menuOpen}
                 onClick={onToggleMenu}
               >
                 <MoreHorizontal className="h-3.5 w-3.5" />
               </button>
               {menuOpen && (
                 <div className="absolute left-0 z-10 mt-1 w-56 rounded-xl border border-slate-100 bg-white py-1 shadow-card">
-                  <Link
-                    href={`/knowledge/new?from=${message.interactionId}`}
-                    className="block px-3 py-2 text-sm font-semibold text-tis-navy hover:bg-tis-mist"
-                  >
-                    Add to Knowledge Hub
-                  </Link>
+                  {canAddToHub && message.interactionId ? (
+                    <Link
+                      href={knowledgeHubUrl(message.interactionId)}
+                      className="block px-3 py-2 text-sm font-semibold text-tis-navy hover:bg-tis-mist"
+                    >
+                      Add to Knowledge Hub
+                    </Link>
+                  ) : null}
                   {onMarkNeedsAttention && (
                     <button
                       type="button"
@@ -807,6 +805,13 @@ function Bubble({
 
   const isAdmin = message.kind === "admin";
   const failed = isAdmin && message.status === "failed";
+  const { body: tinaBody } = isAdmin
+    ? { body: message.text }
+    : stripSourceLines(message.text);
+  const sources = isAdmin
+    ? { titles: [] as string[], quote: null as string | null }
+    : sourceTitles(message.documentTitles, message.text);
+  const adminName = adminDisplayName(message.sentBy);
 
   return (
     <div className="flex items-start justify-end gap-2.5">
@@ -814,7 +819,7 @@ function Bubble({
         <div className="mb-1 flex items-center justify-end gap-2">
           <span className="text-[11px] text-slate-400">{timeOnly(message.at)}</span>
           <span className="text-[13px] font-bold text-tis-navy">
-            {isAdmin ? `School team${message.sentBy ? ` · ${message.sentBy}` : ""}` : "Tina"}
+            {isAdmin ? adminName : "Tina"}
           </span>
           {failed && (
             <span className="rounded-full bg-rose-50 px-1.5 py-0.5 text-[10px] font-bold text-tis-danger">
@@ -831,12 +836,19 @@ function Bubble({
                 : "bg-tis-navy text-white"
           }`}
         >
-          <WaMessage text={message.text} />
+          <WaMessage text={tinaBody} />
+          {!isAdmin && sources.titles.length > 0 ? (
+            <SourceChip titles={sources.titles} quote={sources.quote} />
+          ) : null}
         </div>
       </div>
       {isAdmin ? (
-        <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tis-blue text-[11px] font-bold text-white">
-          TIS
+        <span
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tis-blue text-[11px] font-bold text-white"
+          aria-label={adminName}
+          title={adminName}
+        >
+          {adminName.slice(0, 1).toUpperCase()}
         </span>
       ) : (
         <Image
@@ -911,11 +923,18 @@ function InfoPanel({
       <Section title="Session">
         <Row label="Started" value={formatMessageTime(session.started_at)} />
         <Row label="Last activity" value={formatMessageTime(session.last_message_at)} />
-        <Row label="Language" value={session.primary_language || "en"} />
-        <Row
-          label="Needs attention"
-          value={session.needs_attention ? String(session.needs_attention_count) : "None"}
-        />
+        <div className="flex items-center justify-between gap-2 text-xs">
+          <span className="shrink-0 text-slate-500">Language</span>
+          <LanguageBadge language={session.primary_language} size="sm" />
+        </div>
+        <div className="flex items-center justify-between gap-2 text-xs">
+          <span className="shrink-0 text-slate-500">Needs attention</span>
+          {session.needs_attention ? (
+            <AttentionBadge count={session.needs_attention_count} size="sm" />
+          ) : (
+            <span className="font-semibold text-tis-navy">None</span>
+          )}
+        </div>
       </Section>
 
       <Section title="Parent history">
@@ -943,9 +962,11 @@ function InfoPanel({
         {Object.keys(outcomes).length === 0 ? (
           <p className="text-xs text-tis-muted">No logged answers.</p>
         ) : (
-          Object.entries(outcomes).map(([outcome, count]) => (
-            <Row key={outcome} label={OUTCOME_LABELS[outcome] || outcome} value={String(count)} />
-          ))
+          <div className="flex flex-wrap gap-1.5">
+            {Object.entries(outcomes).map(([outcome, count]) => (
+              <OutcomeBadge key={outcome} outcome={outcome} count={count} size="sm" />
+            ))}
+          </div>
         )}
       </Section>
 
@@ -959,7 +980,7 @@ function InfoPanel({
               label={`${reply.status === "failed" ? "Failed" : "Sent"} ${formatMessageTime(
                 reply.created_at,
               )}`}
-              value={reply.sent_by || "—"}
+              value={adminDisplayName(reply.sent_by)}
             />
           ))
         )}

@@ -49,8 +49,8 @@ def test_unread_when_newer_message_after_read() -> None:
 
 
 def test_parent_label_uses_last_four_digits() -> None:
-    assert parent_label("46701234567") == "Parent ·••4567"
-    assert parent_label("+46 70 123 4567") == "Parent ·••4567"
+    assert parent_label("46701234567") == "Parent · ••4567"
+    assert parent_label("+46 70 123 4567") == "Parent · ••4567"
     assert parent_label("") == "Parent"
 
 

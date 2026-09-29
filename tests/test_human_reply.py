@@ -105,7 +105,7 @@ class FakeClient:
 def test_window_open_shows_hours_remaining():
     window = reply_window(NOW - timedelta(hours=6), now=NOW)
     assert window.is_open is True
-    assert window.label == "Reply window open — 18h remaining"
+    assert window.label == "24h window — 18h left"
     assert window.expires_at == NOW + timedelta(hours=18)
 
 
@@ -113,12 +113,12 @@ def test_window_expired_after_24h():
     window = reply_window(NOW - timedelta(hours=24, minutes=1), now=NOW)
     assert window.is_open is False
     assert window.remaining_seconds == 0
-    assert window.label == "Reply window expired"
+    assert window.label == "24h reply window closed"
 
 
 def test_window_shows_minutes_when_nearly_closed():
     assert reply_window(NOW - timedelta(hours=23, minutes=25), now=NOW).label == (
-        "Reply window open — 35m remaining"
+        "24h window — 35m left"
     )
 
 

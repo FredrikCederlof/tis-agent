@@ -1,8 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { AlertTriangle, BookPlus, Clock, Send } from "lucide-react";
+import { BookPlus, Clock, Send } from "lucide-react";
+import {
+  isKnowledgeCandidateQuestion,
+  knowledgeHubUrl,
+} from "@/lib/chat-presentation";
 import { clearDraft, loadDraft, replyWindow, saveDraft } from "@/lib/reply";
 
 export function ReplyWindowBadge({ lastInboundAt }: { lastInboundAt: string | null }) {
@@ -18,10 +23,11 @@ export function ReplyWindowBadge({ lastInboundAt }: { lastInboundAt: string | nu
   return (
     <span
       className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${
-        expired ? "bg-amber-50 text-amber-800" : "bg-emerald-50 text-emerald-800"
+        expired ? "bg-amber-50 text-amber-900" : "bg-emerald-50 text-emerald-800"
       }`}
+      role="status"
     >
-      {expired ? <AlertTriangle className="h-3.5 w-3.5" /> : <Clock className="h-3.5 w-3.5" />}
+      <Clock className="h-3.5 w-3.5" aria-hidden />
       {window_.label}
     </span>
   );
@@ -66,10 +72,7 @@ export function ReplyComposer({
   }
 
   function knowledgeUrl(answer: string) {
-    const url = new URL("/knowledge/new", globalThis.location.origin);
-    url.searchParams.set("from", interactionId);
-    url.searchParams.set("answer", answer);
-    return `${url.pathname}${url.search}`;
+    return knowledgeHubUrl(interactionId, { answer });
   }
 
   function addToKnowledgeOnly() {
@@ -128,6 +131,37 @@ export function ReplyComposer({
   }
 
   const expired = !window_.open;
+  const canAddToHub = isKnowledgeCandidateQuestion(question);
+
+  if (expired) {
+    return (
+      <div className={compact ? "space-y-2" : "space-y-3"}>
+        {!compact ? <ReplyWindowBadge lastInboundAt={lastInboundAt} /> : null}
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-950">
+          <p className="font-semibold">WhatsApp free-form replies are closed after 24 hours.</p>
+          <p className="mt-0.5 text-[13px] text-amber-900/90">
+            Add this to the Knowledge Hub so Tina can use it next time — it does not message the
+            parent.
+          </p>
+          {canAddToHub ? (
+            <Link
+              href={knowledgeHubUrl(interactionId, {
+                answer: body.trim() || undefined,
+              })}
+              className="primary mt-2.5 !inline-flex no-underline"
+            >
+              <BookPlus className="h-4 w-4" />
+              Add to Knowledge Hub
+            </Link>
+          ) : (
+            <p className="mt-2 text-[12px] text-amber-800/80">
+              This message is not suitable for the Knowledge Hub.
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={compact ? "space-y-2" : "space-y-3"}>
@@ -138,14 +172,6 @@ export function ReplyComposer({
             Your reply arrives in the parent’s existing Tina conversation.
           </span>
         </div>
-      ) : null}
-
-      {expired ? (
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm text-amber-900">
-          WhatsApp only allows a free-form reply within 24 hours of the parent’s last
-          message, so Tina cannot send this answer. Add it to the Knowledge Hub instead —
-          Tina will use it the next time a parent asks. This does not message the parent.
-        </p>
       ) : null}
 
       <textarea
@@ -162,42 +188,38 @@ export function ReplyComposer({
         </p>
       )}
       <div className="flex flex-wrap gap-2">
-        {!expired && (
-          <>
-            <button
-              type="button"
-              className="primary"
-              disabled={sending}
-              onClick={() => void send(false)}
-            >
-              <Send className="h-4 w-4" />
-              {sending ? "Sending…" : error ? "Retry send" : "Send reply"}
-            </button>
-            <button
-              type="button"
-              className="secondary"
-              disabled={sending}
-              onClick={() => void send(true)}
-            >
-              <BookPlus className="h-4 w-4" />
-              Send + Add to Knowledge
-            </button>
-          </>
-        )}
+        <button
+          type="button"
+          className="primary"
+          disabled={sending}
+          onClick={() => void send(false)}
+        >
+          <Send className="h-4 w-4" />
+          {sending ? "Sending…" : error ? "Retry send" : "Send reply"}
+        </button>
         <button
           type="button"
           className="secondary"
           disabled={sending}
-          onClick={addToKnowledgeOnly}
+          onClick={() => void send(true)}
         >
           <BookPlus className="h-4 w-4" />
-          Add to Knowledge only
+          Send + Add to Knowledge
         </button>
+        {canAddToHub ? (
+          <button
+            type="button"
+            className="secondary"
+            disabled={sending}
+            onClick={addToKnowledgeOnly}
+          >
+            <BookPlus className="h-4 w-4" />
+            Add to Knowledge only
+          </button>
+        ) : null}
       </div>
       <p className="text-xs text-tis-muted">
-        {expired
-          ? "“Add to Knowledge only” opens the Knowledge Hub with this draft. It does not send WhatsApp."
-          : "“Send + Add to Knowledge” messages the parent, then opens Knowledge Hub. “Add to Knowledge only” skips WhatsApp."}
+        “Send + Add to Knowledge” messages the parent, then opens Knowledge Hub for review.
       </p>
     </div>
   );

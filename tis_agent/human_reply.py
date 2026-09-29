@@ -66,14 +66,14 @@ def parse_iso(value: Any) -> datetime | None:
 
 def format_remaining(seconds: int) -> str:
     if seconds <= 0:
-        return "Reply window expired"
+        return "24h reply window closed"
     hours = seconds // 3600
     minutes = (seconds % 3600) // 60
     if hours >= 1:
-        return f"Reply window open — {hours}h remaining"
+        return f"24h window — {hours}h left"
     if minutes >= 1:
-        return f"Reply window open — {minutes}m remaining"
-    return "Reply window open — under a minute remaining"
+        return f"24h window — {minutes}m left"
+    return "24h window — under a minute left"
 
 
 def reply_window(last_inbound_at: Any, *, now: datetime | None = None) -> ReplyWindow:

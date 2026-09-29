@@ -16,13 +16,18 @@ def is_unread(admin_read_at: datetime | str | None, last_message_at: datetime | 
     return last_message_at > admin_read_at
 
 
-def parent_label(wa_from: str | None) -> str:
+def parent_masked_id(wa_from: str | None) -> str:
     digits = "".join(ch for ch in (wa_from or "") if ch.isdigit())
     if len(digits) >= 4:
-        return f"Parent ·••{digits[-4:]}"
+        return f"••{digits[-4:]}"
     if digits:
-        return f"Parent ·••{digits}"
+        return f"••{digits}"
     return "Parent"
+
+
+def parent_label(wa_from: str | None) -> str:
+    masked = parent_masked_id(wa_from)
+    return "Parent" if masked == "Parent" else f"Parent · {masked}"
 
 
 PARENT_COLORS = (

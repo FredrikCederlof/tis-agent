@@ -12,12 +12,12 @@ export type ReplyWindow = {
 };
 
 export function formatRemaining(seconds: number): string {
-  if (seconds <= 0) return "Reply window expired";
+  if (seconds <= 0) return "24h reply window closed";
   const hours = Math.floor(seconds / 3600);
   const minutes = Math.floor((seconds % 3600) / 60);
-  if (hours >= 1) return `Reply window open — ${hours}h remaining`;
-  if (minutes >= 1) return `Reply window open — ${minutes}m remaining`;
-  return "Reply window open — under a minute remaining";
+  if (hours >= 1) return `24h window — ${hours}h left`;
+  if (minutes >= 1) return `24h window — ${minutes}m left`;
+  return "24h window — under a minute left";
 }
 
 export function replyWindow(
