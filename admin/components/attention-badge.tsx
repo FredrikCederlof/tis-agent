@@ -72,7 +72,7 @@ export function AttentionStatusCard({
         <div className="min-w-0">
           <p className="text-[13px] font-bold text-emerald-950">No attention needed</p>
           <p className="mt-0.5 text-[11px] leading-snug text-emerald-900/80">
-            Tina answered from sources, or a human already followed up.
+            Nothing in this session is flagged for a human follow-up.
           </p>
         </div>
       </div>
