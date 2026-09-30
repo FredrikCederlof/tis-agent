@@ -9,6 +9,11 @@ describe("middleware auth bypass for push notify", () => {
     assert.equal(isPublicPath("/inbox"), false);
   });
 
+  it("treats /sw.js as public so Chrome can install and update the push worker", () => {
+    assert.equal(isPublicPath("/sw.js"), true);
+    assert.equal(isPublicPath("/account"), false);
+  });
+
   it("marks API paths so unauthenticated callers get JSON, not a login redirect", () => {
     assert.equal(isApiPath("/api/push/notify"), true);
     assert.equal(isApiPath("/account"), false);

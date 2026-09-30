@@ -8,6 +8,9 @@ export function isPublicPath(pathname: string): boolean {
     pathname.startsWith("/auth/callback") ||
     pathname.startsWith("/auth/preview-login") ||
     pathname === "/favicon.ico" ||
+    // Service worker must load without a session so Chrome can install/update it
+    // and deliver Web Push when the admin tab is closed or the cookie expired.
+    pathname === "/sw.js" ||
     // Railway calls this with ADMIN_SYNC_SECRET (no session cookie).
     // Auth is enforced inside the route handler.
     pathname === "/api/push/notify"
