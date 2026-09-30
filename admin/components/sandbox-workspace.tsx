@@ -377,11 +377,12 @@ function TinaTypingIndicator() {
         height={28}
         className="mb-0.5 shrink-0 rounded-full object-cover ring-1 ring-tis-ink"
       />
-      <div className="rounded-2xl rounded-bl-md bg-tis-navy px-2.5 py-1.5 shadow-sm">
-        <div className="flex h-3.5 items-center gap-[3px]">
-          <span className="wa-typing-dot h-[5px] w-[5px] rounded-full bg-white" />
-          <span className="wa-typing-dot h-[5px] w-[5px] rounded-full bg-white" />
-          <span className="wa-typing-dot h-[5px] w-[5px] rounded-full bg-white" />
+      {/* Compact WhatsApp-scale typing bubble (~32×22). */}
+      <div className="rounded-full bg-tis-navy px-2 py-1 shadow-sm">
+        <div className="flex h-3 items-center gap-[2px]">
+          <span className="wa-typing-dot h-1 w-1 rounded-full bg-white/90" />
+          <span className="wa-typing-dot h-1 w-1 rounded-full bg-white/90" />
+          <span className="wa-typing-dot h-1 w-1 rounded-full bg-white/90" />
         </div>
       </div>
     </div>
