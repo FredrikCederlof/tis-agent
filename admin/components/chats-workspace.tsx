@@ -6,7 +6,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
+  CheckCircle2,
+  ChevronDown,
   ChevronLeft,
+  ChevronRight,
+  MessageSquareReply,
   MoreHorizontal,
   PanelRight,
   Search,
@@ -89,21 +93,16 @@ function timeOnly(iso: string): string {
 export function ChatsWorkspace({
   sessions,
   selectedId,
-  messages = [],
-  adminReplies = [],
-  parentStats,
   userEmail = "",
   loadError,
-  threadError,
+  children,
 }: {
   sessions: ChatSessionRow[];
   selectedId?: string;
-  messages?: ChatInteraction[];
-  adminReplies?: AdminReply[];
-  parentStats?: ParentHistoryStats | null;
   userEmail?: string;
   loadError?: string | null;
-  threadError?: string | null;
+  /** Detail pane — kept stable across conversation switches via chats layout. */
+  children?: React.ReactNode;
 }) {
   const router = useRouter();
   const [filters, setFilters] = useState<SessionFilters>({
@@ -116,7 +115,6 @@ export function ChatsWorkspace({
   });
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(false);
-  const [showInfo, setShowInfo] = useState(true);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
@@ -159,8 +157,16 @@ export function ChatsWorkspace({
     }
     return map;
   }, [visible]);
-  const englishPreviews = useAdminEnglishMap(previewTexts, previewLanguages);
-  const selected = sessions.find((row) => row.id === selectedId) || null;
+  const previewStored = useMemo(() => {
+    const map: Record<string, string | null | undefined> = {};
+    for (const row of visible) {
+      if (row.last_question && row.last_question_en) {
+        map[row.last_question] = row.last_question_en;
+      }
+    }
+    return map;
+  }, [visible]);
+  const englishPreviews = useAdminEnglishMap(previewTexts, previewLanguages, previewStored);
   const advancedOn = Boolean(filters.language || filters.outcome || filters.from || filters.to);
 
   function resetFilters() {
@@ -388,9 +394,6 @@ export function ChatsWorkspace({
                         </div>
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
                           <LanguageBadge language={row.primary_language} size="sm" />
-                          {row.last_outcome ? (
-                            <OutcomeBadge outcome={row.last_outcome} size="sm" />
-                          ) : null}
                           {row.needs_attention ? (
                             <AttentionBadge count={row.needs_attention_count} size="sm" />
                           ) : null}
@@ -455,32 +458,10 @@ export function ChatsWorkspace({
       </aside>
 
       <section className={`${selectedId ? "flex" : "hidden lg:flex"} min-h-0 min-w-0 flex-col`}>
-        {!selectedId ? (
+        {children ?? (
           <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-tis-muted">
             Select a session to read the parent ↔ Tina conversation.
           </div>
-        ) : threadError ? (
-          <div className="p-6 text-sm text-tis-danger">{threadError}</div>
-        ) : !selected ? (
-          <div className="p-6 text-sm text-tis-muted">This conversation is unavailable.</div>
-        ) : (
-          <ChatThread
-            session={selected}
-            interactions={messages}
-            adminReplies={adminReplies}
-            parentStats={parentStats || emptyParentHistoryStats()}
-            userEmail={userEmail}
-            parentLastMessageAt={sessions
-              .filter((row) => row.wa_from === selected.wa_from)
-              .reduce<string | null>(
-                (latest, row) =>
-                  !latest || row.last_message_at > latest ? row.last_message_at : latest,
-                null,
-              )}
-            showInfo={showInfo}
-            onToggleInfo={() => setShowInfo((v) => !v)}
-            onDeleted={() => router.push("/chats")}
-          />
         )}
       </section>
     </div>
@@ -519,16 +500,14 @@ function SegmentButton({
   );
 }
 
-function ChatThread({
+export function ChatThreadDetail({
   session,
   interactions,
   adminReplies,
   parentStats,
   userEmail,
   parentLastMessageAt,
-  showInfo,
-  onToggleInfo,
-  onDeleted,
+  threadError,
 }: {
   session: ChatSessionRow;
   interactions: ChatInteraction[];
@@ -536,11 +515,12 @@ function ChatThread({
   parentStats: ParentHistoryStats;
   userEmail: string;
   parentLastMessageAt: string | null;
-  showInfo: boolean;
-  onToggleInfo: () => void;
-  onDeleted: () => void;
+  threadError?: string | null;
 }) {
   const router = useRouter();
+  const [showInfo, setShowInfo] = useState(true);
+  const onToggleInfo = () => setShowInfo((v) => !v);
+  const onDeleted = () => router.push("/chats");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
@@ -564,14 +544,18 @@ function ChatThread({
 
   useEffect(() => {
     // Opening a session only marks it read — never removes it from Chats.
-    if (!session.unread) return;
+    if (threadError || !session.unread) return;
     const supabase = createClient();
     void supabase
       .from("chat_sessions")
       .update({ admin_read_at: new Date().toISOString() })
       .eq("id", session.id)
       .then(() => router.refresh());
-  }, [router, session.id, session.unread]);
+  }, [router, session.id, session.unread, threadError]);
+
+  if (threadError) {
+    return <div className="p-6 text-sm text-tis-danger">{threadError}</div>;
+  }
 
   async function markNeedsAttention(interactionId: string) {
     setFlaggingId(interactionId);
@@ -687,6 +671,15 @@ function ChatThread({
                   language={session.primary_language}
                   menuOpen={menuId === message.id}
                   flagging={flaggingId === message.interactionId}
+                  isReplyTarget={Boolean(
+                    target && message.kind === "parent" && message.interactionId === target.id,
+                  )}
+                  replyTarget={
+                    target && message.kind === "parent" && message.interactionId === target.id
+                      ? target
+                      : null
+                  }
+                  lastInboundAt={lastInboundAt}
                   onToggleMenu={() =>
                     setMenuId((current) => (current === message.id ? null : message.id))
                   }
@@ -701,30 +694,14 @@ function ChatThread({
           )}
         </div>
 
-        <footer className="border-t border-slate-100 bg-white px-4 py-3 sm:px-5">
+        <footer className="border-t border-slate-100 bg-white px-4 py-2.5 sm:px-5">
           {target ? (
-            <div className="rounded-2xl border border-slate-200 bg-white p-3">
-              <div className="mb-2 flex items-start justify-between gap-3">
-                <p className="min-w-0 truncate text-xs text-tis-muted">
-                  Replying to{" "}
-                  <span className="font-semibold text-tis-navy">
-                    <AdminEnglishText
-                      text={target.question}
-                      language={session.primary_language}
-                      plain
-                    />
-                  </span>
-                </p>
-                <ReplyWindowBadge lastInboundAt={lastInboundAt} />
-              </div>
-              <ReplyComposer
-                interactionId={target.id}
-                question={target.question}
-                lastInboundAt={lastInboundAt}
-                answeredAt={target.human_replied_at}
-                answeredBy={target.human_replied_by}
-                compact
-              />
+            <div className="flex items-center justify-between gap-3">
+              <p className="min-w-0 truncate text-xs text-tis-muted">
+                Current question — use <span className="font-semibold text-tis-navy">Answer</span>{" "}
+                under the parent message
+              </p>
+              <ReplyWindowBadge lastInboundAt={lastInboundAt} />
             </div>
           ) : (
             <p className="text-xs text-tis-muted">
@@ -755,6 +732,9 @@ function Bubble({
   language,
   menuOpen,
   flagging,
+  isReplyTarget,
+  replyTarget: target,
+  lastInboundAt,
   onToggleMenu,
   onMarkNeedsAttention,
 }: {
@@ -763,9 +743,14 @@ function Bubble({
   language?: string | null;
   menuOpen: boolean;
   flagging?: boolean;
+  isReplyTarget?: boolean;
+  replyTarget?: ChatInteraction | null;
+  lastInboundAt?: string | null;
   onToggleMenu: () => void;
   onMarkNeedsAttention?: () => void;
 }) {
+  const [answerOpen, setAnswerOpen] = useState(false);
+
   if (message.kind === "parent") {
     const canAddToHub =
       Boolean(message.interactionId) && isKnowledgeCandidateQuestion(message.text);
@@ -821,8 +806,38 @@ function Bubble({
             </div>
           </div>
           <div className="rounded-2xl rounded-tl-md border border-slate-200/70 bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm">
-            <AdminEnglishText text={message.text} language={language} />
+            <AdminEnglishText
+              text={message.text}
+              language={language}
+              storedEnglish={message.textEn}
+              translationStatus={message.translationStatus}
+            />
           </div>
+          {isReplyTarget && target ? (
+            <div className="mt-2 space-y-2">
+              <button
+                type="button"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2.5 text-[13px] font-bold text-emerald-950 transition hover:bg-emerald-50"
+                aria-expanded={answerOpen}
+                onClick={() => setAnswerOpen((v) => !v)}
+              >
+                <MessageSquareReply className="h-4 w-4 text-emerald-700" aria-hidden />
+                {answerOpen ? "Hide answer" : "Answer"}
+              </button>
+              {answerOpen ? (
+                <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                  <ReplyComposer
+                    interactionId={target.id}
+                    question={target.question}
+                    lastInboundAt={lastInboundAt || target.created_at}
+                    answeredAt={target.human_replied_at}
+                    answeredBy={target.human_replied_by}
+                    compact
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
     );
@@ -864,7 +879,12 @@ function Bubble({
           {isAdmin ? (
             <WaMessage text={tinaBody} />
           ) : (
-            <AdminEnglishText text={tinaBody} language={language} />
+            <AdminEnglishText
+              text={tinaBody}
+              language={language}
+              storedEnglish={message.textEn}
+              translationStatus={message.translationStatus}
+            />
           )}
           {!isAdmin && sources.titles.length > 0 ? (
             <SourceChip titles={sources.titles} quote={sources.quote} />
@@ -936,17 +956,24 @@ function InfoPanel({
           <div className="mt-1 grid w-full gap-2">
             <button
               type="button"
-              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-white px-2 py-2 text-[11px] font-bold text-tis-navy transition hover:bg-slate-50 disabled:opacity-50"
+              className="primary w-full justify-center !text-[13px]"
               disabled={flagging || session.needs_attention}
+              aria-disabled={flagging || session.needs_attention}
               onClick={() => onMarkNeedsAttention(lastQuestion.id)}
             >
-              <AlertCircle className="h-3.5 w-3.5 text-tis-amber" aria-hidden />
+              <AlertCircle className="h-4 w-4" aria-hidden />
               {flagging
                 ? "Marking…"
                 : session.needs_attention
-                  ? "Already flagged"
-                  : "Mark as needs attention"}
+                  ? "Already needs attention"
+                  : "Mark as: Needs attention"}
             </button>
+            {session.needs_attention ? (
+              <p className="flex items-center justify-center gap-1 text-[11px] font-semibold text-emerald-800">
+                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
+                Flagged for follow-up
+              </p>
+            ) : null}
             <Link
               href="/inbox"
               className="text-center text-[11px] font-semibold text-tis-blue no-underline hover:underline"
@@ -957,7 +984,7 @@ function InfoPanel({
         )}
       </div>
 
-      <Section title="Session">
+      <Section title="Session" defaultOpen>
         <Row label="Started" value={formatMessageTime(session.started_at)} />
         <Row label="Last activity" value={formatMessageTime(session.last_message_at)} />
         <div className="flex items-center justify-between gap-2 text-xs">
@@ -966,11 +993,15 @@ function InfoPanel({
         </div>
       </Section>
 
-      <Section title="Outcomes (this session)">
+      <Section title="Outcomes (this session)" defaultOpen>
         <OutcomeSummaryList outcomes={outcomes} />
       </Section>
 
-      <Section title="Parent history">
+      <Section
+        title="All sessions"
+        count={parentStats.totalSessions}
+        defaultOpen={false}
+      >
         <Row label="Total questions" value={String(parentStats.totalQuestions)} />
         <Row label="Total sessions" value={String(parentStats.totalSessions)} />
         <Row label="Unique questions" value={String(parentStats.uniqueQuestions)} />
@@ -984,14 +1015,22 @@ function InfoPanel({
         />
       </Section>
 
-      <Section title="AI outcomes (all sessions)">
+      <Section
+        title="AI outcomes"
+        count={
+          parentStats.answeredFromKnowledge +
+          parentStats.aiCouldNotAnswer +
+          parentStats.addedToKnowledgeHub
+        }
+        defaultOpen={false}
+      >
         <Row label="Answered from knowledge" value={String(parentStats.answeredFromKnowledge)} />
         <Row label="AI couldn't answer" value={String(parentStats.aiCouldNotAnswer)} />
         <Row label="Human replies" value={String(parentStats.humanReplies)} />
         <Row label="Added to Knowledge Hub" value={String(parentStats.addedToKnowledgeHub)} />
       </Section>
 
-      <Section title="Human replies">
+      <Section title="Human replies" count={adminReplies.length} defaultOpen={false}>
         {adminReplies.length === 0 ? (
           <p className="text-xs text-tis-muted">No admin has replied in this session.</p>
         ) : (
@@ -1007,7 +1046,7 @@ function InfoPanel({
         )}
       </Section>
 
-      <Section title="Troubleshooting">
+      <Section title="Troubleshooting" defaultOpen={false}>
         <Row label="WhatsApp" value={session.wa_from} mono />
         <Row label="Session ID" value={session.id} mono />
         {userEmail ? <Row label="Signed in as" value={userEmail} /> : null}
@@ -1016,11 +1055,35 @@ function InfoPanel({
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({
+  title,
+  children,
+  count,
+  defaultOpen = true,
+}: {
+  title: string;
+  children: React.ReactNode;
+  count?: number;
+  defaultOpen?: boolean;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const label = count != null ? `${title} (${count})` : title;
   return (
     <div className="border-b border-slate-100 py-3 last:border-b-0">
-      <p className="mb-1.5 text-[13px] font-bold text-tis-navy">{title}</p>
-      <div className="space-y-1">{children}</div>
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-2 text-left"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <p className="text-[13px] font-bold text-tis-navy">{label}</p>
+        {open ? (
+          <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+        ) : (
+          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+        )}
+      </button>
+      {open ? <div className="mt-1.5 space-y-1">{children}</div> : null}
     </div>
   );
 }

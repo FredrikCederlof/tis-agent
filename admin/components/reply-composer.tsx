@@ -187,10 +187,10 @@ export function ReplyComposer({
           {error} Your draft is kept — you can try again.
         </p>
       )}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-stretch gap-2 md:flex-nowrap">
         <button
           type="button"
-          className="primary"
+          className="primary shrink-0"
           disabled={sending}
           onClick={() => void send(false)}
         >
@@ -199,7 +199,7 @@ export function ReplyComposer({
         </button>
         <button
           type="button"
-          className="secondary"
+          className="secondary shrink-0"
           disabled={sending}
           onClick={() => void send(true)}
         >
@@ -209,7 +209,7 @@ export function ReplyComposer({
         {canAddToHub ? (
           <button
             type="button"
-            className="secondary"
+            className="secondary shrink-0"
             disabled={sending}
             onClick={addToKnowledgeOnly}
           >

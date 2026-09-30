@@ -20,7 +20,7 @@ export function ParentAvatar({
       style={{
         width: size,
         height: size,
-        border: "1px solid #EBEBEB",
+        border: "1.5px solid #334155",
         boxSizing: "border-box",
       }}
       title={label}
