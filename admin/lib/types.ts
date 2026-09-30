@@ -16,8 +16,12 @@ export type UnansweredRow = {
   id: string;
   session_id: string;
   question: string;
+  question_en?: string | null;
   reply: string | null;
+  reply_en?: string | null;
   language: string;
+  source_language?: string | null;
+  translation_status?: string | null;
   outcome: string;
   top_similarity: number | null;
   document_titles: string[];

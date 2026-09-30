@@ -1,31 +1,32 @@
 import { isTinaHandled, TIME_SAVED_DEFINITION } from "@/lib/time-saved";
+import {
+  TOKYO,
+  buildWeeklySeries,
+  formatWeekLabel,
+  shiftYmd,
+  tokyoDayStart,
+  tokyoYmd,
+  weekStartYmd,
+  type WeeklyPoint,
+} from "./tokyo-weeks";
+
+export {
+  TOKYO,
+  buildWeeklySeries,
+  formatWeekLabel,
+  shiftYmd,
+  tokyoDayStart,
+  tokyoYmd,
+  weekStartYmd,
+};
+export type { WeeklyPoint };
 
 /** Tokyo-calendar analytics for the admin dashboard. Japan has no DST. */
 
-export const TOKYO = "Asia/Tokyo";
 export const DEFAULT_RANGE_DAYS = 30;
-
-export function tokyoYmd(date: Date = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: TOKYO,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-}
-
-export function tokyoDayStart(ymd: string): Date {
-  return new Date(`${ymd}T00:00:00+09:00`);
-}
 
 export function tokyoDayEnd(ymd: string): Date {
   return new Date(`${ymd}T23:59:59.999+09:00`);
-}
-
-export function shiftYmd(ymd: string, days: number): string {
-  const d = tokyoDayStart(ymd);
-  d.setUTCDate(d.getUTCDate() + days);
-  return tokyoYmd(d);
 }
 
 /** Inclusive day count between two YMD dates (same day => 1). */
@@ -112,76 +113,6 @@ export type DailyPoint = {
   answeredPct: number;
   attentionPct: number;
 };
-
-/** One week bucket for the performance chart (Mon–Sun, Asia/Tokyo). */
-export type WeeklyPoint = {
-  key: string;
-  label: string;
-  questions: number;
-  gaps: number;
-  success: number;
-  tinaHandled: number;
-  answeredPct: number;
-  attentionPct: number;
-};
-
-/** Monday YMD of the Tokyo week containing `ymd` (weeks start Monday). */
-export function weekStartYmd(ymd: string): string {
-  const start = tokyoDayStart(ymd);
-  // getUTCDay: 0=Sun … 6=Sat; convert to Mon=0 … Sun=6
-  const dow = (start.getUTCDay() + 6) % 7;
-  return shiftYmd(ymd, -dow);
-}
-
-export function formatWeekLabel(weekStart: string): string {
-  const end = shiftYmd(weekStart, 6);
-  const left = new Intl.DateTimeFormat("en-US", {
-    timeZone: TOKYO,
-    month: "short",
-    day: "numeric",
-  }).format(tokyoDayStart(weekStart));
-  const right = new Intl.DateTimeFormat("en-US", {
-    timeZone: TOKYO,
-    month: "short",
-    day: "numeric",
-  }).format(tokyoDayStart(end));
-  return `${left}–${right}`;
-}
-
-/** Collapse daily points into Monday-start weeks (Asia/Tokyo). */
-export function buildWeeklySeries(days: DailyPoint[]): WeeklyPoint[] {
-  const weeks: WeeklyPoint[] = [];
-  const byWeek = new Map<string, WeeklyPoint>();
-  for (const day of days) {
-    const key = weekStartYmd(day.key);
-    let week = byWeek.get(key);
-    if (!week) {
-      week = {
-        key,
-        label: formatWeekLabel(key),
-        questions: 0,
-        gaps: 0,
-        success: 0,
-        tinaHandled: 0,
-        answeredPct: 0,
-        attentionPct: 0,
-      };
-      byWeek.set(key, week);
-      weeks.push(week);
-    }
-    week.questions += day.questions;
-    week.gaps += day.gaps;
-    week.success += day.success;
-    week.tinaHandled += day.tinaHandled;
-  }
-  for (const week of weeks) {
-    const denom = week.success + week.gaps;
-    week.answeredPct = denom > 0 ? Math.round((week.success / denom) * 100) : 0;
-    week.attentionPct =
-      week.questions > 0 ? Math.round((week.gaps / week.questions) * 100) : 0;
-  }
-  return weeks;
-}
 
 export type PeriodStats = {
   questions: number;

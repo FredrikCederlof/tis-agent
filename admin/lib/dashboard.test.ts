@@ -4,25 +4,10 @@ import {
   buildWeeklySeries,
   formatWeekLabel,
   weekStartYmd,
-  type DailyPoint,
-} from "./dashboard.ts";
-
-function day(key: string, questions: number, success = 0, gaps = 0): DailyPoint {
-  return {
-    key,
-    label: key,
-    questions,
-    gaps,
-    success,
-    tinaHandled: success,
-    answeredPct: 0,
-    attentionPct: 0,
-  };
-}
+} from "./tokyo-weeks.ts";
 
 describe("weekly performance series", () => {
   it("maps mid-week days to Monday week starts (Tokyo)", () => {
-    // 2026-09-30 is Wednesday in Tokyo
     assert.equal(weekStartYmd("2026-09-30"), "2026-09-28");
     assert.equal(weekStartYmd("2026-09-28"), "2026-09-28");
     assert.equal(weekStartYmd("2026-10-04"), "2026-09-28");
@@ -31,9 +16,9 @@ describe("weekly performance series", () => {
 
   it("aggregates daily points into labeled weeks", () => {
     const weeks = buildWeeklySeries([
-      day("2026-09-28", 2, 1, 1),
-      day("2026-09-30", 3, 2, 1),
-      day("2026-10-05", 4, 4, 0),
+      { key: "2026-09-28", questions: 2, success: 1, gaps: 1, tinaHandled: 1 },
+      { key: "2026-09-30", questions: 3, success: 2, gaps: 1, tinaHandled: 2 },
+      { key: "2026-10-05", questions: 4, success: 4, gaps: 0, tinaHandled: 4 },
     ]);
     assert.equal(weeks.length, 2);
     assert.equal(weeks[0].key, "2026-09-28");
