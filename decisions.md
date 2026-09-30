@@ -9,6 +9,7 @@ Short record of product intent. Change these only with a reason.
 - **User:** Any TIS parent, Kindergarten through Grade 12. Not a family-specific assistant.
 - **Outcome:** A parent asks in natural language and gets a short, trustworthy answer from TIS source material.
 - **Interface:** WhatsApp is the only parent-facing interface. No parent web app.
+- **Staff Sandbox (Admin):** Admins and members can try Tina inside Tina Admin (`/sandbox`) without WhatsApp. History is private per signed-in user, grouped by month. Sandbox Q&A uses the same RAG path as WhatsApp but does **not** create `chat_sessions` / `interactions`, Needs attention rows, or parent analytics. SQL: `sql/023_sandbox.sql`.
 - **This project is not** the family Sunday email briefing (`TIS-Summary`). That product stays separate and is never a dependency. Tina’s weekly bulletin is a **dedicated Sunday Cloud Agent** that searches school Gmail (tokyois / Toddle / OpenApply / ManageBac / SchoolsBuddy / Seesaw) and ingests a sanitized bulletin. Never raw Gmail. Never the family HTML.
 
 ## Knowledge

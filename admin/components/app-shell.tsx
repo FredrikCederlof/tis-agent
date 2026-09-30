@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import {
   BookOpen,
+  FlaskConical,
   Inbox,
   LayoutDashboard,
   LogOut,
@@ -57,6 +58,7 @@ const sections: { label: string; links: NavLink[] }[] = [
   {
     label: "Settings",
     links: [
+      { href: "/sandbox", label: "Sandbox", icon: FlaskConical },
       { href: "/users", label: "Users", icon: Users, adminOnly: true },
       { href: "/config", label: "Tina config", icon: Settings2, adminOnly: true },
     ],
@@ -84,7 +86,7 @@ export function AppShell({
   const [profile, setProfile] = useState<AdminProfile | null>(profileProp || null);
   const unreadChats = chatsUnreadCount ?? fetchedUnread;
   const inboxCount = liveUnanswered ?? unansweredCount;
-  const fillCanvas = pathname.startsWith("/chats");
+  const fillCanvas = pathname.startsWith("/chats") || pathname.startsWith("/sandbox");
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const firstName = displayFirstName(profile || { first_name: "", email });
   const roleText = roleLabel(profile?.role);
