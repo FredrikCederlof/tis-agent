@@ -6,17 +6,26 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
+  AlertTriangle,
   BookOpen,
+  CalendarDays,
   CheckCircle2,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  ExternalLink,
+  ListChecks,
+  MessageCircle,
   MessageSquareReply,
   MoreHorizontal,
   PanelRight,
   Search,
   SlidersHorizontal,
+  Sparkles,
   Trash2,
+  UserRound,
+  X,
+  type LucideIcon,
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { AttentionBadge, AttentionStatusCard } from "@/components/attention-badge";
@@ -745,6 +754,7 @@ export function ChatThreadDetail({
           parentStats={parentStats}
           userEmail={userEmail}
           flagging={flaggingId != null}
+          onClose={onToggleInfo}
           onMarkNeedsAttention={(id) => void markNeedsAttention(id)}
         />
       )}
@@ -945,6 +955,7 @@ function InfoPanel({
   parentStats,
   userEmail,
   flagging,
+  onClose,
   onMarkNeedsAttention,
 }: {
   session: ChatSessionRow;
@@ -953,6 +964,7 @@ function InfoPanel({
   parentStats: ParentHistoryStats;
   userEmail: string;
   flagging: boolean;
+  onClose: () => void;
   onMarkNeedsAttention: (interactionId: string) => void;
 }) {
   const lastQuestion = interactions[interactions.length - 1];
@@ -960,26 +972,59 @@ function InfoPanel({
     acc[item.outcome] = (acc[item.outcome] || 0) + 1;
     return acc;
   }, {});
+  const outcomeCount = Object.values(outcomes).reduce((sum, n) => sum + n, 0);
+  const aiOutcomesCount =
+    parentStats.answeredFromKnowledge +
+    parentStats.aiCouldNotAnswer +
+    parentStats.addedToKnowledgeHub;
+  const questionLabel = `${session.message_count} question${
+    session.message_count === 1 ? "" : "s"
+  }`;
 
   return (
-    <aside className="w-full min-h-0 overflow-y-auto border-t border-slate-100 bg-white p-4 lg:w-[280px] lg:border-l lg:border-t-0">
-      <p className="mb-3 text-sm font-bold text-tis-navy">Session information</p>
-
-      <div className="flex flex-col items-center gap-2 border-b border-slate-100 pb-4 text-center">
-        <ParentAvatar waFrom={session.wa_from} size={64} />
-        <div>
-          <p className="font-bold text-tis-navy">{parentLabel(session.wa_from)}</p>
-          <p className="text-xs text-tis-muted">
-            WhatsApp parent · {session.message_count} question
-            {session.message_count === 1 ? "" : "s"}
+    <aside className="w-full min-h-0 overflow-y-auto border-t border-slate-100 bg-white p-4 lg:w-[300px] lg:border-l lg:border-t-0">
+      <div className="mb-4 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="text-[15px] font-bold tracking-tight text-tis-navy">Session details</h2>
+          <p className="mt-0.5 text-[12px] leading-snug text-tis-muted">
+            Overview of this parent&apos;s conversation
           </p>
         </div>
+        <button
+          type="button"
+          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-tis-navy"
+          aria-label="Close session details"
+          onClick={onClose}
+        >
+          <X className="h-4 w-4" aria-hidden />
+        </button>
+      </div>
+
+      <div className="rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm">
+        <div className="flex items-center gap-3">
+          <ParentAvatar waFrom={session.wa_from} size={48} />
+          <div className="min-w-0">
+            <p className="truncate text-[14px] font-bold text-tis-navy">
+              {parentLabel(session.wa_from)}
+            </p>
+            <p className="text-[12px] text-tis-muted">WhatsApp parent</p>
+          </div>
+        </div>
+        <div className="mt-3 flex flex-wrap items-center gap-1.5">
+          <LanguageBadge language={session.primary_language} size="sm" />
+          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-tis-navy">
+            {questionLabel}
+          </span>
+        </div>
+      </div>
+
+      <div className="mt-3 space-y-2.5">
         <AttentionStatusCard
           needsAttention={session.needs_attention}
           count={session.needs_attention_count}
         />
-        {lastQuestion && (
-          <div className="mt-1 grid w-full gap-2">
+        {lastQuestion ? (
+          <>
             <button
               type="button"
               className="primary w-full justify-center !text-[13px]"
@@ -992,7 +1037,7 @@ function InfoPanel({
                 ? "Marking…"
                 : session.needs_attention
                   ? "Already needs attention"
-                  : "Mark as: Needs attention"}
+                  : "Mark as Needs attention"}
             </button>
             {session.needs_attention ? (
               <p className="flex items-center justify-center gap-1 text-[11px] font-semibold text-emerald-800">
@@ -1002,121 +1047,138 @@ function InfoPanel({
             ) : null}
             <Link
               href="/inbox"
-              className="text-center text-[11px] font-semibold text-tis-blue no-underline hover:underline"
+              className="flex items-center justify-center gap-1.5 text-[12px] font-semibold text-tis-blue no-underline hover:underline"
             >
-              Open Needs Attention queue
+              <ExternalLink className="h-3.5 w-3.5" aria-hidden />
+              Open in Needs Attention queue
             </Link>
-          </div>
-        )}
+          </>
+        ) : null}
       </div>
 
-      <Section title="Session" defaultOpen>
-        <Row label="Started" value={formatMessageTime(session.started_at)} />
-        <Row label="Last activity" value={formatMessageTime(session.last_message_at)} />
-        <div className="flex items-center justify-between gap-2 text-xs">
-          <span className="shrink-0 text-slate-500">Language</span>
-          <LanguageBadge language={session.primary_language} size="sm" />
-        </div>
-      </Section>
+      <div className="mt-4 space-y-2">
+        <Section title="Session summary" icon={CalendarDays}>
+          <DetailRow label="Started" value={formatMessageTime(session.started_at)} />
+          <DetailRow label="Last activity" value={formatMessageTime(session.last_message_at)} />
+          <div className="flex items-center justify-between gap-2 px-1 py-2 text-[12px]">
+            <span className="shrink-0 text-slate-500">Language</span>
+            <LanguageBadge language={session.primary_language} size="sm" />
+          </div>
+          <DetailRow label="Questions in this session" value={String(session.message_count)} />
+        </Section>
 
-      <Section title="Outcomes (this session)" defaultOpen>
-        <OutcomeSummaryList outcomes={outcomes} />
-      </Section>
+        <Section title="Outcomes (this session)" icon={ListChecks} count={outcomeCount}>
+          <div className="px-1 py-1.5">
+            <OutcomeSummaryList outcomes={outcomes} />
+          </div>
+        </Section>
 
-      <Section
-        title="All sessions"
-        count={parentStats.totalSessions}
-        defaultOpen={false}
-      >
-        <Row label="Total questions" value={String(parentStats.totalQuestions)} />
-        <Row label="Total sessions" value={String(parentStats.totalSessions)} />
-        <Row label="Unique questions" value={String(parentStats.uniqueQuestions)} />
-        <Row
-          label="First seen"
-          value={parentStats.firstSeen ? formatMessageTime(parentStats.firstSeen) : "—"}
-        />
-        <Row
-          label="Last seen"
-          value={parentStats.lastSeen ? formatMessageTime(parentStats.lastSeen) : "—"}
-        />
-      </Section>
+        <Section title="All sessions" icon={MessageCircle} count={parentStats.totalSessions}>
+          <DetailRow label="Total questions" value={String(parentStats.totalQuestions)} />
+          <DetailRow label="Total sessions" value={String(parentStats.totalSessions)} />
+          <DetailRow label="Unique questions" value={String(parentStats.uniqueQuestions)} />
+          <DetailRow
+            label="First seen"
+            value={parentStats.firstSeen ? formatMessageTime(parentStats.firstSeen) : "—"}
+          />
+          <DetailRow
+            label="Last seen"
+            value={parentStats.lastSeen ? formatMessageTime(parentStats.lastSeen) : "—"}
+          />
+        </Section>
 
-      <Section
-        title="AI outcomes"
-        count={
-          parentStats.answeredFromKnowledge +
-          parentStats.aiCouldNotAnswer +
-          parentStats.addedToKnowledgeHub
-        }
-        defaultOpen={false}
-      >
-        <Row label="Answered from knowledge" value={String(parentStats.answeredFromKnowledge)} />
-        <Row label="AI couldn't answer" value={String(parentStats.aiCouldNotAnswer)} />
-        <Row label="Human replies" value={String(parentStats.humanReplies)} />
-        <Row label="Added to Knowledge Hub" value={String(parentStats.addedToKnowledgeHub)} />
-      </Section>
+        <Section title="AI outcomes" icon={Sparkles} count={aiOutcomesCount}>
+          <DetailRow
+            label="Answered from knowledge"
+            value={String(parentStats.answeredFromKnowledge)}
+          />
+          <DetailRow label="AI couldn't answer" value={String(parentStats.aiCouldNotAnswer)} />
+          <DetailRow label="Human replies" value={String(parentStats.humanReplies)} />
+          <DetailRow
+            label="Added to Knowledge Hub"
+            value={String(parentStats.addedToKnowledgeHub)}
+          />
+        </Section>
 
-      <Section title="Human replies" count={adminReplies.length} defaultOpen={false}>
-        {adminReplies.length === 0 ? (
-          <p className="text-xs text-tis-muted">No admin has replied in this session.</p>
-        ) : (
-          adminReplies.map((reply) => (
-            <Row
-              key={reply.id}
-              label={`${reply.status === "failed" ? "Failed" : "Sent"} ${formatMessageTime(
-                reply.created_at,
-              )}`}
-              value={adminDisplayName(reply.sent_by)}
-            />
-          ))
-        )}
-      </Section>
+        <Section title="Human replies" icon={UserRound} count={adminReplies.length}>
+          {adminReplies.length === 0 ? (
+            <p className="px-1 py-2 text-xs text-tis-muted">
+              No admin has replied in this session.
+            </p>
+          ) : (
+            adminReplies.map((reply) => (
+              <DetailRow
+                key={reply.id}
+                label={`${reply.status === "failed" ? "Failed" : "Sent"} ${formatMessageTime(
+                  reply.created_at,
+                )}`}
+                value={adminDisplayName(reply.sent_by)}
+              />
+            ))
+          )}
+        </Section>
 
-      <Section title="Troubleshooting" defaultOpen={false}>
-        <Row label="WhatsApp" value={session.wa_from} mono />
-        <Row label="Session ID" value={session.id} mono />
-        {userEmail ? <Row label="Signed in as" value={userEmail} /> : null}
-      </Section>
+        <Section title="Troubleshooting" icon={AlertTriangle}>
+          <DetailRow label="WhatsApp" value={session.wa_from} mono />
+          <DetailRow label="Session ID" value={session.id} mono />
+          {userEmail ? <DetailRow label="Signed in as" value={userEmail} /> : null}
+        </Section>
+      </div>
     </aside>
   );
 }
 
 function Section({
   title,
+  icon: Icon,
   children,
   count,
-  defaultOpen = true,
 }: {
   title: string;
+  icon: LucideIcon;
   children: React.ReactNode;
   count?: number;
-  defaultOpen?: boolean;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-  const label = count != null ? `${title} (${count})` : title;
+  const [open, setOpen] = useState(false);
   return (
-    <div className="border-b border-slate-100 py-3 last:border-b-0">
+    <div
+      className={`overflow-hidden rounded-xl border transition ${
+        open ? "border-slate-200 bg-white shadow-sm" : "border-transparent bg-slate-50"
+      }`}
+    >
       <button
         type="button"
-        className="flex w-full items-center justify-between gap-2 text-left"
+        className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <p className="text-[13px] font-bold text-tis-navy">{label}</p>
+        <Icon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+        <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-tis-navy">
+          {title}
+        </span>
+        {count != null ? (
+          <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-white px-1.5 text-[10px] font-bold tabular-nums text-tis-navy ring-1 ring-slate-200">
+            {count}
+          </span>
+        ) : null}
         {open ? (
-          <ChevronDown className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+          <ChevronUp className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
         ) : (
           <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
         )}
       </button>
-      {open ? <div className="mt-1.5 space-y-1">{children}</div> : null}
+      {open ? (
+        <div className="divide-y divide-slate-100 border-t border-slate-100 px-3 pb-1.5 pt-0.5">
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }
 
-function Row({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+function DetailRow({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
   return (
-    <div className="flex items-baseline justify-between gap-2 text-xs">
+    <div className="flex items-baseline justify-between gap-2 px-1 py-2 text-[12px]">
       <span className="shrink-0 text-slate-500">{label}</span>
       <span
         className={`min-w-0 break-all text-right font-semibold text-tis-navy ${
