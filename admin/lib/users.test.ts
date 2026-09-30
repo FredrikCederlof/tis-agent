@@ -172,10 +172,11 @@ describe("onboard url", () => {
 });
 
 describe("middleware public paths", () => {
-  it("allows onboard and push notify without session", () => {
+  it("allows onboard, push notify, and service worker without session", () => {
     assert.equal(isPublicPath("/onboard"), true);
     assert.equal(isPublicPath("/api/onboard"), true);
     assert.equal(isPublicPath("/api/push/notify"), true);
+    assert.equal(isPublicPath("/sw.js"), true);
     assert.equal(isPublicPath("/users"), false);
     assert.equal(isApiPath("/api/users"), true);
   });

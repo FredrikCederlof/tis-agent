@@ -14,7 +14,9 @@ export type NotifyUiState =
   | "prompt"
   | "enabled"
   | "blocked"
-  | "not_enabled";
+  | "not_enabled"
+  /** localStorage says on + permission granted, but PushManager has no subscription */
+  | "needs_resubscribe";
 
 export type PushSubscriptionJSON = {
   endpoint: string;
@@ -55,10 +57,15 @@ export function resolveNotifyUiState(args: {
   supported: boolean;
   choice: NotifyChoice | null;
   permission: NotificationPermission | "default" | "granted" | "denied" | null;
+  /** When false, the browser has no live push subscription even if choice is enabled. */
+  hasSubscription?: boolean | null;
 }): NotifyUiState {
   if (!args.supported) return "unsupported";
   if (args.permission === "denied") return "blocked";
-  if (args.choice === "enabled" && args.permission === "granted") return "enabled";
+  if (args.choice === "enabled" && args.permission === "granted") {
+    if (args.hasSubscription === false) return "needs_resubscribe";
+    return "enabled";
+  }
   if (args.choice === null) return "prompt";
   return "not_enabled";
 }

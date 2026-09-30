@@ -74,6 +74,24 @@ describe("UI states", () => {
       "enabled",
     );
     assert.equal(
+      resolveNotifyUiState({
+        supported: true,
+        choice: "enabled",
+        permission: "granted",
+        hasSubscription: false,
+      }),
+      "needs_resubscribe",
+    );
+    assert.equal(
+      resolveNotifyUiState({
+        supported: true,
+        choice: "enabled",
+        permission: "granted",
+        hasSubscription: true,
+      }),
+      "enabled",
+    );
+    assert.equal(
       resolveNotifyUiState({ supported: true, choice: "dismissed", permission: "denied" }),
       "blocked",
     );
