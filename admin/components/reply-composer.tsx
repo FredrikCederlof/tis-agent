@@ -75,15 +75,6 @@ export function ReplyComposer({
     return knowledgeHubUrl(interactionId, { answer });
   }
 
-  function addToKnowledgeOnly() {
-    const answer = body.trim();
-    if (!answer) {
-      setError("Write an answer before adding it to Knowledge.");
-      return;
-    }
-    router.push(knowledgeUrl(answer));
-  }
-
   async function send(alsoAddToKnowledge: boolean) {
     const answer = body.trim();
     if (!answer) {
@@ -206,17 +197,6 @@ export function ReplyComposer({
           <BookPlus className="h-4 w-4" />
           Send + Add to Knowledge
         </button>
-        {canAddToHub ? (
-          <button
-            type="button"
-            className="secondary shrink-0"
-            disabled={sending}
-            onClick={addToKnowledgeOnly}
-          >
-            <BookPlus className="h-4 w-4" />
-            Add to Knowledge only
-          </button>
-        ) : null}
       </div>
       <p className="text-xs text-tis-muted">
         “Send + Add to Knowledge” messages the parent, then opens Knowledge Hub for review.

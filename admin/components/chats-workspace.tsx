@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
+  BookOpen,
   CheckCircle2,
   ChevronDown,
   ChevronLeft,
@@ -54,19 +55,40 @@ import {
   replyTarget,
 } from "@/lib/chats";
 
+const iconButtonClass = (active?: boolean) =>
+  `inline-flex h-9 w-9 items-center justify-center rounded-xl border transition disabled:opacity-50 ${
+    active
+      ? "border-tis-navy bg-tis-mist text-tis-navy"
+      : "border-black/[0.08] bg-white text-tis-muted hover:bg-tis-mist hover:text-tis-navy"
+  }`;
+
 function IconButton({
   label,
   onClick,
+  href,
   active,
   disabled,
   children,
 }: {
   label: string;
-  onClick: () => void;
+  onClick?: () => void;
+  href?: string;
   active?: boolean;
   disabled?: boolean;
   children: React.ReactNode;
 }) {
+  if (href && !disabled) {
+    return (
+      <Link
+        href={href}
+        aria-label={label}
+        title={label}
+        className={iconButtonClass(active)}
+      >
+        {children}
+      </Link>
+    );
+  }
   return (
     <button
       type="button"
@@ -75,11 +97,7 @@ function IconButton({
       aria-pressed={active}
       disabled={disabled}
       onClick={onClick}
-      className={`inline-flex h-9 w-9 items-center justify-center rounded-xl border transition disabled:opacity-50 ${
-        active
-          ? "border-tis-navy bg-tis-mist text-tis-navy"
-          : "border-black/[0.08] bg-white text-tis-muted hover:bg-tis-mist hover:text-tis-navy"
-      }`}
+      className={iconButtonClass(active)}
     >
       {children}
     </button>
@@ -635,6 +653,14 @@ export function ChatThreadDetail({
                 <AttentionBadge count={session.needs_attention_count} />
               </span>
             )}
+            {target && isKnowledgeCandidateQuestion(target.question) ? (
+              <IconButton
+                label="Add to Knowledge Hub"
+                href={knowledgeHubUrl(target.id)}
+              >
+                <BookOpen className="h-4 w-4" />
+              </IconButton>
+            ) : null}
             <IconButton label="Delete session" disabled={deleting} onClick={() => void onDelete()}>
               <Trash2 className="h-4 w-4" />
             </IconButton>
