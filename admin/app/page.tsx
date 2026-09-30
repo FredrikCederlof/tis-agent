@@ -59,18 +59,20 @@ export default async function DashboardPage({
     configRes.data?.minutes_saved_per_question,
   );
   const dash = buildDashboardModel((interactions || []) as InteractionRow[], from, to);
-  const { current, previous, days, dayCount, topGaps } = dash;
+  const { current, previous, days, weeks, dayCount, topGaps } = dash;
   const unansweredCount = unansweredRes.count ?? 0;
   const currentSaved = timeSavedMinutes(current.tinaHandledCount, minutesPerQuestion);
   const previousSaved = timeSavedMinutes(previous.tinaHandledCount, minutesPerQuestion);
   const periodNoun = dayCount === 1 ? "day" : "days";
+  const weekCount = weeks.length;
   const humanSlice = current.fixedCount;
   const attentionShare =
     current.questions > 0
       ? Math.round((unansweredCount / Math.max(current.questions, 1)) * 1000) / 10
       : 0;
   const dayLabels = days.map((d) => d.label);
-  const chartRangeLabel = `Last ${dayCount} ${periodNoun}`;
+  const chartRangeLabel =
+    weekCount === 1 ? "1 week" : `${weekCount} weeks (${dayCount} ${periodNoun})`;
   const vsPrevious = `vs previous ${dayCount} ${periodNoun}`;
   const attentionDelta = current.gapCount - previous.gapCount;
 
@@ -102,19 +104,7 @@ export default async function DashboardPage({
 
         <div className="relative z-10 grid min-w-0 gap-4 overflow-visible sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
-            label="Time saved"
-            value={formatSavedTime(currentSaved)}
-            iconName="clock"
-            definition={KPI_DEFINITIONS.timeSaved}
-            accent="green"
-            sparkline={days.map((d) => timeSavedMinutes(d.tinaHandled, minutesPerQuestion))}
-            sparklineLabels={dayLabels}
-            sparkFormat="duration"
-            deltaFormatted={formatSavedTimeDelta(currentSaved, previousSaved)}
-            deltaLabel={vsPrevious}
-          />
-          <StatCard
-            label="Total Questions Asked"
+            label="Total questions asked"
             value={current.questions}
             definition={KPI_DEFINITIONS.totalQuestions}
             accent="purple"
@@ -155,6 +145,18 @@ export default async function DashboardPage({
             )}
             deltaLabel={vsPrevious}
             deltaUnit=" percentage points"
+          />
+          <StatCard
+            label="Time saved"
+            value={formatSavedTime(currentSaved)}
+            iconName="clock"
+            definition={KPI_DEFINITIONS.timeSaved}
+            accent="green"
+            sparkline={days.map((d) => timeSavedMinutes(d.tinaHandled, minutesPerQuestion))}
+            sparklineLabels={dayLabels}
+            sparkFormat="duration"
+            deltaFormatted={formatSavedTimeDelta(currentSaved, previousSaved)}
+            deltaLabel={vsPrevious}
             tipAlign="end"
           />
         </div>
@@ -164,11 +166,11 @@ export default async function DashboardPage({
             <div className="min-h-0 flex-1">
               <PerformanceChart
                 rangeLabel={chartRangeLabel}
-                points={days.map((d) => ({
-                  label: d.label,
-                  questions: d.questions,
-                  answeredPct: d.answeredPct,
-                  attentionPct: d.attentionPct,
+                points={weeks.map((w) => ({
+                  label: w.label,
+                  questions: w.questions,
+                  answeredPct: w.answeredPct,
+                  attentionPct: w.attentionPct,
                 }))}
               />
             </div>

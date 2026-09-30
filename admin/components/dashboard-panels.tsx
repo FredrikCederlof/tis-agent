@@ -32,7 +32,12 @@ export function TopKnowledgeGapsCard({ gaps }: { gaps: KnowledgeGap[] }) {
         </IconWell>
         <div>
           <h2 className="text-lg font-bold text-tis-navy">Top knowledge gaps</h2>
-          <p className="text-sm text-tis-muted">Most common unanswered or low confidence questions</p>
+          <p
+            className="max-w-full truncate text-sm text-tis-muted"
+            title="Most common unanswered or low-confidence questions"
+          >
+            Unanswered &amp; low-confidence questions
+          </p>
         </div>
       </div>
       {gaps.length === 0 ? (
