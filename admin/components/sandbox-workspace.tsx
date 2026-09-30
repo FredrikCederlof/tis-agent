@@ -3,8 +3,10 @@
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  Check,
   ChevronDown,
   ChevronRight,
+  Copy,
   Folder,
   MessageSquarePlus,
   Send,
@@ -22,7 +24,13 @@ import {
   type SandboxMessage,
 } from "@/lib/sandbox";
 
-export function SandboxWorkspace() {
+type UserIdentity = {
+  name: string;
+  initial: string;
+  avatarUrl: string | null;
+};
+
+export function SandboxWorkspace({ user }: { user: UserIdentity }) {
   const [conversations, setConversations] = useState<SandboxConversation[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [messages, setMessages] = useState<SandboxMessage[]>([]);
@@ -122,8 +130,20 @@ export function SandboxWorkspace() {
   async function sendQuestion() {
     const question = draft.trim();
     if (!question || sending) return;
+    const optimisticId = `local-${Date.now()}`;
+    const optimistic: SandboxMessage = {
+      id: optimisticId,
+      conversation_id: selectedId || "pending",
+      role: "user",
+      content: question,
+      outcome: null,
+      document_titles: [],
+      created_at: new Date().toISOString(),
+    };
+    setDraft("");
     setSending(true);
     setError(null);
+    setMessages((rows) => [...rows, optimistic]);
     try {
       const response = await fetch("/api/sandbox/ask", {
         method: "POST",
@@ -140,25 +160,29 @@ export function SandboxWorkspace() {
       const conversation = result.conversation as SandboxConversation;
       const userMessage = result.user_message as SandboxMessage;
       const assistantMessage = result.assistant_message as SandboxMessage;
-      setDraft("");
       setSelectedId(conversation.id);
       setConversations((rows) => {
         const others = rows.filter((row) => row.id !== conversation.id);
         return [conversation, ...others];
       });
       setMessages((rows) => {
-        if (rows.some((m) => m.id === userMessage.id)) {
-          return [...rows, assistantMessage];
+        const withoutOptimistic = rows.filter((m) => m.id !== optimisticId);
+        if (withoutOptimistic.some((m) => m.id === userMessage.id)) {
+          return [...withoutOptimistic, assistantMessage];
         }
-        return [...rows, userMessage, assistantMessage];
+        return [...withoutOptimistic, userMessage, assistantMessage];
       });
       setOpenMonths((prev) => ({ ...prev, [currentMonth]: true }));
     } catch (err) {
+      setMessages((rows) => rows.filter((m) => m.id !== optimisticId));
+      setDraft(question);
       setError(err instanceof Error ? err.message : "Ask failed");
     } finally {
       setSending(false);
     }
   }
+
+  const showEmpty = !loadingThread && messages.length === 0 && !sending;
 
   return (
     <div className="grid h-full min-h-0 flex-1 overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-card lg:grid-cols-[minmax(280px,320px)_minmax(0,1fr)]">
@@ -258,7 +282,7 @@ export function SandboxWorkspace() {
         <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-tis-cream/60 px-4 py-5 sm:px-6">
           {loadingThread ? (
             <p className="text-sm text-tis-muted">Loading messages…</p>
-          ) : messages.length === 0 ? (
+          ) : showEmpty ? (
             <div className="flex h-full min-h-[220px] flex-col items-center justify-center text-center">
               <Image
                 src="/tina.png"
@@ -274,9 +298,12 @@ export function SandboxWorkspace() {
               </p>
             </div>
           ) : (
-            messages.map((message) => (
-              <SandboxBubble key={message.id} message={message} />
-            ))
+            <>
+              {messages.map((message) => (
+                <SandboxBubble key={message.id} message={message} user={user} />
+              ))}
+              {sending ? <TinaTypingIndicator /> : null}
+            </>
           )}
           <div ref={bottomRef} />
         </div>
@@ -285,10 +312,10 @@ export function SandboxWorkspace() {
           {error ? (
             <p className="mb-2 rounded-xl bg-rose-50 px-3 py-2 text-sm text-tis-danger">{error}</p>
           ) : null}
-          <div className="flex items-end gap-2">
+          <div className="flex items-stretch gap-2">
             <textarea
               rows={2}
-              className="!min-h-0 !rounded-2xl"
+              className="!min-h-[4.5rem] !rounded-2xl"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -303,7 +330,7 @@ export function SandboxWorkspace() {
             />
             <button
               type="button"
-              className="primary shrink-0 !px-3"
+              className="primary shrink-0 !h-auto !min-h-[4.5rem] !px-4"
               disabled={sending || !draft.trim()}
               onClick={() => void sendQuestion()}
             >
@@ -317,13 +344,96 @@ export function SandboxWorkspace() {
   );
 }
 
-function SandboxBubble({ message }: { message: SandboxMessage }) {
+function UserAvatar({ user, size = 32 }: { user: UserIdentity; size?: number }) {
+  if (user.avatarUrl) {
+    return (
+      <Image
+        src={user.avatarUrl}
+        alt={user.name}
+        width={size}
+        height={size}
+        className="shrink-0 rounded-full object-cover ring-1 ring-slate-200"
+      />
+    );
+  }
+  return (
+    <span
+      className="inline-flex shrink-0 items-center justify-center rounded-full bg-tis-mist text-[11px] font-bold text-tis-navy ring-1 ring-slate-200"
+      style={{ width: size, height: size }}
+      aria-hidden
+    >
+      {user.initial}
+    </span>
+  );
+}
+
+function TinaTypingIndicator() {
+  return (
+    <div className="flex items-start gap-2.5" aria-live="polite" aria-label="Tina is typing">
+      <Image
+        src="/tina.png"
+        alt=""
+        width={32}
+        height={32}
+        className="shrink-0 rounded-full object-cover ring-1 ring-tis-ink"
+      />
+      <div className="rounded-2xl rounded-tl-md bg-tis-navy px-4 py-3 shadow-sm">
+        <div className="flex items-center gap-1.5">
+          <span className="wa-typing-dot h-2 w-2 rounded-full bg-white" />
+          <span className="wa-typing-dot h-2 w-2 rounded-full bg-white" />
+          <span className="wa-typing-dot h-2 w-2 rounded-full bg-white" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CopyAnswerButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+
+  async function onCopy() {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1600);
+    } catch {
+      // Fallback for older browsers / denied clipboard.
+      window.prompt("Copy Tina’s answer:", text);
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/15 text-white transition hover:bg-white/25"
+      aria-label={copied ? "Copied" : "Copy answer"}
+      title={copied ? "Copied" : "Copy answer"}
+      onClick={() => void onCopy()}
+    >
+      {copied ? <Check className="h-3.5 w-3.5" aria-hidden /> : <Copy className="h-3.5 w-3.5" aria-hidden />}
+    </button>
+  );
+}
+
+function SandboxBubble({
+  message,
+  user,
+}: {
+  message: SandboxMessage;
+  user: UserIdentity;
+}) {
   if (message.role === "user") {
     return (
-      <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-tr-md bg-tis-navy px-3.5 py-2.5 text-sm text-white shadow-sm sm:max-w-[68%]">
-          <p className="whitespace-pre-wrap">{message.content}</p>
+      <div className="flex items-start justify-end gap-2.5">
+        <div className="min-w-0 max-w-[85%] sm:max-w-[68%]">
+          <div className="mb-1 flex flex-wrap items-center justify-end gap-2">
+            <span className="text-[13px] font-bold text-tis-navy">{user.name}</span>
+          </div>
+          <div className="rounded-2xl rounded-tr-md border border-slate-200/80 bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm">
+            <p className="whitespace-pre-wrap">{message.content}</p>
+          </div>
         </div>
+        <UserAvatar user={user} size={32} />
       </div>
     );
   }
@@ -347,9 +457,14 @@ function SandboxBubble({ message }: { message: SandboxMessage }) {
         </div>
         <div className="rounded-2xl rounded-tl-md bg-tis-navy px-3.5 py-2.5 text-sm text-white shadow-sm">
           <WaMessage text={body} />
-          {sources.titles.length > 0 ? (
-            <SourceChip titles={sources.titles} quote={sources.quote} />
-          ) : null}
+          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+            {sources.titles.length > 0 ? (
+              <div className="min-w-0 [&>div]:!mt-0">
+                <SourceChip titles={sources.titles} quote={sources.quote} />
+              </div>
+            ) : null}
+            <CopyAnswerButton text={message.content} />
+          </div>
         </div>
       </div>
     </div>

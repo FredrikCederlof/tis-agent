@@ -36,10 +36,11 @@ describe("sandbox helpers", () => {
     const folders = groupConversationsByMonth(rows);
     assert.equal(folders.length, 2);
     assert.equal(folders[0].key, "2026-09");
-    assert.equal(folders[0].label, "September 2026");
+    assert.equal(folders[0].label, "Sep 26");
     assert.equal(folders[1].key, "2026-08");
     assert.ok(monthKeyFromIso("2026-09-30T00:00:00.000Z").startsWith("2026-"));
-    assert.equal(monthLabelFromKey("2026-09"), "September 2026");
+    assert.equal(monthLabelFromKey("2026-09"), "Sep 26");
+    assert.equal(monthLabelFromKey("2026-08"), "Aug 26");
     assert.match(currentTokyoMonthKey(), /^\d{4}-\d{2}$/);
   });
 });

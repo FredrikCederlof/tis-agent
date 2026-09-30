@@ -47,6 +47,7 @@ export function monthKeyFromIso(iso: string): string {
   return `${y}-${String(m).padStart(2, "0")}`;
 }
 
+/** Short folder label, e.g. "Sep 26". */
 export function monthLabelFromKey(key: string): string {
   const [ys, ms] = key.split("-");
   const y = Number(ys);
@@ -54,11 +55,11 @@ export function monthLabelFromKey(key: string): string {
   if (!y || !m) return key;
   // Noon UTC avoids month boundary drift when formatting a civil month.
   const d = new Date(Date.UTC(y, m - 1, 15, 12));
-  return new Intl.DateTimeFormat("en-US", {
+  const month = new Intl.DateTimeFormat("en-US", {
     timeZone: TOKYO,
-    month: "long",
-    year: "numeric",
+    month: "short",
   }).format(d);
+  return `${month} ${String(y).slice(-2)}`;
 }
 
 export function currentTokyoMonthKey(now = new Date()): string {

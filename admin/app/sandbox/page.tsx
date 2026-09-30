@@ -1,5 +1,10 @@
 import { AppShell, PageHeader } from "@/components/app-shell";
 import { SandboxWorkspace } from "@/components/sandbox-workspace";
+import {
+  avatarInitial,
+  avatarPublicUrl,
+  displayFirstName,
+} from "@/lib/account";
 import { requireSignedIn } from "@/lib/authz";
 
 export const dynamic = "force-dynamic";
@@ -9,6 +14,8 @@ export default async function SandboxPage() {
   const { count } = await supabase
     .from("unanswered_interactions")
     .select("id", { count: "exact", head: true });
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 
   return (
     <AppShell
@@ -21,7 +28,13 @@ export default async function SandboxPage() {
         subtitle="Try Tina without WhatsApp. Chats are private to your account and grouped by month."
       />
       <div className="flex min-h-0 flex-1 flex-col">
-        <SandboxWorkspace />
+        <SandboxWorkspace
+          user={{
+            name: displayFirstName(profile),
+            initial: avatarInitial(profile),
+            avatarUrl: avatarPublicUrl(supabaseUrl, profile.avatar_path),
+          }}
+        />
       </div>
     </AppShell>
   );
