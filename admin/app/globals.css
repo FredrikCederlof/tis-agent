@@ -119,6 +119,32 @@ body {
   }
 }
 
+/* WhatsApp-style typing dots (Sandbox waiting on Tina). */
+@keyframes wa-typing-dot {
+  0%,
+  60%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  30% {
+    transform: translateY(-3px);
+    opacity: 1;
+  }
+}
+
+.wa-typing-dot {
+  animation: wa-typing-dot 1.2s ease-in-out infinite;
+}
+
+.wa-typing-dot:nth-child(2) {
+  animation-delay: 0.15s;
+}
+
+.wa-typing-dot:nth-child(3) {
+  animation-delay: 0.3s;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;
