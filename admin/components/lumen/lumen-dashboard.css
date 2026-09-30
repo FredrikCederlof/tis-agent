@@ -1,0 +1,346 @@
+/*
+ * Application layer for the Lumen UI dashboard preview.
+ * The vendored kit in admin/design/lumen-ui stays unmodified so it can be
+ * re-copied on update; dashboard-specific layout lives here.
+ */
+
+/* Lumen headings clamp to 46-88px, which GUIDELINES.md reserves for marketing.
+   Working views are specified at 28-40px. */
+.lumen-ui .l-page-title {
+  font-size: clamp(28px, 3.4vw, 40px);
+  font-weight: 500;
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+
+/* The preview paints its own canvas inside the existing admin shell.
+   The kit only sets box-sizing on descendants, and the shell stretches this
+   element to width:100%, so the root needs it too or the padding overflows. */
+.lumen-ui.l-dash-root {
+  box-sizing: border-box;
+  border-radius: 28px;
+  padding-inline: 28px;
+  min-height: 100%;
+}
+
+/* Implicit grid columns are `auto`, which resolves to max-content and lets long
+   parent questions widen the whole dashboard. Every grid in here is capped. */
+.lumen-ui .l-dash {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 40px;
+  padding: 28px 0 72px;
+}
+
+.lumen-ui .l-dash > * {
+  min-width: 0;
+}
+
+.lumen-ui .l-dash-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 24px;
+}
+
+.lumen-ui .l-dash-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.lumen-ui .l-kpis {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+}
+
+.lumen-ui .l-kpi {
+  display: grid;
+  align-content: start;
+  gap: 16px;
+  min-width: 0;
+}
+
+.lumen-ui .l-kpi-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.lumen-ui .l-kpi-value {
+  display: block;
+  font-size: 40px;
+  font-weight: 500;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}
+
+.lumen-ui .l-kpi-foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  min-width: 0;
+}
+
+.lumen-ui .l-delta {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.lumen-ui .l-delta.up {
+  color: var(--l-success);
+}
+
+.lumen-ui .l-delta.down {
+  color: var(--l-warning);
+}
+
+.lumen-ui .l-delta.flat {
+  color: var(--l-muted);
+}
+
+.lumen-ui .l-panels {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.9fr) minmax(0, 1fr);
+  gap: 24px;
+}
+
+.lumen-ui .l-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-height: 380px;
+  min-width: 0;
+}
+
+.lumen-ui .l-panel-head h2 {
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.025em;
+  line-height: 1.25;
+}
+
+.lumen-ui .l-panel-body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.lumen-ui .l-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 13px;
+  color: var(--l-muted);
+}
+
+.lumen-ui .l-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lumen-ui .l-key {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+
+.lumen-ui .l-rank {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+  padding: 0;
+  margin: 0;
+  list-style: none;
+  flex: 1;
+}
+
+.lumen-ui .l-rank li {
+  min-width: 0;
+}
+
+.lumen-ui .l-rank a {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--l-line);
+  text-decoration: none;
+}
+
+.lumen-ui .l-rank li:last-child a {
+  border-bottom: 0;
+}
+
+.lumen-ui .l-rank-num {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  border: 1px solid var(--l-line);
+  border-radius: 50%;
+  font-size: 12px;
+}
+
+.lumen-ui .l-rank-topic {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lumen-ui .l-table-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.lumen-ui .l-table-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 28px 28px 16px;
+}
+
+.lumen-ui table.l-table {
+  width: 100%;
+  table-layout: fixed;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 14px;
+}
+
+.lumen-ui .l-table th {
+  padding: 10px 12px;
+  border-top: 1px solid var(--l-line);
+  border-bottom: 1px solid var(--l-line);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--l-muted);
+}
+
+.lumen-ui .l-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid var(--l-line);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.lumen-ui .l-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.lumen-ui .l-table th:first-child,
+.lumen-ui .l-table td:first-child {
+  padding-left: 28px;
+}
+
+.lumen-ui .l-table th:last-child,
+.lumen-ui .l-table td:last-child {
+  padding-right: 28px;
+  text-align: right;
+}
+
+.lumen-ui .l-chip.warn {
+  background: var(--l-warning-soft);
+  color: var(--l-warning);
+}
+
+.lumen-ui .l-chip.bad {
+  background: var(--l-danger-soft);
+  color: var(--l-danger);
+}
+
+.lumen-ui .l-chip.ok {
+  background: var(--l-success-soft);
+  color: var(--l-success);
+}
+
+.lumen-ui .l-btn.compact {
+  min-height: 44px;
+  padding: 9px 16px;
+  font-size: 14px;
+}
+
+.lumen-ui .l-notice {
+  padding: 16px 20px;
+  border-radius: 18px;
+  background: var(--l-danger-soft);
+  color: var(--l-danger);
+  font-size: 14px;
+}
+
+.lumen-ui .l-preview-note {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px 20px;
+  border: 1px dashed var(--l-line);
+  border-radius: 20px;
+  font-size: 13px;
+  color: var(--l-muted);
+}
+
+@media (max-width: 1180px) {
+  .lumen-ui .l-kpis {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .lumen-ui .l-panels {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .lumen-ui.l-dash-root {
+    padding-inline: 18px;
+    border-radius: 22px;
+  }
+
+  .lumen-ui .l-dash {
+    gap: 28px;
+    padding: 16px 0 40px;
+  }
+
+  .lumen-ui .l-dash-head {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lumen-ui .l-dash-actions {
+    justify-content: flex-start;
+  }
+
+  .lumen-ui .l-kpis {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .lumen-ui .l-table-head {
+    padding: 22px 22px 12px;
+  }
+
+  .lumen-ui .l-table th:first-child,
+  .lumen-ui .l-table td:first-child {
+    padding-left: 22px;
+  }
+
+  .lumen-ui .l-table th:last-child,
+  .lumen-ui .l-table td:last-child {
+    padding-right: 22px;
+  }
+}
