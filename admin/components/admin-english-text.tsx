@@ -33,15 +33,28 @@ export function AdminEnglishText({
   language,
   className = "",
   plain = false,
+  /** Preferred: English stored at ingest time (INS-21). */
+  storedEnglish,
+  translationStatus,
 }: {
   text: string;
   language?: string | null;
   className?: string;
-  /** Inline preview without WhatsApp markup / show-original toggle. */
   plain?: boolean;
+  storedEnglish?: string | null;
+  translationStatus?: "pending" | "done" | "skipped" | "failed" | null;
 }) {
-  const needs = shouldTranslateForAdmin(text, language);
+  const stored = (storedEnglish || "").trim();
+  const hasStored = Boolean(stored) && stored !== text.trim();
+  const needs =
+    Boolean(stored) && stored === text.trim()
+      ? false
+      : hasStored
+        ? true
+        : shouldTranslateForAdmin(text, language);
+
   const [english, setEnglish] = useState<string | null>(() => {
+    if (stored) return stored;
     if (!needs) return text;
     return readCache(translationCacheKey(text));
   });
@@ -49,8 +62,27 @@ export function AdminEnglishText({
   const [showOriginal, setShowOriginal] = useState(false);
 
   useEffect(() => {
+    if (stored) {
+      setEnglish(stored);
+      setError(
+        translationStatus === "failed" && !hasStored
+          ? "English translation unavailable"
+          : null,
+      );
+      return;
+    }
     if (!needs) {
       setEnglish(text);
+      setError(null);
+      return;
+    }
+    if (translationStatus === "failed") {
+      setEnglish(text);
+      setError("English translation unavailable");
+      return;
+    }
+    if (translationStatus === "pending") {
+      setEnglish(null);
       setError(null);
       return;
     }
@@ -88,10 +120,12 @@ export function AdminEnglishText({
     return () => {
       cancelled = true;
     };
-  }, [text, needs]);
+  }, [text, needs, stored, hasStored, translationStatus]);
 
   const display = english ?? text;
-  const translating = needs && english == null && !error;
+  const translating =
+    (needs || translationStatus === "pending") && english == null && !error;
+  const showToggle = Boolean(english && english !== text);
 
   if (plain) {
     return (
@@ -106,9 +140,16 @@ export function AdminEnglishText({
       {translating ? (
         <p className="text-sm italic opacity-70">Translating to English…</p>
       ) : (
-        <WaMessage text={display} />
+        <>
+          {showToggle ? (
+            <p className="mb-1 text-[10px] font-bold uppercase tracking-wide opacity-70">
+              English translation
+            </p>
+          ) : null}
+          <WaMessage text={display} />
+        </>
       )}
-      {needs && english && english !== text ? (
+      {showToggle ? (
         <div className="mt-2">
           <button
             type="button"
@@ -135,37 +176,43 @@ export function AdminEnglishText({
 export function useAdminEnglishMap(
   texts: string[],
   languageByText: Record<string, string | null | undefined>,
+  storedByText: Record<string, string | null | undefined> = {},
 ): CacheMap {
   const [map, setMap] = useState<CacheMap>({});
 
   useEffect(() => {
-    const pending = texts.filter((text) => {
-      if (!text.trim()) return false;
-      if (!shouldTranslateForAdmin(text, languageByText[text])) return false;
-      if (readCache(translationCacheKey(text))) return false;
-      return map[text] == null;
-    });
-    if (!pending.length) {
-      // Hydrate from cache for visible rows.
-      const next: CacheMap = { ...map };
-      let changed = false;
-      for (const text of texts) {
-        if (!shouldTranslateForAdmin(text, languageByText[text])) {
-          if (next[text] !== text) {
-            next[text] = text;
-            changed = true;
-          }
-          continue;
+    const next: CacheMap = { ...map };
+    let changed = false;
+    const pending: string[] = [];
+
+    for (const text of texts) {
+      const stored = (storedByText[text] || "").trim();
+      if (stored) {
+        if (next[text] !== stored) {
+          next[text] = stored;
+          changed = true;
         }
-        const cached = readCache(translationCacheKey(text));
-        if (cached && next[text] !== cached) {
+        continue;
+      }
+      if (!shouldTranslateForAdmin(text, languageByText[text])) {
+        if (next[text] !== text) {
+          next[text] = text;
+          changed = true;
+        }
+        continue;
+      }
+      const cached = readCache(translationCacheKey(text));
+      if (cached) {
+        if (next[text] !== cached) {
           next[text] = cached;
           changed = true;
         }
+        continue;
       }
-      if (changed) setMap(next);
-      return;
+      if (map[text] == null) pending.push(text);
     }
+    if (changed) setMap(next);
+    if (!pending.length) return;
 
     let cancelled = false;
     void (async () => {
@@ -179,14 +226,14 @@ export function useAdminEnglishMap(
         if (!response.ok || !Array.isArray(result.translations)) return;
         if (cancelled) return;
         setMap((current) => {
-          const next = { ...current };
+          const updated = { ...current };
           pending.slice(0, 40).forEach((text, index) => {
             const translated = String(result.translations[index] || "").trim();
             if (!translated) return;
             writeCache(translationCacheKey(text), translated);
-            next[text] = translated;
+            updated[text] = translated;
           });
-          return next;
+          return updated;
         });
       } catch {
         // Leave originals visible.
@@ -195,9 +242,8 @@ export function useAdminEnglishMap(
     return () => {
       cancelled = true;
     };
-    // Intentionally depend on joined texts; language map is stable enough per list page.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [texts.join("\u0001")]);
+  }, [texts.join("\u0001"), JSON.stringify(storedByText)]);
 
   return map;
 }

@@ -253,8 +253,9 @@ export function KnowledgeEditor({
           placeholder="School hours"
         />
         <p className="hint">
-          Optional. When the Hub has more than 100 active entries, the start page groups by
-          category.
+          Optional. The Knowledge Hub start page groups articles into category widgets.
+          Topics with more than three articles become their own category; smaller topics
+          appear under Other.
         </p>
       </label>
 

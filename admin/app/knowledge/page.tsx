@@ -71,7 +71,7 @@ export default async function KnowledgeHubPage({
           subtitle="Curated parent Q&A that Tina retrieves from the same RAG store as handbooks and calendars."
           actions={
             <Link href="/knowledge/new" className="primary">
-              Add entry
+              Add knowledge
             </Link>
           }
         />

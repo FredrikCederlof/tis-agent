@@ -14,8 +14,10 @@ export type ChatSessionRow = {
   admin_read_at: string | null;
   unread: boolean;
   last_question: string | null;
+  last_question_en?: string | null;
   last_reply: string | null;
   last_outcome: string | null;
+  last_translation_status?: string | null;
   needs_attention: boolean;
   needs_attention_count: number;
   last_admin_reply: string | null;
@@ -29,6 +31,11 @@ export type ChatInteraction = {
   wa_from: string;
   question: string;
   reply: string | null;
+  /** English translation for admin (INS-21); original `question` unchanged. */
+  question_en?: string | null;
+  reply_en?: string | null;
+  source_language?: string | null;
+  translation_status?: "pending" | "done" | "skipped" | "failed" | null;
   language: string;
   outcome: string;
   created_at: string;
@@ -211,6 +218,9 @@ export type ChatMessage = {
   id: string;
   kind: "parent" | "tina" | "admin";
   text: string;
+  /** Stored English translation from ingest (preferred over on-the-fly). */
+  textEn?: string | null;
+  translationStatus?: ChatInteraction["translation_status"];
   at: string;
   interactionId: string | null;
   outcome?: string | null;
@@ -241,6 +251,8 @@ export function buildTimeline(
       id: `${item.id}:parent`,
       kind: "parent",
       text: item.question || "",
+      textEn: item.question_en || null,
+      translationStatus: item.translation_status || null,
       at: item.created_at,
       interactionId: item.id,
       outcome: item.outcome,
@@ -254,6 +266,8 @@ export function buildTimeline(
         id: `${item.id}:tina`,
         kind: "tina",
         text: item.reply,
+        textEn: item.reply_en || null,
+        translationStatus: item.translation_status || null,
         at: item.created_at,
         interactionId: item.id,
         outcome: item.outcome,

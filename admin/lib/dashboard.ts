@@ -1,31 +1,32 @@
 import { isTinaHandled, TIME_SAVED_DEFINITION } from "@/lib/time-saved";
+import {
+  TOKYO,
+  buildWeeklySeries,
+  formatWeekLabel,
+  shiftYmd,
+  tokyoDayStart,
+  tokyoYmd,
+  weekStartYmd,
+  type WeeklyPoint,
+} from "./tokyo-weeks";
+
+export {
+  TOKYO,
+  buildWeeklySeries,
+  formatWeekLabel,
+  shiftYmd,
+  tokyoDayStart,
+  tokyoYmd,
+  weekStartYmd,
+};
+export type { WeeklyPoint };
 
 /** Tokyo-calendar analytics for the admin dashboard. Japan has no DST. */
 
-export const TOKYO = "Asia/Tokyo";
 export const DEFAULT_RANGE_DAYS = 30;
-
-export function tokyoYmd(date: Date = new Date()): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: TOKYO,
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(date);
-}
-
-export function tokyoDayStart(ymd: string): Date {
-  return new Date(`${ymd}T00:00:00+09:00`);
-}
 
 export function tokyoDayEnd(ymd: string): Date {
   return new Date(`${ymd}T23:59:59.999+09:00`);
-}
-
-export function shiftYmd(ymd: string, days: number): string {
-  const d = tokyoDayStart(ymd);
-  d.setUTCDate(d.getUTCDate() + days);
-  return tokyoYmd(d);
 }
 
 /** Inclusive day count between two YMD dates (same day => 1). */
@@ -273,6 +274,8 @@ export function buildDashboardModel(
       day.questions > 0 ? Math.round((day.gaps / day.questions) * 100) : 0;
   }
 
+  const weeks = buildWeeklySeries(days);
+
   return {
     from: fromYmd,
     to: toYmd,
@@ -282,6 +285,7 @@ export function buildDashboardModel(
     current: statsFor(currentIx),
     previous: statsFor(previousIx),
     days,
+    weeks,
     topGaps: rankKnowledgeGaps(currentIx, 5),
   };
 }

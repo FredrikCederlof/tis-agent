@@ -220,6 +220,28 @@ def log_interaction(
                 logger.exception(
                     "push notify hook failed for interaction %s", interaction_id
                 )
+            try:
+                import threading
+
+                from tis_agent.translate_admin import enrich_interaction_translation
+
+                # Background: never delay the WhatsApp reply path on OpenAI latency.
+                threading.Thread(
+                    target=enrich_interaction_translation,
+                    args=(interaction_id,),
+                    kwargs={
+                        "question": question,
+                        "reply": reply,
+                        "language": language,
+                        "settings": settings,
+                    },
+                    name="tina-admin-translate",
+                    daemon=True,
+                ).start()
+            except Exception:
+                logger.exception(
+                    "admin translation hook failed for interaction %s", interaction_id
+                )
         return interaction_id
     except Exception:
         logger.exception("Failed to log interaction for session %s", session_id)
