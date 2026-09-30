@@ -1,13 +1,17 @@
-"""Knowledge Hub list rules shared with Tina Admin (INS-9)."""
+"""Knowledge Hub list rules shared with Tina Admin (INS-9 / INS-21)."""
 
 from __future__ import annotations
 
 from typing import Any
 
 PAGE_SIZE = 20
-CATEGORY_THRESHOLD = 100
-UNCATEGORIZED = "Uncategorized"
-UNCATEGORIZED_SLUG = "uncategorized"
+SPARSE_CATEGORY_MAX = 3
+OTHER = "Other"
+OTHER_SLUG = "other"
+# Compat aliases
+UNCATEGORIZED = OTHER
+UNCATEGORIZED_SLUG = OTHER_SLUG
+CATEGORY_THRESHOLD = 0
 CREATE_SUCCESS_PATH = "/knowledge?added=1"
 
 
@@ -32,18 +36,24 @@ def page_count(total: int, *, page_size: int = PAGE_SIZE) -> int:
 
 
 def show_category_landing(active_count: int) -> bool:
-    return active_count > CATEGORY_THRESHOLD
+    del active_count
+    return True
 
 
 def category_label(category: str | None) -> str:
     text = (category or "").strip()
-    return text or UNCATEGORIZED
+    if not text:
+        return OTHER
+    lower = text.lower()
+    if lower in {"uncategorized", "other"}:
+        return OTHER
+    return text
 
 
 def category_slug(category: str | None) -> str:
     label = category_label(category)
-    if label == UNCATEGORIZED:
-        return UNCATEGORIZED_SLUG
+    if label == OTHER:
+        return OTHER_SLUG
     return label
 
 
@@ -54,9 +64,16 @@ def group_categories(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
             continue
         label = category_label(row.get("category"))
         counts[label] = counts.get(label, 0) + 1
-    grouped = [
-        {"name": name, "slug": category_slug(name), "count": count}
-        for name, count in counts.items()
-    ]
-    grouped.sort(key=lambda item: (item["name"] == UNCATEGORIZED, item["name"].lower()))
-    return grouped
+
+    other_count = 0
+    dedicated: list[dict[str, Any]] = []
+    for name, count in counts.items():
+        if name == OTHER or count <= SPARSE_CATEGORY_MAX:
+            other_count += count
+            continue
+        dedicated.append({"name": name, "slug": category_slug(name), "count": count})
+
+    dedicated.sort(key=lambda item: item["name"].lower())
+    if other_count > 0:
+        dedicated.append({"name": OTHER, "slug": OTHER_SLUG, "count": other_count})
+    return dedicated

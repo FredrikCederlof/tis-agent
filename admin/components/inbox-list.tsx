@@ -5,8 +5,12 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { MessageSquare } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
+import { AdminEnglishText } from "@/components/admin-english-text";
+import { LanguageBadge } from "@/components/language-badge";
+import { OutcomeBadge } from "@/components/outcome-badge";
+import { ParentAvatar } from "@/components/parent-avatar";
 import { ReplyComposer } from "@/components/reply-composer";
-import { WaMessage } from "@/components/wa-message";
+import { parentLabel } from "@/lib/chats";
 import type { UnansweredRow } from "@/lib/types";
 
 export function InboxList({
@@ -51,34 +55,65 @@ export function InboxList({
           row.attention_source === "manual" || row.manual_attention_at
             ? "manual"
             : "auto";
+        const waFrom = row.wa_from || "";
         return (
           <li key={row.id} className="card">
             <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1">
-                <div className="mb-2 flex flex-wrap items-center gap-2">
-                  <span
-                    className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                      source === "manual"
-                        ? "bg-tis-lilac/25 text-tis-ink"
-                        : "bg-tis-amber/35 text-tis-ink"
-                    }`}
-                  >
-                    {source === "manual" ? "Marked" : "Auto gap"}
-                  </span>
+                <div className="mb-3 flex flex-wrap items-center gap-2.5">
+                  {waFrom ? <ParentAvatar waFrom={waFrom} size={40} /> : null}
+                  <div className="min-w-0">
+                    <p className="text-sm font-bold text-tis-navy">
+                      {waFrom ? parentLabel(waFrom) : "Parent"}
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                          source === "manual"
+                            ? "bg-tis-lilac/25 text-tis-ink"
+                            : "bg-tis-amber/35 text-tis-ink"
+                        }`}
+                      >
+                        {source === "manual" ? "Marked" : "Auto gap"}
+                      </span>
+                      <LanguageBadge language={row.language} size="sm" />
+                      <OutcomeBadge outcome={row.outcome} size="sm" />
+                    </div>
+                  </div>
                 </div>
-                <p className="font-semibold text-tis-navy">{row.question}</p>
+                <div className="font-semibold text-tis-navy">
+                  <AdminEnglishText
+                    text={row.question}
+                    language={row.language}
+                    storedEnglish={row.question_en}
+                    translationStatus={
+                      (row.translation_status as
+                        | "pending"
+                        | "done"
+                        | "skipped"
+                        | "failed"
+                        | null) || null
+                    }
+                  />
+                </div>
                 {row.reply && (
-                  <WaMessage text={row.reply} className="mt-2 text-sm text-tis-muted" />
+                  <div className="mt-2 text-sm text-tis-muted">
+                    <AdminEnglishText
+                      text={row.reply}
+                      language={row.language}
+                      storedEnglish={row.reply_en}
+                      translationStatus={
+                        (row.translation_status as
+                          | "pending"
+                          | "done"
+                          | "skipped"
+                          | "failed"
+                          | null) || null
+                      }
+                    />
+                  </div>
                 )}
                 <dl className="mt-3 grid gap-1 text-xs text-slate-500 sm:grid-cols-2">
-                  <div>
-                    <dt className="inline font-semibold text-slate-600">Outcome: </dt>
-                    <dd className="inline">{row.outcome}</dd>
-                  </div>
-                  <div>
-                    <dt className="inline font-semibold text-slate-600">Language: </dt>
-                    <dd className="inline">{row.language}</dd>
-                  </div>
                   <div>
                     <dt className="inline font-semibold text-slate-600">Top similarity: </dt>
                     <dd className="inline">

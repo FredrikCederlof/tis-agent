@@ -117,7 +117,11 @@ export function KnowledgeList({
       </div>
 
       {filtered.length === 0 ? (
-        <div className="card text-sm text-tis-muted">{emptyLabel}</div>
+        <div className="card text-sm text-tis-muted">
+          {rows.length === 0
+            ? "No knowledge articles in this category yet."
+            : emptyLabel || "No matching search results."}
+        </div>
       ) : (
         <>
           <ul className="space-y-3">

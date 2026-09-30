@@ -1,54 +1,42 @@
-"""Knowledge Hub start-page rules (INS-9)."""
+"""Knowledge Hub UI helpers (INS-9 / INS-21)."""
 
 from tis_agent.knowledge_hub_ui import (
-    CATEGORY_THRESHOLD,
-    CREATE_SUCCESS_PATH,
-    PAGE_SIZE,
-    UNCATEGORIZED,
-    UNCATEGORIZED_SLUG,
+    OTHER,
+    OTHER_SLUG,
+    SPARSE_CATEGORY_MAX,
     category_label,
-    create_success_path,
     group_categories,
-    page_count,
-    paginate,
     show_category_landing,
 )
 
 
-def test_create_redirects_home_not_edit_form() -> None:
-    assert create_success_path(is_new=True) == CREATE_SUCCESS_PATH
-    assert create_success_path(is_new=True) == "/knowledge?added=1"
-    assert "/knowledge/" not in create_success_path(is_new=True)
-    assert create_success_path(is_new=False) == ""
+def test_show_category_landing_always_true() -> None:
+    assert show_category_landing(0) is True
+    assert show_category_landing(3) is True
+    assert show_category_landing(100) is True
 
 
-def test_paginate_slices_after_twenty() -> None:
-    rows = [f"row-{i}" for i in range(21)]
-    assert PAGE_SIZE == 20
-    assert paginate(rows, 1) == rows[:20]
-    assert paginate(rows, 2) == ["row-20"]
-    assert page_count(21) == 2
-    assert page_count(20) == 1
-
-
-def test_category_landing_after_one_hundred_active() -> None:
-    assert show_category_landing(CATEGORY_THRESHOLD) is False
-    assert show_category_landing(CATEGORY_THRESHOLD + 1) is True
-
-
-def test_group_categories_uses_uncategorized_bucket() -> None:
+def test_group_categories_folds_sparse_into_other() -> None:
     rows = [
-        {"status": "active", "category": "School hours"},
-        {"status": "active", "category": "School hours"},
-        {"status": "active", "category": ""},
         {"status": "active", "category": None},
-        {"status": "archived", "category": "School hours"},
+        {"status": "active", "category": ""},
+        {"status": "active", "category": "Uniforms"},
+        {"status": "active", "category": "Uniforms"},
+        {"status": "active", "category": "Health"},
+        {"status": "active", "category": "Health"},
+        {"status": "active", "category": "Health"},
+        {"status": "active", "category": "Health"},
+        {"status": "archived", "category": "Health"},
     ]
     grouped = group_categories(rows)
     by_name = {item["name"]: item for item in grouped}
-    assert by_name["School hours"]["count"] == 2
-    assert by_name[UNCATEGORIZED]["count"] == 2
-    assert by_name[UNCATEGORIZED]["slug"] == UNCATEGORIZED_SLUG
-    assert category_label("") == UNCATEGORIZED
-    assert category_label("  ") == UNCATEGORIZED
-    assert [item["name"] for item in grouped][-1] == UNCATEGORIZED
+    assert OTHER in by_name
+    # 2 blank + 2 Uniforms (sparse) → Other; Health has 4 → dedicated
+    assert by_name[OTHER]["count"] == 4
+    assert by_name[OTHER]["slug"] == OTHER_SLUG
+    assert by_name["Health"]["count"] == 4
+    assert "Uniforms" not in by_name
+    assert category_label("") == OTHER
+    assert category_label("  ") == OTHER
+    assert [item["name"] for item in grouped][-1] == OTHER
+    assert SPARSE_CATEGORY_MAX == 3
