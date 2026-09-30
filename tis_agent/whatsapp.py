@@ -309,6 +309,22 @@ async def admin_related_knowledge(request: Request, q: str = "") -> dict[str, ob
     return {"results": related_knowledge_entries(q)}
 
 
+@app.post("/admin/sandbox/ask")
+async def admin_sandbox_ask(request: Request) -> dict[str, object]:
+    """Answer a staff Sandbox question via the same RAG path as WhatsApp (no WA send/log)."""
+    _require_admin_sync_token(request)
+    from tis_agent.sandbox_api import ask_sandbox
+
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON") from exc
+    try:
+        return ask_sandbox(body if isinstance(body, dict) else {})
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
 @app.get("/webhook")
 def verify_webhook(
     hub_mode: str | None = Query(None, alias="hub.mode"),
