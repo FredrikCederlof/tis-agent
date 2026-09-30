@@ -280,13 +280,15 @@ export function AppShell({
                         />
                         {iconsOnly && count > 0 && (
                           <span
-                            className={`absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[9px] font-bold ${
+                            className={`absolute -right-2 -top-1.5 inline-flex h-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold leading-none tabular-nums ${
+                              count < 10 ? "w-4" : "min-w-4 px-1"
+                            } ${
                               link.badge === "chats"
                                 ? "bg-tis-unread text-white"
                                 : "bg-tis-amber text-tis-ink"
                             }`}
                           >
-                            {count}
+                            {count > 99 ? "99+" : count}
                           </span>
                         )}
                       </span>
@@ -294,13 +296,15 @@ export function AppShell({
                     </span>
                     {!iconsOnly && count > 0 && (
                       <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${
+                        className={`inline-flex h-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold leading-none tabular-nums ${
+                          count < 10 ? "w-5" : "min-w-5 px-1.5"
+                        } ${
                           link.badge === "inbox"
                             ? "bg-tis-amber text-tis-ink"
                             : "bg-tis-unread text-white"
                         }`}
                       >
-                        {count}
+                        {count > 99 ? "99+" : count}
                       </span>
                     )}
                   </Link>
