@@ -104,20 +104,18 @@ function OnboardForm() {
     <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
       <div className="pointer-events-none absolute inset-0 bg-fuji" />
       <div className="relative w-full max-w-md overflow-hidden rounded-[28px] border border-white/70 bg-white/95 p-6 shadow-soft backdrop-blur sm:p-8">
-        <div className="mb-5 flex items-center gap-3">
+        <div className="mb-5">
           <Image
-            src="/tina.png"
-            alt="Tina"
-            width={48}
-            height={48}
-            className="rounded-full object-cover ring-2 ring-tis-navy/30"
+            src="/nabo-logo.png"
+            alt="Nabo"
+            width={140}
+            height={70}
+            className="h-9 w-auto object-contain object-left"
           />
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-tis-navy">
-              TIS Agent
-            </p>
-            <p className="text-lg font-bold text-tis-navy">Create your account</p>
-          </div>
+          <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-tis-muted">
+            Tokyo International School
+          </p>
+          <p className="mt-3 text-lg font-bold text-tis-navy">Create your account</p>
         </div>
 
         {state.kind === "loading" && (
@@ -128,7 +126,7 @@ function OnboardForm() {
           <div className="space-y-4">
             <p className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-tis-danger">{state.detail}</p>
             <p className="text-sm text-tis-muted">
-              Ask a Tina Admin administrator to resend your invitation, then use the new link.
+              Ask a Nabo administrator to resend your invitation, then use the new link.
             </p>
             <Link href="/login" className="primary inline-flex">
               Back to sign in

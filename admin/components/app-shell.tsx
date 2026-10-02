@@ -197,20 +197,15 @@ function AppShellInner({
     <div className={`admin-shell ${lime ? "bg-tina-workspace" : ""}`}>
       {/* Mobile top bar */}
       <div className="z-30 flex shrink-0 items-center justify-between border-b border-black/[0.06] bg-white px-4 py-3 lg:hidden">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Image
-            src="/tina.png"
-            alt="Tina"
-            width={36}
-            height={36}
-            className="rounded-full object-cover ring-2 ring-tis-ink"
+            src="/nabo-logo.png"
+            alt="Nabo"
+            width={120}
+            height={60}
+            className="h-8 w-auto object-contain object-left"
+            priority
           />
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-tis-navy">
-              TIS Agent
-            </p>
-            <p className="text-sm font-bold text-tis-ink">Tina Admin</p>
-          </div>
         </div>
         <button
           type="button"
@@ -246,48 +241,63 @@ function AppShellInner({
           }`}
         >
           {!iconsOnly && (
-            <div className="flex min-w-0 items-center gap-2.5">
+            <Link href="/" className="min-w-0 px-1" onClick={() => setOpen(false)}>
               <Image
-                src="/tina.png"
-                alt="Tina"
-                width={36}
-                height={36}
-                className="shrink-0 rounded-full object-cover ring-2 ring-tis-ink"
+                src="/nabo-logo.png"
+                alt="Nabo"
+                width={148}
+                height={74}
+                className="h-9 w-auto object-contain object-left"
                 priority
               />
-              <div className="min-w-0">
-                <p
-                  className={`text-[9px] font-bold uppercase tracking-[0.16em] ${
-                    lime ? "text-tina-muted" : "text-tis-acid"
-                  }`}
-                >
-                  TIS Agent
-                </p>
-                <p
-                  className={`truncate text-[15px] font-bold leading-tight ${
-                    lime ? "text-tina-text" : "text-white"
-                  }`}
-                >
-                  Tina Admin
-                </p>
-              </div>
-            </div>
+            </Link>
           )}
-          <button
-            type="button"
-            className={`rounded-lg p-2 transition ${
-              lime
-                ? "text-tina-muted hover:bg-tina-subtle hover:text-tina-text"
-                : "text-white/70 hover:bg-white/10 hover:text-white"
-            }`}
-            aria-label={iconsOnly ? "Expand navigation" : "Collapse navigation"}
-            aria-pressed={collapsed}
-            title={iconsOnly ? "Expand navigation" : "Collapse navigation"}
-            onClick={toggleCollapsed}
-          >
-            {iconsOnly ? <Menu className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
-          </button>
+          {iconsOnly ? (
+            <Link href="/" className="flex items-center justify-center" aria-label="Nabo home">
+              <Image
+                src="/nabo-mark.png"
+                alt="Nabo"
+                width={36}
+                height={36}
+                className="h-9 w-9 object-contain"
+                priority
+              />
+            </Link>
+          ) : (
+            <button
+              type="button"
+              className={`rounded-lg p-2 transition duration-soft ease-soft ${
+                lime
+                  ? "text-tina-muted hover:bg-tina-subtle hover:text-tina-text"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
+              aria-label="Collapse navigation"
+              aria-pressed={collapsed}
+              title="Collapse navigation"
+              onClick={toggleCollapsed}
+            >
+              <PanelLeft className="h-5 w-5" />
+            </button>
+          )}
         </div>
+        {iconsOnly ? (
+          <div className="mb-2 hidden justify-center lg:flex">
+            <button
+              type="button"
+              className={`rounded-lg p-2 transition duration-soft ease-soft ${
+                lime
+                  ? "text-tina-muted hover:bg-tina-subtle hover:text-tina-text"
+                  : "text-white/70 hover:bg-white/10 hover:text-white"
+              }`}
+              aria-label="Expand navigation"
+              aria-pressed={collapsed}
+              title="Expand navigation"
+              onClick={toggleCollapsed}
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
+        ) : null}
 
         <nav className="flex flex-1 flex-col gap-4 overflow-y-auto pt-2 lg:pt-0">
           {visibleSections.map((section) => (

@@ -134,7 +134,10 @@ export default async function DashboardPage({
       <div className="min-w-0 pb-24">
         <div className="mb-7 grid gap-4 sm:mb-9 lg:grid-cols-[1fr_auto] lg:items-start">
           <div>
-            <p className="mb-2 inline-flex items-center rounded-full bg-white/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-tina-muted ring-1 ring-black/[0.04]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tina-muted">
+              Tokyo International School
+            </p>
+            <p className="mt-2 mb-2 inline-flex items-center rounded-full bg-white/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-tina-muted ring-1 ring-black/[0.04]">
               Overview
             </p>
             <h1 className="page-title">

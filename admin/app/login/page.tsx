@@ -56,28 +56,36 @@ function LoginForm() {
     <div className="relative flex min-h-screen items-center justify-center px-4 py-10">
       <div className="pointer-events-none absolute inset-0 bg-fuji" />
       <div className="relative grid w-full max-w-4xl overflow-hidden rounded-[28px] border border-white/70 bg-white/90 shadow-soft backdrop-blur md:grid-cols-[1.05fr_0.95fr]">
-        <div className="relative hidden overflow-hidden bg-gradient-to-br from-[#05513d] to-[#1a191b] p-8 text-white md:flex md:flex-col md:justify-between">
+        <div className="relative hidden overflow-hidden bg-gradient-to-br from-[#0b0d15] to-[#182508] p-8 text-white md:flex md:flex-col md:justify-between">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-white/80">
-              TIS Agent
+            <div className="inline-flex rounded-2xl bg-white px-3 py-2">
+              <Image
+                src="/nabo-logo.png"
+                alt="Nabo"
+                width={140}
+                height={70}
+                className="h-8 w-auto object-contain"
+                priority
+              />
+            </div>
+            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.18em] text-white/70">
+              Customer
             </p>
-            <h1 className="mt-3 font-display text-3xl font-bold leading-tight">
-              Meet Tina
+            <h1 className="mt-2 font-display text-3xl font-bold leading-tight">
+              Tokyo International School
             </h1>
             <p className="mt-3 max-w-sm text-sm leading-relaxed text-white/85">
-              Your school-information assistant for Tokyo International School parents —
-              grounded in official sources.
+              School information assistant for TIS parents — grounded in official sources.
             </p>
           </div>
           <div className="mt-10 flex justify-center">
-            <div className="relative">
-              <div className="absolute -inset-3 rounded-full bg-white/20 blur-md" />
+            <div className="relative rounded-3xl bg-white/10 p-6 ring-1 ring-white/20">
               <Image
-                src="/tina.png"
-                alt="Tina"
-                width={220}
-                height={220}
-                className="relative rounded-full object-cover ring-4 ring-white/40"
+                src="/nabo-mark.png"
+                alt=""
+                width={160}
+                height={160}
+                className="h-36 w-36 object-contain"
                 priority
               />
             </div>
@@ -86,20 +94,17 @@ function LoginForm() {
         </div>
 
         <div className="p-6 sm:p-8">
-          <div className="mb-6 flex items-center gap-3 md:hidden">
+          <div className="mb-6 md:hidden">
             <Image
-              src="/tina.png"
-              alt="Tina"
-              width={48}
-              height={48}
-              className="rounded-full object-cover ring-2 ring-tis-navy/30"
+              src="/nabo-logo.png"
+              alt="Nabo"
+              width={140}
+              height={70}
+              className="h-9 w-auto object-contain object-left"
             />
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-tis-navy">
-                TIS Agent
-              </p>
-              <p className="text-lg font-bold text-tis-navy">Tina Admin</p>
-            </div>
+            <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-tis-muted">
+              Tokyo International School
+            </p>
           </div>
 
           <h2 className="text-2xl font-bold text-tis-navy">Sign in</h2>
