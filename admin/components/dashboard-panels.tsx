@@ -64,7 +64,7 @@ export function NeedsAttentionPanel({
               <li key={row.id}>
                 <Link
                   href={`/chats/${row.session_id}`}
-                  className="flex items-start gap-3 px-5 py-3.5 transition hover:bg-tina-subtle/70"
+                  className="flex items-start gap-3 px-5 py-3.5 transition duration-soft ease-soft hover:bg-tina-subtle/70"
                 >
                   <ParentAvatar waFrom={row.wa_from || ""} size={36} />
                   <div className="min-w-0 flex-1">
@@ -148,7 +148,7 @@ export function RecentConversationsPanel({
               <li key={row.id}>
                 <Link
                   href={`/chats/${row.id}`}
-                  className="flex items-start gap-3 px-5 py-3.5 transition hover:bg-tina-subtle/70"
+                  className="flex items-start gap-3 px-5 py-3.5 transition duration-soft ease-soft hover:bg-tina-subtle/70"
                 >
                   <ParentAvatar waFrom={row.wa_from} size={36} />
                   <div className="min-w-0 flex-1">
@@ -245,7 +245,7 @@ export function KnowledgeHubCard({ suggestedCount = 0 }: { suggestedCount?: numb
         <li>
           <Link
             href="/knowledge/new"
-            className="flex items-center gap-3 rounded-xl bg-tis-lime-soft px-3 py-2.5 text-sm font-semibold text-tina-text transition hover:brightness-95"
+            className="flex items-center gap-3 rounded-xl bg-tis-lime-soft px-3 py-2.5 text-sm font-semibold text-tina-text transition duration-soft ease-soft hover:brightness-95 active:scale-[0.99]"
           >
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-tis-lime text-tis-on-lime">
               <Plus className="h-4 w-4" strokeWidth={2.5} />
@@ -257,7 +257,7 @@ export function KnowledgeHubCard({ suggestedCount = 0 }: { suggestedCount?: numb
         <li>
           <Link
             href="/inbox"
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-tina-text transition hover:bg-tina-subtle"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-tina-text transition duration-soft ease-soft hover:bg-tina-subtle active:scale-[0.99]"
           >
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-tina-subtle text-tina-secondary">
               <BookOpen className="h-4 w-4" strokeWidth={2} />
@@ -275,7 +275,7 @@ export function KnowledgeHubCard({ suggestedCount = 0 }: { suggestedCount?: numb
         <li>
           <Link
             href="/chats"
-            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-tina-text transition hover:bg-tina-subtle"
+            className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-tina-text transition duration-soft ease-soft hover:bg-tina-subtle active:scale-[0.99]"
           >
             <span className="flex h-8 w-8 items-center justify-center rounded-full bg-tina-subtle text-tina-secondary">
               <Upload className="h-4 w-4" strokeWidth={2} />

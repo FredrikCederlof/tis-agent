@@ -55,7 +55,9 @@ export function IconWell({
     amber: "bg-[var(--tina-icon-amber-bg,#fff3dd)] text-[#8a6500]",
   } as const;
   return (
-    <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${tones[tone]}`}>
+    <span
+      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl shadow-[inset_0_1px_1px_rgb(255_255_255_/_0.65)] ${tones[tone]}`}
+    >
       {children}
     </span>
   );

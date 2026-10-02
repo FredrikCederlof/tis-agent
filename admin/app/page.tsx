@@ -132,8 +132,11 @@ export default async function DashboardPage({
       profile={profile}
     >
       <div className="min-w-0 pb-24">
-        <div className="mb-6 grid gap-4 sm:mb-8 lg:grid-cols-[1fr_auto] lg:items-start">
+        <div className="mb-7 grid gap-4 sm:mb-9 lg:grid-cols-[1fr_auto] lg:items-start">
           <div>
+            <p className="mb-2 inline-flex items-center rounded-full bg-white/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-tina-muted ring-1 ring-black/[0.04]">
+              Overview
+            </p>
             <h1 className="page-title">
               {greeting}, {firstName}{" "}
               <span aria-hidden className="font-normal">

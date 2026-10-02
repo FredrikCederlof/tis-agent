@@ -232,10 +232,10 @@ function AppShellInner({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex flex-col p-3 shadow-soft transition-transform lg:static lg:h-full lg:shrink-0 lg:shadow-none ${
+        className={`fixed inset-y-0 left-0 z-40 flex flex-col p-3 transition-transform duration-soft ease-soft lg:static lg:h-full lg:shrink-0 ${
           lime
-            ? "w-[280px] rounded-none border-r border-tina-border bg-white text-tina-secondary lg:my-3 lg:ml-3 lg:rounded-pane lg:border"
-            : "w-[248px] border-r border-tis-navy/40 bg-tis-navy text-white"
+            ? "w-[280px] rounded-none border-r border-tina-border/80 bg-white/90 text-tina-secondary shadow-float backdrop-blur-xl lg:my-3 lg:ml-3 lg:rounded-pane lg:border lg:bg-white lg:shadow-card"
+            : "w-[248px] border-r border-tis-navy/40 bg-tis-navy text-white shadow-soft lg:shadow-none"
         } ${collapsed ? (lime ? "lg:w-[84px]" : "lg:w-[76px]") : lime ? "lg:w-[280px]" : "lg:w-[248px]"} ${
           open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
@@ -319,7 +319,7 @@ function AppShellInner({
                     title={iconsOnly ? link.label : undefined}
                     aria-label={iconsOnly ? link.label : undefined}
                     aria-current={active ? "page" : undefined}
-                    className={`group relative flex items-center rounded-xl text-sm font-semibold transition ${
+                    className={`group relative flex items-center rounded-xl text-sm font-semibold transition duration-soft ease-soft active:scale-[0.98] ${
                       iconsOnly ? "justify-center px-0 py-2.5" : "justify-between px-3 py-2.5"
                     } ${
                       lime
@@ -485,7 +485,7 @@ function AppShellInner({
               <form action="/auth/signout" method="post">
                 <button
                   type="submit"
-                  className={`inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                  className={`inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition duration-soft ease-soft active:scale-[0.98] ${
                     lime
                       ? "border-tina-border bg-transparent text-tina-secondary hover:bg-tina-subtle"
                       : "border-white/20 bg-transparent text-white hover:bg-white/10"

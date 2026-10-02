@@ -51,9 +51,18 @@ const config: Config = {
       boxShadow: {
         soft: "0 10px 30px rgba(26, 25, 27, 0.08)",
         card: "var(--tis-shadow-card)",
+        float: "var(--tis-shadow-float, var(--tis-shadow-card))",
+        tray: "var(--tis-shadow-tray, 0 0 0 1px rgb(11 13 21 / 4%))",
       },
       borderRadius: {
         pane: "var(--tis-radius-pane)",
+      },
+      transitionTimingFunction: {
+        soft: "var(--tis-ease-out, cubic-bezier(0.32, 0.72, 0, 1))",
+        spring: "var(--tis-ease-spring, cubic-bezier(0.22, 1, 0.36, 1))",
+      },
+      transitionDuration: {
+        soft: "var(--tis-duration, 420ms)",
       },
       backgroundImage: {
         fuji:

@@ -29,7 +29,7 @@
   --tina-icon-blue-bg: #e7efff;
   --tina-icon-purple-bg: #eee8ff;
   --tina-icon-amber-bg: #fff3dd;
-  --tina-font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --tina-font: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --tina-space-1: 4px;
   --tina-space-2: 8px;
   --tina-space-3: 12px;
@@ -40,13 +40,16 @@
   --tina-space-10: 40px;
   --tina-radius-sm: 8px;
   --tina-radius-control: 12px;
-  --tina-radius-card: 16px;
-  --tina-radius-pane: 24px;
+  --tina-radius-card: 20px;
+  --tina-radius-pane: 28px;
   --tina-radius-pill: 999px;
-  --tina-shadow-subtle: 0 2px 8px rgb(11 13 21 / 3%);
+  --tina-shadow-subtle:
+    0 0 0 1px rgb(11 13 21 / 4%),
+    0 1px 2px rgb(11 13 21 / 3%),
+    0 12px 40px rgb(11 13 21 / 6%);
   --tina-sidebar-width: 300px;
   --tina-control-height: 44px;
-  --tina-transition: 140ms ease;
+  --tina-transition: 420ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* Optional scoped foundations. Add tina-ui to the application's root. */
