@@ -36,12 +36,12 @@ body {
 
   a.primary,
   button.primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-tis-acid px-4 py-2.5 text-sm font-semibold text-tis-ink no-underline shadow-sm transition hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-navy disabled:cursor-not-allowed disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-tis-acid px-4 py-2.5 text-sm font-semibold text-tis-ink no-underline shadow-sm transition duration-soft ease-soft hover:brightness-95 active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-navy disabled:cursor-not-allowed disabled:opacity-50;
   }
 
   a.secondary,
   button.secondary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-semibold text-tis-navy shadow-sm transition hover:bg-tis-mist focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-navy disabled:opacity-50;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-black/[0.08] bg-white px-4 py-2.5 text-sm font-semibold text-tis-navy shadow-sm transition duration-soft ease-soft hover:bg-tis-mist active:scale-[0.98] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tis-navy disabled:opacity-50;
   }
 
   textarea,
@@ -57,11 +57,11 @@ body {
   input[type="search"],
   input[type="tel"],
   input[type="url"] {
-    @apply w-full max-w-full rounded-xl border border-black/[0.08] bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm outline-none transition placeholder:text-slate-400 focus:border-tis-navy focus:ring-4 focus:ring-black/10;
+    @apply w-full max-w-full rounded-xl border border-black/[0.08] bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm outline-none transition duration-soft ease-soft placeholder:text-slate-400 focus:border-tis-navy focus:ring-4 focus:ring-black/10;
   }
 
   .page-title {
-    @apply font-display text-2xl font-bold tracking-tight text-tis-navy sm:text-3xl;
+    @apply font-display text-2xl font-bold tracking-tight text-tis-navy text-balance sm:text-3xl;
   }
 
   .page-subtitle {
@@ -69,7 +69,7 @@ body {
   }
 
   .stat-value {
-    @apply mt-2 font-display text-3xl font-bold tracking-tight text-tis-navy;
+    @apply mt-2 font-display text-3xl font-bold tracking-tight text-tis-navy tabular-nums;
   }
 
   .admin-shell {
@@ -90,6 +90,61 @@ body {
 
   .admin-canvas-fill {
     @apply pb-4 lg:pb-5;
+  }
+
+  /* Soft Structuralism surfaces (Lime Licorice only) */
+  [data-theme="lime_licorice"] .admin-shell {
+    background: var(--tina-workspace-glow, var(--tina-workspace));
+  }
+
+  [data-theme="lime_licorice"] .card {
+    position: relative;
+    border: 1px solid rgb(11 13 21 / 4%);
+    border-radius: var(--tina-radius-pane, 28px);
+    background-color: var(--tina-surface);
+    box-shadow:
+      inset 0 1px 1px rgb(255 255 255 / 75%),
+      var(--tis-shadow-tray),
+      var(--tis-shadow-card);
+  }
+
+  [data-theme="lime_licorice"] .page-title {
+    @apply text-[1.75rem] font-extrabold tracking-[-0.03em] sm:text-[2.125rem];
+  }
+
+  [data-theme="lime_licorice"] .page-subtitle {
+    @apply mt-1.5 text-[15px] leading-relaxed;
+  }
+
+  /* KPI tiles: flat card by default; Soft Structuralism double-bezel on Lime */
+  .stat-bezel {
+    @apply relative flex h-full min-w-0 flex-col;
+  }
+
+  .stat-bezel-inner {
+    @apply flex h-full min-h-[160px] min-w-0 flex-1 flex-col overflow-visible rounded-2xl border border-tina-border bg-white p-4 shadow-card sm:p-5;
+  }
+
+  [data-theme="lime_licorice"] .stat-bezel {
+    border-radius: var(--tina-radius-pane, 28px);
+    background-color: rgb(11 13 21 / 3%);
+    box-shadow: var(--tis-shadow-tray), var(--tis-shadow-card);
+    padding: 0.375rem;
+    transition:
+      transform var(--tina-transition),
+      box-shadow var(--tina-transition);
+  }
+
+  [data-theme="lime_licorice"] .stat-bezel:hover {
+    transform: translateY(-1px);
+    box-shadow: var(--tis-shadow-tray), var(--tis-shadow-float);
+  }
+
+  [data-theme="lime_licorice"] .stat-bezel-inner {
+    border: none;
+    border-radius: calc(var(--tina-radius-pane, 28px) - 0.375rem);
+    background-color: var(--tina-surface);
+    box-shadow: inset 0 1px 1px rgb(255 255 255 / 75%);
   }
 
   .tis-day-picker {

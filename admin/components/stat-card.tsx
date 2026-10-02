@@ -137,7 +137,7 @@ function DeltaPill({
   neutral: boolean;
 }) {
   return (
-    <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+    <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
       <span
         className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
           neutral
@@ -221,47 +221,52 @@ export function StatCard({
   }
 
   return (
-    <div className="relative z-0 flex min-h-[132px] min-w-0 flex-col overflow-visible rounded-2xl border border-tina-border bg-white p-4 shadow-card hover:z-30 focus-within:z-30 sm:p-5">
-      <div className="flex items-start gap-3">
-        <span
-          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] ${theme.iconBg} ${theme.iconFg}`}
-        >
-          <Icon className="h-5 w-5" strokeWidth={2} aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-2">
-            <p className="min-w-0 text-sm font-medium leading-snug text-tina-secondary">{label}</p>
-            <div className="relative z-40 shrink-0">
-              <InfoTip label={label} align={tipAlign}>
-                {definition}
-              </InfoTip>
+    <div className="stat-bezel z-0 h-full hover:z-30 focus-within:z-30">
+      <div className="stat-bezel-inner h-full">
+        <div className="flex h-full min-h-[148px] items-stretch gap-3">
+          <span
+            className={`mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] ${theme.iconBg} ${theme.iconFg}`}
+          >
+            <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+          </span>
+          <div className="flex min-w-0 flex-1 flex-col">
+            <div className="flex items-start justify-between gap-2">
+              <p className="min-w-0 text-sm font-medium leading-snug text-tina-secondary">{label}</p>
+              <div className="relative z-40 shrink-0">
+                <InfoTip label={label} align={tipAlign}>
+                  {definition}
+                </InfoTip>
+              </div>
             </div>
-          </div>
-          <div className="mt-1.5 flex items-end justify-between gap-3">
-            <div className="min-w-0">
-              <p className="font-display text-[28px] font-semibold leading-none tracking-tight text-tina-text sm:text-[32px]">
-                {value}
-              </p>
-              {detail ? (
-                <p className="mt-1 truncate text-xs text-tina-muted">{detail}</p>
-              ) : null}
-              {deltaPill ? (
-                <DeltaPill
-                  text={deltaPill.text}
-                  label={deltaLabel}
-                  positive={deltaPill.positive}
-                  neutral={deltaPill.neutral}
+            {/* Pin value / detail / delta / sparkline to the card bottom */}
+            <div className="mt-auto flex items-end justify-between gap-3 pt-4">
+              <div className="flex min-w-0 flex-col justify-end">
+                <p className="font-display text-[28px] font-bold leading-none tracking-[-0.03em] text-tina-text tabular-nums sm:text-[32px]">
+                  {value}
+                </p>
+                <p className="mt-1 min-h-[1rem] truncate text-xs text-tina-muted">
+                  {detail || "\u00a0"}
+                </p>
+                <div className="mt-2 min-h-[22px]">
+                  {deltaPill ? (
+                    <DeltaPill
+                      text={deltaPill.text}
+                      label={deltaLabel}
+                      positive={deltaPill.positive}
+                      neutral={deltaPill.neutral}
+                    />
+                  ) : null}
+                </div>
+              </div>
+              {sparkline ? (
+                <BarSparkline
+                  values={sparkline}
+                  labels={sparklineLabels}
+                  color={theme.bar}
+                  valueFormatter={formatter}
                 />
               ) : null}
             </div>
-            {sparkline ? (
-              <BarSparkline
-                values={sparkline}
-                labels={sparklineLabels}
-                color={theme.bar}
-                valueFormatter={formatter}
-              />
-            ) : null}
           </div>
         </div>
       </div>

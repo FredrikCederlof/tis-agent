@@ -224,7 +224,7 @@ export function ChatsWorkspace({
     if (!selectedIds.length) return;
     if (
       !window.confirm(
-        `Delete ${selectedIds.length} conversation${selectedIds.length === 1 ? "" : "s"}?\nThis permanently removes them from Tina Admin.`,
+        `Delete ${selectedIds.length} conversation${selectedIds.length === 1 ? "" : "s"}?\nThis permanently removes them from Nabo.`,
       )
     ) {
       return;
@@ -757,7 +757,7 @@ export function ChatThreadDetail({
   async function onDelete() {
     if (
       !window.confirm(
-        "Delete chat session?\nThis will permanently remove this session from Tina Admin.",
+        "Delete chat session?\nThis will permanently remove this session from Nabo.",
       )
     ) {
       return;

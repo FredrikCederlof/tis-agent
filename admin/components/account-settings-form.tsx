@@ -145,7 +145,7 @@ export function AccountSettingsForm({
         <div>
           <h2 className="text-lg font-bold text-tis-navy">Profile</h2>
           <p className="mt-1 text-sm text-tis-muted">
-            Update how you appear in Tina Admin.
+            Update how you appear in Nabo.
           </p>
         </div>
 

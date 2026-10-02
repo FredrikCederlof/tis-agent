@@ -5,7 +5,7 @@ export const NEEDS_ATTENTION_INBOX_PATH = "/inbox";
 export const PUSH_SW_PATH = "/sw.js";
 export const GAP_OUTCOMES = ["no_evidence", "low_confidence"] as const;
 export const NOTIFY_TITLE = "New message needs attention";
-export const NOTIFY_BODY_GENERIC = "Open Tina Admin to review and reply.";
+export const NOTIFY_BODY_GENERIC = "Open Nabo to review and reply.";
 export const NOTIFY_PREVIEW_MAX_CHARS = 100;
 
 export type NotifyChoice = "enabled" | "dismissed";

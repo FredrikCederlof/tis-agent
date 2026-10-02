@@ -58,7 +58,7 @@ export function AccountThemeCard({
       <div>
         <h2 className="text-lg font-bold text-tis-navy">Appearance</h2>
         <p className="mt-1 text-sm text-tis-muted">
-          Choose your Admin theme. This only changes how Tina Admin looks for your account.
+          Choose your Admin theme. This only changes how Nabo looks for your account.
         </p>
       </div>
 

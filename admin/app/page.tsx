@@ -132,15 +132,21 @@ export default async function DashboardPage({
       profile={profile}
     >
       <div className="min-w-0 pb-24">
-        <div className="mb-6 grid gap-4 sm:mb-8 lg:grid-cols-[1fr_auto] lg:items-start">
+        <div className="mb-7 grid gap-4 sm:mb-9 lg:grid-cols-[1fr_auto] lg:items-start">
           <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-tina-muted">
+              Tokyo International School
+            </p>
+            <p className="mt-2 mb-2 inline-flex items-center rounded-full bg-white/70 px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-tina-muted ring-1 ring-black/[0.04]">
+              Overview
+            </p>
             <h1 className="page-title">
               {greeting}, {firstName}{" "}
               <span aria-hidden className="font-normal">
                 👋
               </span>
             </h1>
-            <p className="page-subtitle">Here&apos;s what&apos;s happening with Tina today.</p>
+            <p className="page-subtitle">Here&apos;s what&apos;s happening at your school today.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <DashboardDateRange from={from} to={to} />
@@ -154,7 +160,7 @@ export default async function DashboardPage({
           </p>
         ) : null}
 
-        <div className="relative z-10 grid min-w-0 gap-4 overflow-visible sm:grid-cols-2 xl:grid-cols-4">
+        <div className="relative z-10 grid min-w-0 auto-rows-fr items-stretch gap-4 overflow-visible sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Total questions asked"
             value={current.questions}

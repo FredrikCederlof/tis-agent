@@ -62,7 +62,7 @@ const sections: { label: string; links: NavLink[] }[] = [
     links: [
       { href: "/sandbox", label: "Sandbox", icon: FlaskConical },
       { href: "/users", label: "Users", icon: Users, adminOnly: true },
-      { href: "/config", label: "Tina config", icon: Settings2, adminOnly: true },
+      { href: "/config", label: "Config", icon: Settings2, adminOnly: true },
     ],
   },
 ];
@@ -197,20 +197,16 @@ function AppShellInner({
     <div className={`admin-shell ${lime ? "bg-tina-workspace" : ""}`}>
       {/* Mobile top bar */}
       <div className="z-30 flex shrink-0 items-center justify-between border-b border-black/[0.06] bg-white px-4 py-3 lg:hidden">
-        <div className="flex items-center gap-3">
+        <div className="flex min-w-0 items-center gap-3">
           <Image
-            src="/tina.png"
-            alt="Tina"
-            width={36}
-            height={36}
-            className="rounded-full object-cover ring-2 ring-tis-ink"
+            src="/nabo-logo.png"
+            alt="Nabo"
+            width={140}
+            height={70}
+            className="h-9 w-auto object-contain object-left"
+            priority
+            unoptimized
           />
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-tis-navy">
-              TIS Agent
-            </p>
-            <p className="text-sm font-bold text-tis-ink">Tina Admin</p>
-          </div>
         </div>
         <button
           type="button"
@@ -232,50 +228,47 @@ function AppShellInner({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex flex-col p-3 shadow-soft transition-transform lg:static lg:h-full lg:shrink-0 lg:shadow-none ${
+        className={`fixed inset-y-0 left-0 z-40 flex flex-col p-3 transition-transform duration-soft ease-soft lg:static lg:h-full lg:shrink-0 ${
           lime
-            ? "w-[280px] rounded-none border-r border-tina-border bg-white text-tina-secondary lg:my-3 lg:ml-3 lg:rounded-pane lg:border"
-            : "w-[248px] border-r border-tis-navy/40 bg-tis-navy text-white"
+            ? "w-[280px] rounded-none border-r border-tina-border/80 bg-white/90 text-tina-secondary shadow-float backdrop-blur-xl lg:my-3 lg:ml-3 lg:rounded-pane lg:border lg:bg-white lg:shadow-card"
+            : "w-[248px] border-r border-tis-navy/40 bg-tis-navy text-white shadow-soft lg:shadow-none"
         } ${collapsed ? (lime ? "lg:w-[84px]" : "lg:w-[76px]") : lime ? "lg:w-[280px]" : "lg:w-[248px]"} ${
           open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         }`}
       >
         <div
-          className={`hidden items-center gap-2 px-1 pb-4 pt-1 lg:flex ${
+          className={`flex items-center gap-2 px-1 pb-4 pt-1 ${
             iconsOnly ? "justify-center" : "justify-between"
           }`}
         >
-          {!iconsOnly && (
-            <div className="flex min-w-0 items-center gap-2.5">
+          {iconsOnly ? (
+            <Link href="/" className="flex items-center justify-center" aria-label="Nabo home">
               <Image
-                src="/tina.png"
-                alt="Tina"
-                width={36}
-                height={36}
-                className="shrink-0 rounded-full object-cover ring-2 ring-tis-ink"
+                src="/nabo-mark.png"
+                alt="Nabo"
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain"
                 priority
+                unoptimized
               />
-              <div className="min-w-0">
-                <p
-                  className={`text-[9px] font-bold uppercase tracking-[0.16em] ${
-                    lime ? "text-tina-muted" : "text-tis-acid"
-                  }`}
-                >
-                  TIS Agent
-                </p>
-                <p
-                  className={`truncate text-[15px] font-bold leading-tight ${
-                    lime ? "text-tina-text" : "text-white"
-                  }`}
-                >
-                  Tina Admin
-                </p>
-              </div>
-            </div>
+            </Link>
+          ) : (
+            <Link href="/" className="min-w-0 flex-1 px-1" onClick={() => setOpen(false)}>
+              <Image
+                src="/nabo-logo.png"
+                alt="Nabo"
+                width={160}
+                height={80}
+                className="h-10 w-auto max-w-full object-contain object-left"
+                priority
+                unoptimized
+              />
+            </Link>
           )}
           <button
             type="button"
-            className={`rounded-lg p-2 transition ${
+            className={`hidden rounded-lg p-2 transition duration-soft ease-soft lg:inline-flex ${
               lime
                 ? "text-tina-muted hover:bg-tina-subtle hover:text-tina-text"
                 : "text-white/70 hover:bg-white/10 hover:text-white"
@@ -319,7 +312,7 @@ function AppShellInner({
                     title={iconsOnly ? link.label : undefined}
                     aria-label={iconsOnly ? link.label : undefined}
                     aria-current={active ? "page" : undefined}
-                    className={`group relative flex items-center rounded-xl text-sm font-semibold transition ${
+                    className={`group relative flex items-center rounded-xl text-sm font-semibold transition duration-soft ease-soft active:scale-[0.98] ${
                       iconsOnly ? "justify-center px-0 py-2.5" : "justify-between px-3 py-2.5"
                     } ${
                       lime
@@ -485,7 +478,7 @@ function AppShellInner({
               <form action="/auth/signout" method="post">
                 <button
                   type="submit"
-                  className={`inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                  className={`inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition duration-soft ease-soft active:scale-[0.98] ${
                     lime
                       ? "border-tina-border bg-transparent text-tina-secondary hover:bg-tina-subtle"
                       : "border-white/20 bg-transparent text-white hover:bg-white/10"
