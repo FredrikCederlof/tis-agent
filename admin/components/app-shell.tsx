@@ -62,7 +62,7 @@ const sections: { label: string; links: NavLink[] }[] = [
     links: [
       { href: "/sandbox", label: "Sandbox", icon: FlaskConical },
       { href: "/users", label: "Users", icon: Users, adminOnly: true },
-      { href: "/config", label: "Tina config", icon: Settings2, adminOnly: true },
+      { href: "/config", label: "Config", icon: Settings2, adminOnly: true },
     ],
   },
 ];
@@ -201,10 +201,11 @@ function AppShellInner({
           <Image
             src="/nabo-logo.png"
             alt="Nabo"
-            width={120}
-            height={60}
-            className="h-8 w-auto object-contain object-left"
+            width={140}
+            height={70}
+            className="h-9 w-auto object-contain object-left"
             priority
+            unoptimized
           />
         </div>
         <button
@@ -236,68 +237,50 @@ function AppShellInner({
         }`}
       >
         <div
-          className={`hidden items-center gap-2 px-1 pb-4 pt-1 lg:flex ${
+          className={`flex items-center gap-2 px-1 pb-4 pt-1 ${
             iconsOnly ? "justify-center" : "justify-between"
           }`}
         >
-          {!iconsOnly && (
-            <Link href="/" className="min-w-0 px-1" onClick={() => setOpen(false)}>
-              <Image
-                src="/nabo-logo.png"
-                alt="Nabo"
-                width={148}
-                height={74}
-                className="h-9 w-auto object-contain object-left"
-                priority
-              />
-            </Link>
-          )}
           {iconsOnly ? (
             <Link href="/" className="flex items-center justify-center" aria-label="Nabo home">
               <Image
                 src="/nabo-mark.png"
                 alt="Nabo"
-                width={36}
-                height={36}
-                className="h-9 w-9 object-contain"
+                width={40}
+                height={40}
+                className="h-10 w-10 object-contain"
                 priority
+                unoptimized
               />
             </Link>
           ) : (
-            <button
-              type="button"
-              className={`rounded-lg p-2 transition duration-soft ease-soft ${
-                lime
-                  ? "text-tina-muted hover:bg-tina-subtle hover:text-tina-text"
-                  : "text-white/70 hover:bg-white/10 hover:text-white"
-              }`}
-              aria-label="Collapse navigation"
-              aria-pressed={collapsed}
-              title="Collapse navigation"
-              onClick={toggleCollapsed}
-            >
-              <PanelLeft className="h-5 w-5" />
-            </button>
+            <Link href="/" className="min-w-0 flex-1 px-1" onClick={() => setOpen(false)}>
+              <Image
+                src="/nabo-logo.png"
+                alt="Nabo"
+                width={160}
+                height={80}
+                className="h-10 w-auto max-w-full object-contain object-left"
+                priority
+                unoptimized
+              />
+            </Link>
           )}
+          <button
+            type="button"
+            className={`hidden rounded-lg p-2 transition duration-soft ease-soft lg:inline-flex ${
+              lime
+                ? "text-tina-muted hover:bg-tina-subtle hover:text-tina-text"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
+            }`}
+            aria-label={iconsOnly ? "Expand navigation" : "Collapse navigation"}
+            aria-pressed={collapsed}
+            title={iconsOnly ? "Expand navigation" : "Collapse navigation"}
+            onClick={toggleCollapsed}
+          >
+            {iconsOnly ? <Menu className="h-5 w-5" /> : <PanelLeft className="h-5 w-5" />}
+          </button>
         </div>
-        {iconsOnly ? (
-          <div className="mb-2 hidden justify-center lg:flex">
-            <button
-              type="button"
-              className={`rounded-lg p-2 transition duration-soft ease-soft ${
-                lime
-                  ? "text-tina-muted hover:bg-tina-subtle hover:text-tina-text"
-                  : "text-white/70 hover:bg-white/10 hover:text-white"
-              }`}
-              aria-label="Expand navigation"
-              aria-pressed={collapsed}
-              title="Expand navigation"
-              onClick={toggleCollapsed}
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-          </div>
-        ) : null}
 
         <nav className="flex flex-1 flex-col gap-4 overflow-y-auto pt-2 lg:pt-0">
           {visibleSections.map((section) => (

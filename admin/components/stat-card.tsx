@@ -221,16 +221,16 @@ export function StatCard({
   }
 
   return (
-    <div className="stat-bezel z-0 hover:z-30 focus-within:z-30">
-      <div className="stat-bezel-inner">
-        <div className="flex items-start gap-3">
-          <span
-            className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] ${theme.iconBg} ${theme.iconFg}`}
-          >
-            <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-start justify-between gap-2">
+    <div className="stat-bezel z-0 h-full hover:z-30 focus-within:z-30">
+      <div className="stat-bezel-inner h-full">
+        <div className="flex h-full min-h-[132px] flex-col">
+          <div className="flex items-start gap-3">
+            <span
+              className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] ${theme.iconBg} ${theme.iconFg}`}
+            >
+              <Icon className="h-5 w-5" strokeWidth={1.75} aria-hidden />
+            </span>
+            <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
               <p className="min-w-0 text-sm font-medium leading-snug text-tina-secondary">{label}</p>
               <div className="relative z-40 shrink-0">
                 <InfoTip label={label} align={tipAlign}>
@@ -238,32 +238,32 @@ export function StatCard({
                 </InfoTip>
               </div>
             </div>
-            <div className="mt-1.5 flex items-end justify-between gap-3">
-              <div className="min-w-0">
-                <p className="font-display text-[28px] font-bold leading-none tracking-[-0.03em] text-tina-text tabular-nums sm:text-[32px]">
-                  {value}
-                </p>
-                {detail ? (
-                  <p className="mt-1 truncate text-xs text-tina-muted">{detail}</p>
-                ) : null}
-                {deltaPill ? (
-                  <DeltaPill
-                    text={deltaPill.text}
-                    label={deltaLabel}
-                    positive={deltaPill.positive}
-                    neutral={deltaPill.neutral}
-                  />
-                ) : null}
-              </div>
-              {sparkline ? (
-                <BarSparkline
-                  values={sparkline}
-                  labels={sparklineLabels}
-                  color={theme.bar}
-                  valueFormatter={formatter}
+          </div>
+          <div className="mt-auto flex items-end justify-between gap-3 pt-3">
+            <div className="min-w-0">
+              <p className="font-display text-[28px] font-bold leading-none tracking-[-0.03em] text-tina-text tabular-nums sm:text-[32px]">
+                {value}
+              </p>
+              {detail ? (
+                <p className="mt-1 truncate text-xs text-tina-muted">{detail}</p>
+              ) : null}
+              {deltaPill ? (
+                <DeltaPill
+                  text={deltaPill.text}
+                  label={deltaLabel}
+                  positive={deltaPill.positive}
+                  neutral={deltaPill.neutral}
                 />
               ) : null}
             </div>
+            {sparkline ? (
+              <BarSparkline
+                values={sparkline}
+                labels={sparklineLabels}
+                color={theme.bar}
+                valueFormatter={formatter}
+              />
+            ) : null}
           </div>
         </div>
       </div>

@@ -146,7 +146,7 @@ export default async function DashboardPage({
                 👋
               </span>
             </h1>
-            <p className="page-subtitle">Here&apos;s what&apos;s happening with Tina today.</p>
+            <p className="page-subtitle">Here&apos;s what&apos;s happening at your school today.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <DashboardDateRange from={from} to={to} />
@@ -160,7 +160,7 @@ export default async function DashboardPage({
           </p>
         ) : null}
 
-        <div className="relative z-10 grid min-w-0 gap-4 overflow-visible sm:grid-cols-2 xl:grid-cols-4">
+        <div className="relative z-10 grid min-w-0 items-stretch gap-4 overflow-visible sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Total questions asked"
             value={current.questions}
