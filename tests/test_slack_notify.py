@@ -235,6 +235,8 @@ def test_missing_env_no_network(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("urllib.request.urlopen", boom)
     monkeypatch.delenv("SLACK_WEBHOOK_PARENT_QUESTIONS", raising=False)
     monkeypatch.delenv("SLACK_WEBHOOK_NEEDS_ATTENTION", raising=False)
+    monkeypatch.delenv("SLACK_WEBHOOK_URL", raising=False)
+    monkeypatch.delenv("SLACK_NEEDS_ATTENTION_WEBHOOK_URL", raising=False)
     _MOD._missing_logged.clear()
 
     notify_slack_interaction(
@@ -343,3 +345,47 @@ def test_force_needs_attention_for_manual(
         force=True,
     )
     assert captured == ["https://hooks.slack.com/services/NEEDS"]
+
+
+def test_railway_env_aliases_when_canonical_unset(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[str] = []
+
+    def fake_urlopen(request: Any, timeout: float = 0) -> FakeResponse:
+        captured.append(request.full_url)
+        return FakeResponse()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr(_MOD.threading, "Thread", ImmediateThread)
+    monkeypatch.delenv("SLACK_WEBHOOK_PARENT_QUESTIONS", raising=False)
+    monkeypatch.delenv("SLACK_WEBHOOK_NEEDS_ATTENTION", raising=False)
+    monkeypatch.setenv("SLACK_WEBHOOK_URL", "https://hooks.slack.com/services/PARENT")
+    monkeypatch.setenv(
+        "SLACK_NEEDS_ATTENTION_WEBHOOK_URL", "https://hooks.slack.com/services/NEEDS"
+    )
+
+    notify_slack_interaction(
+        wa_from="819012345678",
+        question="Missing?",
+        reply="I don't know.",
+        outcome="no_evidence",
+        language="en",
+        session_id="sess",
+    )
+    assert captured == [
+        "https://hooks.slack.com/services/PARENT",
+        "https://hooks.slack.com/services/NEEDS",
+    ]
+
+    captured.clear()
+    monkeypatch.setenv(
+        "SLACK_WEBHOOK_PARENT_QUESTIONS", "https://hooks.slack.com/services/CANON"
+    )
+    notify_parent_question(
+        question="Hello?",
+        reply="Hi",
+        wa_from="819011112222",
+        outcome="success",
+    )
+    assert captured == ["https://hooks.slack.com/services/CANON"]

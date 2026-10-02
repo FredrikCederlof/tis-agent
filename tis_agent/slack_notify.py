@@ -29,6 +29,9 @@ REPLY_TRUNCATE_CHARS = 2500
 
 _ENV_PARENT = "SLACK_WEBHOOK_PARENT_QUESTIONS"
 _ENV_NEEDS = "SLACK_WEBHOOK_NEEDS_ATTENTION"
+# Names already set on the Railway WhatsApp service.
+_ENV_PARENT_ALIASES = ("SLACK_WEBHOOK_URL",)
+_ENV_NEEDS_ALIASES = ("SLACK_NEEDS_ATTENTION_WEBHOOK_URL",)
 
 _missing_logged: set[str] = set()
 
@@ -92,8 +95,13 @@ def _truncate(text: str, limit: int = REPLY_TRUNCATE_CHARS) -> str:
     return text[: limit - 1].rstrip() + "…"
 
 
-def _webhook(env_name: str) -> str:
-    return (os.environ.get(env_name) or "").strip()
+def _webhook(*env_names: str) -> str:
+    """First non-empty value wins. Canonical name, then Railway aliases."""
+    for name in env_names:
+        value = (os.environ.get(name) or "").strip()
+        if value:
+            return value
+    return ""
 
 
 def _log_missing_once(env_name: str) -> None:
@@ -224,7 +232,7 @@ def notify_parent_question(
     wa_message_id: str | None = None,
 ) -> None:
     """POST Q&A to #tina-parent-questions. Never raises; runs in a daemon thread."""
-    url = _webhook(_ENV_PARENT)
+    url = _webhook(_ENV_PARENT, *_ENV_PARENT_ALIASES)
     if not url:
         _log_missing_once(_ENV_PARENT)
         return
@@ -263,7 +271,7 @@ def notify_needs_attention(
     if not force and not should_notify_needs_attention(outcome):
         return
 
-    url = _webhook(_ENV_NEEDS)
+    url = _webhook(_ENV_NEEDS, *_ENV_NEEDS_ALIASES)
     if not url:
         _log_missing_once(_ENV_NEEDS)
         return
@@ -311,7 +319,7 @@ def notify_window_reminder(
     wa_message_id: str | None = None,
 ) -> None:
     """Reminder in #tina-needs-attention before the WhatsApp 24h window closes."""
-    url = _webhook(_ENV_NEEDS)
+    url = _webhook(_ENV_NEEDS, *_ENV_NEEDS_ALIASES)
     if not url:
         _log_missing_once(_ENV_NEEDS)
         return
