@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState, type ReactNode } from "react";
-import { ChevronDown, MessageCircle, Sparkles } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 type PerformancePoint = {
   label: string;
   answered: number;
@@ -22,18 +22,18 @@ export function ChartHeader({
   subtitle,
   action,
 }: {
-  icon: ReactNode;
+  icon?: ReactNode;
   title: string;
-  subtitle: string;
+  subtitle?: string;
   action?: ReactNode;
 }) {
   return (
     <div className="mb-3 flex items-start justify-between gap-3">
-      <div className="flex items-center gap-2.5">
+      <div className="flex min-w-0 items-center gap-2.5">
         {icon}
-        <div>
+        <div className="min-w-0">
           <h2 className="text-lg font-semibold text-tina-text">{title}</h2>
-          <p className="text-sm text-tina-muted">{subtitle}</p>
+          {subtitle ? <p className="text-sm text-tina-muted">{subtitle}</p> : null}
         </div>
       </div>
       {action}
@@ -72,8 +72,8 @@ export function PerformanceChart({
   rangeLabel?: string;
 }) {
   const width = 560;
-  const height = 280;
-  const pad = { top: 16, right: 12, bottom: 36, left: 36 };
+  const height = 168;
+  const pad = { top: 8, right: 8, bottom: 28, left: 32 };
   const plotW = width - pad.left - pad.right;
   const plotH = height - pad.top - pad.bottom;
   const totals = points.map((p) => p.answered + p.unanswered);
@@ -81,7 +81,7 @@ export function PerformanceChart({
   const niceMax = niceCeil(maxQ);
   const n = Math.max(1, points.length);
   const slot = plotW / n;
-  const barW = Math.max(10, Math.min(36, slot * 0.48));
+  const barW = Math.max(8, Math.min(28, slot * 0.42));
   const yBar = (v: number) => pad.top + plotH - (v / niceMax) * plotH;
 
   const [hover, setHover] = useState<number | null>(null);
@@ -123,28 +123,26 @@ export function PerformanceChart({
     Math.round((niceMax / tickCount) * i),
   );
 
+  const legend = (
+    <div className="flex flex-wrap items-center gap-3 text-xs font-medium text-tina-secondary">
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-2.5 w-2.5 rounded-full" style={{ background: CHART_GREEN }} />
+        Answered by Tina
+      </span>
+      <span className="inline-flex items-center gap-1.5">
+        <span className="h-2.5 w-2.5 rounded-full" style={{ background: CHART_NEUTRAL }} />
+        Unanswered
+      </span>
+    </div>
+  );
+
   return (
-    <div className="flex h-full min-h-[260px] w-full flex-col">
+    <div className="flex w-full flex-col">
       <ChartHeader
-        icon={
-          <IconWell>
-            <MessageCircle className="h-4 w-4" strokeWidth={2} />
-          </IconWell>
-        }
         title="Tina performance over time"
-        subtitle="Questions answered by Tina vs unanswered"
         action={
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="hidden items-center gap-3 text-xs font-medium text-tina-secondary sm:flex">
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-sm" style={{ background: CHART_GREEN }} />
-                Answered by Tina
-              </span>
-              <span className="inline-flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-sm" style={{ background: CHART_NEUTRAL }} />
-                Unanswered
-              </span>
-            </div>
+          <div className="flex flex-wrap items-center justify-end gap-3">
+            <div className="hidden sm:block">{legend}</div>
             {rangeLabel ? (
               <span className="inline-flex items-center gap-1 rounded-xl border border-tina-border bg-white px-2.5 py-1 text-xs font-semibold text-tina-muted">
                 {rangeLabel}
@@ -154,19 +152,10 @@ export function PerformanceChart({
           </div>
         }
       />
-      <div className="mb-2 flex flex-wrap gap-3 text-xs font-medium text-tina-secondary sm:hidden">
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: CHART_GREEN }} />
-          Answered by Tina
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-sm" style={{ background: CHART_NEUTRAL }} />
-          Unanswered
-        </span>
-      </div>
+      <div className="mb-2 sm:hidden">{legend}</div>
       <div
         ref={wrapRef}
-        className="relative min-h-0 flex-1"
+        className="relative h-[168px] w-full"
         onMouseLeave={() => setHover(null)}
         onMouseMove={(e) => onMove(e.clientX)}
         role="img"
@@ -206,7 +195,7 @@ export function PerformanceChart({
             const answeredH = Math.max(0, pad.top + plotH - midY);
             const unansweredH = Math.max(0, midY - topY);
             const dimmed = hover != null && hover !== i;
-            const radius = Math.min(6, barW / 2);
+            const radius = Math.min(5, barW / 2);
             return (
               <g key={`bar-${p.label}-${i}`} opacity={dimmed ? 0.45 : 1}>
                 {p.answered > 0 ? (
@@ -220,28 +209,29 @@ export function PerformanceChart({
                   />
                 ) : null}
                 {p.unanswered > 0 ? (
-                  <path
-                    d={[
-                      `M ${bx} ${midY}`,
-                      `L ${bx} ${topY + radius}`,
-                      `Q ${bx} ${topY} ${bx + radius} ${topY}`,
-                      `L ${bx + barW - radius} ${topY}`,
-                      `Q ${bx + barW} ${topY} ${bx + barW} ${topY + radius}`,
-                      `L ${bx + barW} ${midY}`,
-                      "Z",
-                    ].join(" ")}
-                    fill={CHART_NEUTRAL}
-                  />
-                ) : null}
-                {p.unanswered > 0 && unansweredH < radius * 2 ? (
-                  <rect
-                    x={bx}
-                    y={topY}
-                    width={barW}
-                    height={unansweredH}
-                    fill={CHART_NEUTRAL}
-                    rx={radius}
-                  />
+                  unansweredH < radius * 2 ? (
+                    <rect
+                      x={bx}
+                      y={topY}
+                      width={barW}
+                      height={unansweredH}
+                      fill={CHART_NEUTRAL}
+                      rx={radius}
+                    />
+                  ) : (
+                    <path
+                      d={[
+                        `M ${bx} ${midY}`,
+                        `L ${bx} ${topY + radius}`,
+                        `Q ${bx} ${topY} ${bx + radius} ${topY}`,
+                        `L ${bx + barW - radius} ${topY}`,
+                        `Q ${bx + barW} ${topY} ${bx + barW} ${topY + radius}`,
+                        `L ${bx + barW} ${midY}`,
+                        "Z",
+                      ].join(" ")}
+                      fill={CHART_NEUTRAL}
+                    />
+                  )
                 ) : null}
                 <rect
                   x={bx}
@@ -266,7 +256,7 @@ export function PerformanceChart({
               <text
                 key={`lbl-${p.label}-${i}`}
                 x={cx}
-                y={height - 10}
+                y={height - 8}
                 textAnchor="middle"
                 className="fill-[var(--tina-text-secondary,#565c73)] text-[10px]"
               >
@@ -281,7 +271,7 @@ export function PerformanceChart({
             className="pointer-events-none absolute z-20 -translate-x-1/2 rounded-xl border border-tina-border bg-white px-3 py-2 text-xs font-medium text-tina-text shadow-soft"
             style={{
               left: `${(tooltip.x / width) * 100}%`,
-              top: "6%",
+              top: "4%",
             }}
           >
             <p className="text-[11px] text-tina-muted">{tooltip.label}</p>
@@ -346,35 +336,26 @@ export function OutcomeDonut({
     ...part,
     pct: rawTotal === 0 ? 0 : Math.round((part.value / total) * 100),
   }));
-  const active = segments.find((s) => s.label === hover) ?? null;
   const visible = segments.filter((s) => s.value > 0);
 
-  const size = 180;
+  const size = 156;
   const cx = size / 2;
   const cy = size / 2;
-  const rOuter = 78;
-  const rInner = 52;
+  const rOuter = 70;
+  const rInner = 48;
   let angle = -Math.PI / 2;
   const arcs = visible.map((part) => {
     const sweep = (part.value / total) * Math.PI * 2;
     const start = angle;
-    const end = angle + sweep;
+    const end = angle + Math.max(sweep, 0.001);
     angle = end;
-    return { ...part, d: donutArc(cx, cy, rOuter, rInner, start, end - 0.001) };
+    return { ...part, d: donutArc(cx, cy, rOuter, rInner, start, end - 0.002) };
   });
 
   return (
-    <div className="flex h-full min-w-0 flex-col">
-      <ChartHeader
-        icon={
-          <IconWell tone="purple">
-            <Sparkles className="h-4 w-4" strokeWidth={2} />
-          </IconWell>
-        }
-        title="Answer outcomes"
-        subtitle="How questions were handled in this period"
-      />
-      <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 sm:flex-row sm:items-center sm:gap-6">
+    <div className="flex min-w-0 flex-col">
+      <ChartHeader title="Answer outcomes" />
+      <div className="flex min-w-0 items-center gap-5">
         <div
           className="relative shrink-0"
           role="img"
@@ -409,34 +390,29 @@ export function OutcomeDonut({
             )}
           </svg>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
-            <p className="text-2xl font-semibold tracking-tight text-tina-text">
-              {active ? active.value : rawTotal}
+            <p className="text-[28px] font-semibold leading-none tracking-tight text-tina-text">
+              {rawTotal}
             </p>
-            <p className="max-w-[7rem] text-[11px] leading-tight text-tina-muted">
-              {active ? active.label : "questions"}
-            </p>
+            <p className="mt-1 text-xs text-tina-muted">questions</p>
           </div>
         </div>
-        <ul className="w-full min-w-0 space-y-2.5 text-sm sm:max-w-[220px]">
+        <ul className="min-w-0 flex-1 space-y-2 text-sm">
           {segments.map((part) => (
             <li
               key={part.label}
-              className={`flex cursor-pointer items-center justify-between gap-3 rounded-lg px-1 py-1 transition ${
+              className={`grid cursor-pointer grid-cols-[auto_minmax(0,1fr)_auto_auto] items-center gap-x-2.5 rounded-lg px-1 py-0.5 transition ${
                 hover === part.label ? "bg-tina-subtle" : ""
               }`}
               onMouseEnter={() => setHover(part.label)}
               onMouseLeave={() => setHover(null)}
             >
-              <span className="inline-flex min-w-0 items-center gap-2 text-tina-secondary">
-                <span
-                  className="h-2.5 w-2.5 shrink-0 rounded-full"
-                  style={{ background: part.color }}
-                />
-                <span className="truncate">{part.label}</span>
-              </span>
-              <span className="shrink-0 font-semibold text-tina-text">
-                {part.pct}%
-              </span>
+              <span
+                className="h-2.5 w-2.5 shrink-0 rounded-full"
+                style={{ background: part.color }}
+              />
+              <span className="truncate text-tina-secondary">{part.label}</span>
+              <span className="tabular-nums font-semibold text-tina-text">{part.value}</span>
+              <span className="w-10 text-right tabular-nums text-tina-muted">{part.pct}%</span>
             </li>
           ))}
         </ul>
