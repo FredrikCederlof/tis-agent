@@ -16,7 +16,8 @@ def main() -> None:
             "  python -m tis_agent eval\n"
             "  python -m tis_agent eval --list\n"
             "  python -m tis_agent chat\n"
-            "  python -m tis_agent whatsapp"
+            "  python -m tis_agent whatsapp\n"
+            "  python -m tis_agent remind-attention [--dry-run]"
         )
         raise SystemExit(0)
 
@@ -63,6 +64,14 @@ def main() -> None:
         from tis_agent.whatsapp import main as whatsapp_main
 
         whatsapp_main()
+        return
+    if command == "remind-attention":
+        import json
+
+        from tis_agent.attention_reminders import run_attention_reminders
+
+        dry_run = "--dry-run" in sys.argv[2:]
+        print(json.dumps(run_attention_reminders(dry_run=dry_run), indent=2, default=str))
         return
 
     print(f"Unknown command: {command}")

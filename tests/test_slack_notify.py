@@ -21,9 +21,12 @@ _SPEC.loader.exec_module(_MOD)
 
 format_slack_payload = _MOD.format_slack_payload
 mask_wa_from = _MOD.mask_wa_from
+mark_reminder_milestones = _MOD.mark_reminder_milestones
+next_reminder_milestone = _MOD.next_reminder_milestone
 notify_needs_attention = _MOD.notify_needs_attention
 notify_parent_question = _MOD.notify_parent_question
 notify_slack_interaction = _MOD.notify_slack_interaction
+notify_window_reminder = _MOD.notify_window_reminder
 should_notify_needs_attention = _MOD.should_notify_needs_attention
 
 
@@ -271,3 +274,72 @@ def test_http_errors_swallowed(monkeypatch: pytest.MonkeyPatch) -> None:
         reply="A",
         outcome="low_confidence",
     )
+
+
+def test_reminder_milestone_helpers() -> None:
+    assert next_reminder_milestone(3 * 3600, set()) == "4h"
+    assert next_reminder_milestone(30 * 60, set()) == "1h"
+    assert mark_reminder_milestones("1h") == ["4h", "1h"]
+
+
+def test_window_reminder_posts_to_needs_channel(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[str] = []
+
+    def fake_urlopen(request: Any, timeout: float = 0) -> FakeResponse:
+        captured.append(request.full_url)
+        body = json.loads(request.data.decode())
+        assert "Reply window closing" in body["text"] or any(
+            "Reply window closing" in json.dumps(b)
+            for b in body.get("blocks", [])
+        )
+        return FakeResponse()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr(_MOD.threading, "Thread", ImmediateThread)
+    monkeypatch.setenv(
+        "SLACK_WEBHOOK_NEEDS_ATTENTION", "https://hooks.slack.com/services/NEEDS"
+    )
+
+    notify_window_reminder(
+        question="Still open?",
+        reply="Gap",
+        wa_from="819012345678",
+        outcome="no_evidence",
+        milestone="4h",
+        remaining_seconds=3 * 3600,
+    )
+    assert captured == ["https://hooks.slack.com/services/NEEDS"]
+
+
+def test_force_needs_attention_for_manual(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: list[str] = []
+
+    def fake_urlopen(request: Any, timeout: float = 0) -> FakeResponse:
+        captured.append(request.full_url)
+        return FakeResponse()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr(_MOD.threading, "Thread", ImmediateThread)
+    monkeypatch.setenv(
+        "SLACK_WEBHOOK_NEEDS_ATTENTION", "https://hooks.slack.com/services/NEEDS"
+    )
+    # success is not a gap — force required for manual flags
+    notify_needs_attention(
+        question="Flag",
+        reply="ok",
+        wa_from="1234",
+        outcome="success",
+    )
+    assert captured == []
+    notify_needs_attention(
+        question="Flag",
+        reply="ok",
+        wa_from="1234",
+        outcome="success",
+        force=True,
+    )
+    assert captured == ["https://hooks.slack.com/services/NEEDS"]

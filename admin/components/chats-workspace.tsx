@@ -751,6 +751,12 @@ export function ChatThreadDetail({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ interaction_id: interactionId }),
     }).catch(() => undefined);
+    // Fire-and-forget Slack #tina-needs-attention (Railway webhook).
+    void fetch("/api/slack/needs-attention", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ interaction_id: interactionId }),
+    }).catch(() => undefined);
     router.refresh();
   }
 

@@ -191,6 +191,17 @@ def health() -> dict[str, str]:
     return {"status": "ok", "service": "tina-whatsapp"}
 
 
+@app.on_event("startup")
+def _startup_slack_reminders() -> None:
+    """Periodic Slack reminders before the WhatsApp 24h reply window closes."""
+    try:
+        from tis_agent.attention_reminders import start_reminder_loop
+
+        start_reminder_loop()
+    except Exception:
+        logger.exception("Failed to start Slack attention reminder loop")
+
+
 def _require_admin_sync_token(request: Request) -> None:
     secret = os.environ.get("ADMIN_SYNC_SECRET", "").strip()
     if not secret:
@@ -323,6 +334,37 @@ async def admin_sandbox_ask(request: Request) -> dict[str, object]:
         return ask_sandbox(body if isinstance(body, dict) else {})
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+
+@app.post("/admin/slack/needs-attention")
+async def admin_slack_needs_attention(request: Request) -> dict[str, object]:
+    """Post one Needs attention item to Slack (manual Admin flags)."""
+    _require_admin_sync_token(request)
+    from tis_agent.attention_reminders import notify_interaction_needs_attention
+
+    try:
+        body = await request.json()
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail="Invalid JSON") from exc
+    interaction_id = str((body or {}).get("interaction_id") or "").strip()
+    if not interaction_id:
+        raise HTTPException(status_code=400, detail="interaction_id is required")
+    return notify_interaction_needs_attention(interaction_id)
+
+
+@app.post("/admin/slack/reminders")
+async def admin_slack_reminders(request: Request) -> dict[str, object]:
+    """Run one pass of 24h-window Slack reminders (cron / manual)."""
+    _require_admin_sync_token(request)
+    from tis_agent.attention_reminders import run_attention_reminders
+
+    dry_run = False
+    try:
+        body = await request.json()
+        dry_run = bool((body or {}).get("dry_run"))
+    except Exception:
+        dry_run = False
+    return run_attention_reminders(dry_run=dry_run)
 
 
 @app.get("/webhook")

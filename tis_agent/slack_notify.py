@@ -18,6 +18,12 @@ logger = logging.getLogger(__name__)
 # Keep in sync with push_notify.GAP_OUTCOMES / unanswered_interactions.
 GAP_OUTCOMES = frozenset({"no_evidence", "low_confidence"})
 
+# Remind once when remaining time first enters each band (tightest wins per scan).
+REMINDER_MILESTONES: tuple[tuple[str, int], ...] = (
+    ("4h", 4 * 3600),
+    ("1h", 1 * 3600),
+)
+
 SCHOOL_TZ = ZoneInfo("Asia/Tokyo")
 REPLY_TRUNCATE_CHARS = 2500
 
@@ -25,6 +31,19 @@ _ENV_PARENT = "SLACK_WEBHOOK_PARENT_QUESTIONS"
 _ENV_NEEDS = "SLACK_WEBHOOK_NEEDS_ATTENTION"
 
 _missing_logged: set[str] = set()
+
+
+def _format_remaining(seconds: int) -> str:
+    """Local copy of human_reply.format_remaining — avoid import side effects in tests."""
+    if seconds <= 0:
+        return "24h reply window closed"
+    hours = seconds // 3600
+    minutes = (seconds % 3600) // 60
+    if hours >= 1:
+        return f"24h window — {hours}h left"
+    if minutes >= 1:
+        return f"24h window — {minutes}m left"
+    return "24h window — under a minute left"
 
 
 def mask_wa_from(wa_from: str | None) -> str:
@@ -39,6 +58,31 @@ def mask_wa_from(wa_from: str | None) -> str:
 
 def should_notify_needs_attention(outcome: str | None) -> bool:
     return (outcome or "") in GAP_OUTCOMES
+
+
+def next_reminder_milestone(
+    remaining_seconds: int, already_sent: set[str] | frozenset[str]
+) -> str | None:
+    """Return the tightest unmet milestone whose threshold remaining has entered."""
+    if remaining_seconds <= 0:
+        return None
+    candidates = [
+        (name, threshold)
+        for name, threshold in REMINDER_MILESTONES
+        if name not in already_sent and remaining_seconds <= threshold
+    ]
+    if not candidates:
+        return None
+    return min(candidates, key=lambda item: item[1])[0]
+
+
+def mark_reminder_milestones(sent_milestone: str) -> list[str]:
+    """Milestones to record when sending one (include looser bands we skipped past)."""
+    thresholds = {name: thr for name, thr in REMINDER_MILESTONES}
+    if sent_milestone not in thresholds:
+        return [sent_milestone]
+    sent_thr = thresholds[sent_milestone]
+    return [name for name, thr in REMINDER_MILESTONES if thr >= sent_thr]
 
 
 def _truncate(text: str, limit: int = REPLY_TRUNCATE_CHARS) -> str:
@@ -59,6 +103,12 @@ def _log_missing_once(env_name: str) -> None:
     logger.info("slack_notify_skip reason=not_configured env=%s", env_name)
 
 
+def _format_expires(expires_at: datetime | None) -> str | None:
+    if expires_at is None:
+        return None
+    return expires_at.astimezone(SCHOOL_TZ).isoformat(timespec="seconds")
+
+
 def format_slack_payload(
     *,
     title: str,
@@ -70,6 +120,9 @@ def format_slack_payload(
     language: str | None = None,
     wa_message_id: str | None = None,
     when: datetime | None = None,
+    remaining_seconds: int | None = None,
+    expires_at: datetime | None = None,
+    extra_meta: list[str] | None = None,
 ) -> dict[str, Any]:
     """Build Slack Incoming Webhook body (text + Block Kit)."""
     when = when or datetime.now(SCHOOL_TZ)
@@ -89,6 +142,13 @@ def format_slack_payload(
         meta_lines.append(f"*Language:* `{language}`")
     if wa_message_id:
         meta_lines.append(f"*WA message:* `{wa_message_id}`")
+    if remaining_seconds is not None:
+        meta_lines.append(f"*Reply window:* {_format_remaining(remaining_seconds)}")
+    expires_iso = _format_expires(expires_at)
+    if expires_iso:
+        meta_lines.append(f"*Window closes:* {expires_iso}")
+    if extra_meta:
+        meta_lines.extend(extra_meta)
 
     fallback = (
         f"{title}\n"
@@ -96,6 +156,8 @@ def format_slack_payload(
         f"A: {reply_text}\n"
         f"{masked} · {outcome} · {when_iso}"
     )
+    if remaining_seconds is not None:
+        fallback += f" · {_format_remaining(remaining_seconds)}"
 
     blocks: list[dict[str, Any]] = [
         {
@@ -139,6 +201,18 @@ def _post_webhook(url: str, payload: dict[str, Any], *, label: str) -> None:
         logger.info("slack_notify_ok channel=%s status=%s", label, response.status)
 
 
+def _post_async(url: str, payload: dict[str, Any], *, label: str, thread_name: str) -> None:
+    def _send() -> None:
+        try:
+            _post_webhook(url, payload, label=label)
+        except urllib.error.HTTPError as exc:
+            logger.warning("slack_notify_http channel=%s status=%s", label, exc.code)
+        except Exception:
+            logger.exception("slack_notify_failed channel=%s", label)
+
+    threading.Thread(target=_send, name=thread_name, daemon=True).start()
+
+
 def notify_parent_question(
     *,
     question: str,
@@ -165,18 +239,7 @@ def notify_parent_question(
         language=language,
         wa_message_id=wa_message_id,
     )
-
-    def _send() -> None:
-        try:
-            _post_webhook(url, payload, label="parent_questions")
-        except urllib.error.HTTPError as exc:
-            logger.warning(
-                "slack_notify_http channel=parent_questions status=%s", exc.code
-            )
-        except Exception:
-            logger.exception("slack_notify_failed channel=parent_questions")
-
-    threading.Thread(target=_send, name="tina-slack-parent", daemon=True).start()
+    _post_async(url, payload, label="parent_questions", thread_name="tina-slack-parent")
 
 
 def notify_needs_attention(
@@ -188,9 +251,16 @@ def notify_needs_attention(
     session_id: str | None = None,
     language: str | None = None,
     wa_message_id: str | None = None,
+    remaining_seconds: int | None = None,
+    expires_at: datetime | None = None,
+    force: bool = False,
 ) -> None:
-    """POST gap outcomes to #tina-needs-attention. Never raises; daemon thread."""
-    if not should_notify_needs_attention(outcome):
+    """POST to #tina-needs-attention. Never raises; daemon thread.
+
+    By default only gap outcomes post. Pass force=True for manual Admin flags.
+    Window metadata is resolved inside the worker so WhatsApp latency is unchanged.
+    """
+    if not force and not should_notify_needs_attention(outcome):
         return
 
     url = _webhook(_ENV_NEEDS)
@@ -198,19 +268,24 @@ def notify_needs_attention(
         _log_missing_once(_ENV_NEEDS)
         return
 
-    payload = format_slack_payload(
-        title="Needs attention",
-        question=question,
-        reply=reply,
-        wa_from=wa_from,
-        outcome=outcome,
-        session_id=session_id,
-        language=language,
-        wa_message_id=wa_message_id,
-    )
-
     def _send() -> None:
         try:
+            rem = remaining_seconds
+            exp = expires_at
+            if rem is None and exp is None:
+                rem, exp = _window_for_parent(wa_from)
+            payload = format_slack_payload(
+                title="Needs attention",
+                question=question,
+                reply=reply,
+                wa_from=wa_from,
+                outcome=outcome,
+                session_id=session_id,
+                language=language,
+                wa_message_id=wa_message_id,
+                remaining_seconds=rem,
+                expires_at=exp,
+            )
             _post_webhook(url, payload, label="needs_attention")
         except urllib.error.HTTPError as exc:
             logger.warning(
@@ -220,6 +295,74 @@ def notify_needs_attention(
             logger.exception("slack_notify_failed channel=needs_attention")
 
     threading.Thread(target=_send, name="tina-slack-needs", daemon=True).start()
+
+
+def notify_window_reminder(
+    *,
+    question: str,
+    reply: str | None,
+    wa_from: str | None,
+    outcome: str,
+    milestone: str,
+    remaining_seconds: int,
+    expires_at: datetime | None = None,
+    session_id: str | None = None,
+    language: str | None = None,
+    wa_message_id: str | None = None,
+) -> None:
+    """Reminder in #tina-needs-attention before the WhatsApp 24h window closes."""
+    url = _webhook(_ENV_NEEDS)
+    if not url:
+        _log_missing_once(_ENV_NEEDS)
+        return
+
+    title = f"Reply window closing — {milestone} left"
+    payload = format_slack_payload(
+        title=title,
+        question=question,
+        reply=reply,
+        wa_from=wa_from,
+        outcome=outcome,
+        session_id=session_id,
+        language=language,
+        wa_message_id=wa_message_id,
+        remaining_seconds=remaining_seconds,
+        expires_at=expires_at,
+        extra_meta=[f"*Reminder:* `{milestone}` before WhatsApp free-form replies close"],
+    )
+    _post_async(
+        url,
+        payload,
+        label="needs_attention_reminder",
+        thread_name="tina-slack-reminder",
+    )
+
+
+def _window_for_parent(wa_from: str | None) -> tuple[int | None, datetime | None]:
+    """Best-effort reply window for Slack metadata. Never raises."""
+    if not wa_from:
+        return None, None
+    try:
+        from tis_agent.clients import make_supabase
+        from tis_agent.config import get_settings
+        from tis_agent.human_reply import reply_window
+
+        sb = make_supabase(get_settings())
+        response = (
+            sb.table("interactions")
+            .select("created_at")
+            .eq("wa_from", wa_from)
+            .order("created_at", desc=True)
+            .limit(1)
+            .execute()
+        )
+        rows = response.data or []
+        last = rows[0].get("created_at") if rows else None
+        window = reply_window(last)
+        return window.remaining_seconds, window.expires_at
+    except Exception:
+        logger.exception("slack window lookup failed")
+        return None, None
 
 
 def notify_slack_interaction(
