@@ -20,6 +20,8 @@ sys.modules["tis_agent_slack_notify"] = _MOD
 _SPEC.loader.exec_module(_MOD)
 
 format_slack_payload = _MOD.format_slack_payload
+humanize_outcome = _MOD.humanize_outcome
+admin_deep_link = _MOD.admin_deep_link
 mask_wa_from = _MOD.mask_wa_from
 mark_reminder_milestones = _MOD.mark_reminder_milestones
 next_reminder_milestone = _MOD.next_reminder_milestone
@@ -65,6 +67,23 @@ def test_should_notify_needs_attention_only_gaps() -> None:
     assert should_notify_needs_attention(None) is False
 
 
+def test_humanize_outcome() -> None:
+    assert humanize_outcome("success") == "High confidence"
+    assert "Low confidence" in humanize_outcome("low_confidence")
+    assert "No matching school info" in humanize_outcome("no_evidence")
+    assert humanize_outcome("error") == "Tina error"
+    assert humanize_outcome("manual") == "Manually flagged"
+
+
+def test_admin_deep_link(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TINA_ADMIN_URL", "https://admin.example/")
+    assert admin_deep_link(session_id="sess-1") == "https://admin.example/chats/sess-1"
+    assert (
+        admin_deep_link(session_id=None, needs_attention=True)
+        == "https://admin.example/inbox"
+    )
+
+
 def test_format_includes_question_reply_mask_outcome() -> None:
     when = datetime(2026, 10, 2, 12, 0, tzinfo=ZoneInfo("Asia/Tokyo"))
     payload = format_slack_payload(
@@ -82,14 +101,40 @@ def test_format_includes_question_reply_mask_outcome() -> None:
     assert "When is sports day?" in text
     assert "Sports Day is on 15 October." in text
     assert "Parent ·••5678" in text
-    assert "success" in text
+    assert "High confidence" in text
+    assert "2026/10/02 12:00 JST" in text
+    assert "sess-1" not in text or "/chats/sess-1" in text  # id only in deep link
+    assert "wamid.abc" not in text
+    assert "Session:" not in text
+    assert "WA message:" not in text
     blocks_blob = json.dumps(payload["blocks"], ensure_ascii=False)
     assert "When is sports day?" in blocks_blob
     assert "Sports Day is on 15 October." in blocks_blob
     assert "Parent ·••5678" in blocks_blob
-    assert "`success`" in blocks_blob
-    assert "sess-1" in blocks_blob
-    assert "wamid.abc" in blocks_blob
+    assert "High confidence" in blocks_blob
+    assert "2026/10/02 12:00 JST" in blocks_blob
+    assert "*Session:*" not in blocks_blob
+    assert "*WA message:*" not in blocks_blob
+    assert "/chats/sess-1" in blocks_blob
+    assert payload["blocks"][-1]["type"] == "actions"
+    assert payload["blocks"][-1]["elements"][0]["url"].endswith("/chats/sess-1")
+
+
+def test_format_needs_attention_deep_link_fallback(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("TINA_ADMIN_URL", "https://admin.example")
+    payload = format_slack_payload(
+        title="Needs attention",
+        question="Q?",
+        reply="A",
+        wa_from="1234",
+        outcome="no_evidence",
+        session_id=None,
+        needs_attention=True,
+    )
+    assert payload["blocks"][-1]["elements"][0]["url"] == "https://admin.example/inbox"
+    assert "No matching school info" in payload["text"]
 
 
 def test_format_truncates_long_reply() -> None:

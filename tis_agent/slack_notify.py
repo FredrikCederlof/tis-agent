@@ -59,6 +59,46 @@ def mask_wa_from(wa_from: str | None) -> str:
     return "Parent"
 
 
+def humanize_outcome(outcome: str | None) -> str:
+    """Staff-facing outcome copy (confidence / gap language, not raw codes)."""
+    key = (outcome or "").strip().lower()
+    return {
+        "success": "High confidence",
+        "low_confidence": "Low confidence — needs attention",
+        "no_evidence": "No matching school info — needs attention",
+        "error": "Tina error",
+        "manual": "Manually flagged",
+    }.get(key, (outcome or "Unknown").replace("_", " ").strip().capitalize() or "Unknown")
+
+
+def admin_base_url() -> str:
+    base = (os.environ.get("TINA_ADMIN_URL") or "").strip().rstrip("/")
+    if not base:
+        base = "https://admin-lac-zeta.vercel.app"
+    return base
+
+
+def admin_deep_link(
+    *,
+    session_id: str | None = None,
+    needs_attention: bool = False,
+) -> str:
+    """Deep link into Tina Admin chat thread, or inbox when no session."""
+    base = admin_base_url()
+    sid = (session_id or "").strip()
+    if sid:
+        return f"{base}/chats/{sid}"
+    if needs_attention:
+        return f"{base}/inbox"
+    return f"{base}/chats"
+
+
+def _format_when(when: datetime) -> str:
+    """Readable Asia/Tokyo stamp, e.g. 2026/10/02 12:00 JST."""
+    local = when.astimezone(SCHOOL_TZ)
+    return local.strftime("%Y/%m/%d %H:%M JST")
+
+
 def should_notify_needs_attention(outcome: str | None) -> bool:
     return (outcome or "") in GAP_OUTCOMES
 
@@ -114,7 +154,7 @@ def _log_missing_once(env_name: str) -> None:
 def _format_expires(expires_at: datetime | None) -> str | None:
     if expires_at is None:
         return None
-    return expires_at.astimezone(SCHOOL_TZ).isoformat(timespec="seconds")
+    return _format_when(expires_at)
 
 
 def format_slack_payload(
@@ -131,41 +171,51 @@ def format_slack_payload(
     remaining_seconds: int | None = None,
     expires_at: datetime | None = None,
     extra_meta: list[str] | None = None,
+    needs_attention: bool = False,
+    deep_link_label: str | None = None,
 ) -> dict[str, Any]:
-    """Build Slack Incoming Webhook body (text + Block Kit)."""
+    """Build Slack Incoming Webhook body (text + Block Kit).
+
+    ``wa_message_id`` is accepted for callers but never shown (too noisy).
+    ``session_id`` is used for the Admin deep link only — not listed as metadata.
+    """
+    del wa_message_id  # kept in signature for call-site compatibility
     when = when or datetime.now(SCHOOL_TZ)
-    when_iso = when.astimezone(SCHOOL_TZ).isoformat(timespec="seconds")
+    when_label = _format_when(when)
     masked = mask_wa_from(wa_from)
+    outcome_label = humanize_outcome(outcome)
     reply_text = _truncate(reply or "")
     question_text = question or ""
+    link = admin_deep_link(session_id=session_id, needs_attention=needs_attention)
+    button_label = (deep_link_label or (
+        "Open in Needs attention" if needs_attention else "Open chat in Tina Admin"
+    ))[:75]
 
     meta_lines = [
-        f"*When:* {when_iso}",
+        f"*When:* {when_label}",
         f"*From:* {masked}",
-        f"*Outcome:* `{outcome}`",
+        f"*Outcome:* {outcome_label}",
     ]
-    if session_id:
-        meta_lines.append(f"*Session:* `{session_id}`")
     if language:
         meta_lines.append(f"*Language:* `{language}`")
-    if wa_message_id:
-        meta_lines.append(f"*WA message:* `{wa_message_id}`")
     if remaining_seconds is not None:
         meta_lines.append(f"*Reply window:* {_format_remaining(remaining_seconds)}")
-    expires_iso = _format_expires(expires_at)
-    if expires_iso:
-        meta_lines.append(f"*Window closes:* {expires_iso}")
+    expires_label = _format_expires(expires_at)
+    if expires_label:
+        meta_lines.append(f"*Window closes:* {expires_label}")
     if extra_meta:
         meta_lines.extend(extra_meta)
+    meta_lines.append(f"<{link}|{button_label}>")
 
     fallback = (
         f"{title}\n"
         f"Q: {question_text}\n"
         f"A: {reply_text}\n"
-        f"{masked} · {outcome} · {when_iso}"
+        f"{masked} · {outcome_label} · {when_label}\n"
+        f"{link}"
     )
     if remaining_seconds is not None:
-        fallback += f" · {_format_remaining(remaining_seconds)}"
+        fallback += f"\n{_format_remaining(remaining_seconds)}"
 
     blocks: list[dict[str, Any]] = [
         {
@@ -189,6 +239,21 @@ def format_slack_payload(
         {
             "type": "section",
             "text": {"type": "mrkdwn", "text": "\n".join(meta_lines)},
+        },
+        {
+            "type": "actions",
+            "elements": [
+                {
+                    "type": "button",
+                    "text": {
+                        "type": "plain_text",
+                        "text": button_label,
+                        "emoji": True,
+                    },
+                    "url": link,
+                    "action_id": "open_tina_admin",
+                }
+            ],
         },
     ]
     return {"text": fallback, "blocks": blocks}
@@ -293,6 +358,8 @@ def notify_needs_attention(
                 wa_message_id=wa_message_id,
                 remaining_seconds=rem,
                 expires_at=exp,
+                needs_attention=True,
+                deep_link_label="Open in Tina Admin",
             )
             _post_webhook(url, payload, label="needs_attention")
         except urllib.error.HTTPError as exc:
@@ -336,6 +403,8 @@ def notify_window_reminder(
         wa_message_id=wa_message_id,
         remaining_seconds=remaining_seconds,
         expires_at=expires_at,
+        needs_attention=True,
+        deep_link_label="Open chat before window closes",
         extra_meta=[f"*Reminder:* `{milestone}` before WhatsApp free-form replies close"],
     )
     _post_async(
