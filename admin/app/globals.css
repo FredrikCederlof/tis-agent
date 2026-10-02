@@ -122,7 +122,7 @@ body {
   }
 
   .stat-bezel-inner {
-    @apply flex h-full min-h-[148px] min-w-0 flex-col overflow-visible rounded-2xl border border-tina-border bg-white p-4 shadow-card sm:p-5;
+    @apply flex h-full min-h-[160px] min-w-0 flex-1 flex-col overflow-visible rounded-2xl border border-tina-border bg-white p-4 shadow-card sm:p-5;
   }
 
   [data-theme="lime_licorice"] .stat-bezel {

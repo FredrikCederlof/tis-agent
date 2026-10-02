@@ -160,7 +160,7 @@ export default async function DashboardPage({
           </p>
         ) : null}
 
-        <div className="relative z-10 grid min-w-0 items-stretch gap-4 overflow-visible sm:grid-cols-2 xl:grid-cols-4">
+        <div className="relative z-10 grid min-w-0 auto-rows-fr items-stretch gap-4 overflow-visible sm:grid-cols-2 xl:grid-cols-4">
           <StatCard
             label="Total questions asked"
             value={current.questions}
