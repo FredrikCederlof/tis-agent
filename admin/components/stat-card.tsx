@@ -18,33 +18,29 @@ const ICONS: Record<IconName, LucideIcon> = {
 
 const ACCENTS: Record<
   Accent,
-  { card: string; iconBg: string; iconFg: string; bar: string; Icon: LucideIcon }
+  { iconBg: string; iconFg: string; bar: string; Icon: LucideIcon }
 > = {
   green: {
-    card: "bg-[#e8f6ee] border-transparent",
-    iconBg: "bg-[#d4eedc]",
-    iconFg: "text-tis-navy",
+    iconBg: "bg-[var(--tina-icon-green-bg,#ecfbdd)]",
+    iconFg: "text-[var(--tina-chart-green,#2b725b)]",
     bar: "#7ed9a0",
     Icon: MessageCircle,
   },
   purple: {
-    card: "bg-[#f3f0ff] border-transparent",
-    iconBg: "bg-[#ebe4ff]",
-    iconFg: "text-[#6b4fd8]",
+    iconBg: "bg-[var(--tina-icon-purple-bg,#eee8ff)]",
+    iconFg: "text-[var(--tina-chart-purple,#9170ff)]",
     bar: "#c4b4ff",
     Icon: Sparkles,
   },
   amber: {
-    card: "bg-[#fff6e4] border-transparent",
-    iconBg: "bg-[#ffe9b8]",
+    iconBg: "bg-[var(--tina-icon-amber-bg,#fff3dd)]",
     iconFg: "text-[#8a6500]",
     bar: "#ffc857",
     Icon: AlertTriangle,
   },
   blue: {
-    card: "bg-[#eef2ff] border-transparent",
-    iconBg: "bg-[#dde4ff]",
-    iconFg: "text-tis-blue",
+    iconBg: "bg-[var(--tina-icon-blue-bg,#e7efff)]",
+    iconFg: "text-[var(--tina-chart-blue,#6096f8)]",
     bar: "#8aa0ff",
     Icon: BookOpen,
   },
@@ -61,15 +57,15 @@ function BarSparkline({
   color: string;
   valueFormatter?: (v: number) => string;
 }) {
-  const width = 128;
-  const height = 56;
+  const width = 96;
+  const height = 36;
   const padX = 1;
   const padY = 2;
   const series = values.length > 0 ? values.slice(-12) : [0];
   const seriesLabels = labels ? labels.slice(-series.length) : [];
   const max = Math.max(1, ...series);
-  const gap = 2.4;
-  const barW = Math.max(4, (width - padX * 2 - gap * (series.length - 1)) / series.length);
+  const gap = 2;
+  const barW = Math.max(3, (width - padX * 2 - gap * (series.length - 1)) / series.length);
   const [hover, setHover] = useState<number | null>(null);
 
   function onMove(clientX: number, target: SVGSVGElement) {
@@ -90,17 +86,17 @@ function BarSparkline({
   }
 
   return (
-    <div className="relative shrink-0">
+    <div className="relative shrink-0 self-end">
       <svg
         viewBox={`0 0 ${width} ${height}`}
-        className="h-[48px] w-[96px] max-w-full cursor-crosshair sm:h-[56px] sm:w-[112px]"
+        className="h-9 w-[72px] max-w-full cursor-crosshair sm:w-20"
         onMouseLeave={() => setHover(null)}
         onMouseMove={(e) => onMove(e.clientX, e.currentTarget)}
         role="img"
         aria-label="Trend bars"
       >
         {series.map((v, i) => {
-          const h = Math.max(4, (v / max) * (height - padY * 2));
+          const h = Math.max(3, (v / max) * (height - padY * 2));
           const x = padX + i * (barW + gap);
           const y = height - padY - h;
           return (
@@ -111,7 +107,7 @@ function BarSparkline({
                 y={y}
                 width={barW}
                 height={h}
-                rx={barW / 2}
+                rx={Math.min(2, barW / 2)}
                 fill={color}
                 opacity={hover == null || hover === i ? 1 : 0.45}
               />
@@ -120,7 +116,7 @@ function BarSparkline({
         })}
       </svg>
       {hover != null ? (
-        <div className="pointer-events-none absolute -top-2 left-1/2 z-30 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg bg-tis-ink px-2.5 py-1.5 text-[11px] font-medium text-white shadow-soft">
+        <div className="pointer-events-none absolute -top-2 left-1/2 z-30 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-lg bg-tina-active px-2.5 py-1.5 text-[11px] font-medium text-white shadow-soft">
           {seriesLabels[hover] ? `${seriesLabels[hover]}: ` : ""}
           {valueFormatter ? valueFormatter(series[hover]) : series[hover]}
         </div>
@@ -129,28 +125,32 @@ function BarSparkline({
   );
 }
 
-function Delta({
-  value,
+function DeltaPill({
+  text,
   label,
-  unit = "%",
+  positive,
+  neutral,
 }: {
-  value: number | null;
+  text: string;
   label: string;
-  unit?: string;
+  positive: boolean;
+  neutral: boolean;
 }) {
-  if (value == null) {
-    return <p className="text-xs font-medium text-tis-muted">New this period</p>;
-  }
-  const up = value > 0;
-  const down = value < 0;
-  const color = up || down ? "text-emerald-600" : "text-tis-muted";
-  const arrow = up ? "↑" : down ? "↓" : "→";
   return (
-    <p className={`text-xs font-semibold leading-snug ${color}`}>
-      {arrow} {Math.abs(value)}
-      {unit}
-      <span className="mt-0.5 block font-medium text-tis-muted">{label}</span>
-    </p>
+    <div className="mt-2 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+      <span
+        className={`inline-flex shrink-0 items-center rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+          neutral
+            ? "bg-tina-subtle text-tina-muted"
+            : positive
+              ? "bg-[var(--tina-success-soft,#effbea)] text-[var(--tina-success,#00852d)]"
+              : "bg-[var(--tina-danger-soft,#ffe9ed)] text-[var(--tina-danger,#d71938)]"
+        }`}
+      >
+        {text}
+      </span>
+      <span className="truncate text-[11px] font-medium text-tina-muted">{label}</span>
+    </div>
   );
 }
 
@@ -166,7 +166,7 @@ export function StatCard({
   sparkFormat = "number",
   delta,
   deltaFormatted,
-  deltaLabel = "vs previous 30 days",
+  deltaLabel = "vs previous period",
   deltaUnit = "%",
   tipAlign = "start",
 }: {
@@ -196,58 +196,74 @@ export function StatCard({
     [sparkFormat],
   );
 
+  let deltaPill: { text: string; positive: boolean; neutral: boolean } | null = null;
+  if (deltaFormatted !== undefined) {
+    if (deltaFormatted == null) {
+      deltaPill = { text: "New", positive: false, neutral: true };
+    } else {
+      const neutral = deltaFormatted.startsWith("→");
+      const positive = deltaFormatted.startsWith("↑") || deltaFormatted.startsWith("+");
+      deltaPill = { text: deltaFormatted, positive, neutral };
+    }
+  } else if (delta !== undefined) {
+    if (delta == null) {
+      deltaPill = { text: "New", positive: false, neutral: true };
+    } else {
+      const up = delta > 0;
+      const down = delta < 0;
+      const arrow = up ? "↑" : down ? "↓" : "→";
+      deltaPill = {
+        text: `${arrow} ${Math.abs(delta)}${deltaUnit}`,
+        positive: up,
+        neutral: !up && !down,
+      };
+    }
+  }
+
   return (
-    <div
-      className={`relative z-0 flex min-h-[148px] min-w-0 flex-col justify-between overflow-visible rounded-2xl border p-4 shadow-card hover:z-30 focus-within:z-30 sm:p-5 ${theme.card}`}
-    >
-      <div className="flex items-start gap-2">
+    <div className="relative z-0 flex min-h-[132px] min-w-0 flex-col overflow-visible rounded-2xl border border-tina-border bg-white p-4 shadow-card hover:z-30 focus-within:z-30 sm:p-5">
+      <div className="flex items-start gap-3">
         <span
-          className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${theme.iconBg} ${theme.iconFg}`}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] ${theme.iconBg} ${theme.iconFg}`}
         >
-          <Icon className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+          <Icon className="h-5 w-5" strokeWidth={2} aria-hidden />
         </span>
-        <p className="min-w-0 pt-1 text-sm font-semibold text-tis-navy">{label}</p>
-        <div className="relative z-40 mt-1 shrink-0">
-          <InfoTip label={label} align={tipAlign}>
-            {definition}
-          </InfoTip>
-        </div>
-      </div>
-      <div className="mt-4 flex min-w-0 items-end justify-between gap-3">
-        <div className="min-w-0">
-          <div className="flex items-baseline gap-2">
-            <p className="font-display text-3xl font-bold tracking-tight text-tis-navy">{value}</p>
-            {detail ? <p className="text-xs text-tis-muted">{detail}</p> : null}
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <p className="min-w-0 text-sm font-medium leading-snug text-tina-secondary">{label}</p>
+            <div className="relative z-40 shrink-0">
+              <InfoTip label={label} align={tipAlign}>
+                {definition}
+              </InfoTip>
+            </div>
           </div>
-          {deltaFormatted !== undefined ? (
-            <div className="mt-1.5">
-              {deltaFormatted == null ? (
-                <p className="text-xs font-medium text-tis-muted">New this period</p>
-              ) : (
-                <p
-                  className={`text-xs font-semibold leading-snug ${
-                    deltaFormatted.startsWith("→") ? "text-tis-muted" : "text-emerald-600"
-                  }`}
-                >
-                  {deltaFormatted}
-                  <span className="mt-0.5 block font-medium text-tis-muted">{deltaLabel}</span>
-                </p>
-              )}
+          <div className="mt-1.5 flex items-end justify-between gap-3">
+            <div className="min-w-0">
+              <p className="font-display text-[28px] font-semibold leading-none tracking-tight text-tina-text sm:text-[32px]">
+                {value}
+              </p>
+              {detail ? (
+                <p className="mt-1 truncate text-xs text-tina-muted">{detail}</p>
+              ) : null}
+              {deltaPill ? (
+                <DeltaPill
+                  text={deltaPill.text}
+                  label={deltaLabel}
+                  positive={deltaPill.positive}
+                  neutral={deltaPill.neutral}
+                />
+              ) : null}
             </div>
-          ) : delta !== undefined ? (
-            <div className="mt-1.5">
-              <Delta value={delta} label={deltaLabel} unit={deltaUnit} />
-            </div>
-          ) : null}
+            {sparkline ? (
+              <BarSparkline
+                values={sparkline}
+                labels={sparklineLabels}
+                color={theme.bar}
+                valueFormatter={formatter}
+              />
+            ) : null}
+          </div>
         </div>
-        {sparkline ? (
-          <BarSparkline
-            values={sparkline}
-            labels={sparklineLabels}
-            color={theme.bar}
-            valueFormatter={formatter}
-          />
-        ) : null}
       </div>
     </div>
   );

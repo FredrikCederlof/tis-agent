@@ -305,7 +305,7 @@ export function ChatsWorkspace({
           <div
             className={
               lime
-                ? "flex flex-wrap items-center gap-2"
+                ? "flex flex-nowrap items-center gap-1.5 overflow-x-auto"
                 : "flex items-center gap-1.5 rounded-2xl bg-slate-100 p-1"
             }
           >
@@ -631,7 +631,7 @@ function SegmentButton({
       <button
         type="button"
         onClick={onClick}
-        className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+        className={`inline-flex shrink-0 items-center justify-center gap-1 rounded-xl px-2.5 py-1.5 text-[11px] font-semibold transition ${
           active
             ? "bg-tina-active text-white"
             : "bg-tina-subtle text-tina-secondary hover:text-tina-text"
@@ -686,8 +686,10 @@ export function ChatThreadDetail({
 }) {
   const router = useRouter();
   const lime = isLimeLicorice(useUiTheme());
+  /** Session details open by default; View profile opens it, panel close hides it. */
   const [showInfo, setShowInfo] = useState(true);
-  const onToggleInfo = () => setShowInfo((v) => !v);
+  const openInfo = () => setShowInfo(true);
+  const closeInfo = () => setShowInfo(false);
   const onDeleted = () => router.push("/chats");
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -825,7 +827,8 @@ export function ChatThreadDetail({
                     ? "bg-tina-active text-white"
                     : "bg-tina-subtle text-tina-text hover:bg-tina-subtle/80"
                 }`}
-                onClick={onToggleInfo}
+                onClick={openInfo}
+                aria-pressed={showInfo}
               >
                 <UserRound className="h-4 w-4" />
                 View profile
@@ -849,7 +852,7 @@ export function ChatThreadDetail({
               <Trash2 className="h-4 w-4" />
             </IconButton>
             {lime ? null : (
-              <IconButton label="Session information" active={showInfo} onClick={onToggleInfo}>
+              <IconButton label="Session information" active={showInfo} onClick={openInfo}>
                 <PanelRight className="h-4 w-4" />
               </IconButton>
             )}
@@ -947,7 +950,7 @@ export function ChatThreadDetail({
           userEmail={userEmail}
           flagging={flaggingId != null}
           lime={lime}
-          onClose={onToggleInfo}
+          onClose={closeInfo}
           onMarkNeedsAttention={(id) => void markNeedsAttention(id)}
         />
       )}
@@ -1151,7 +1154,7 @@ function Bubble({
             />
           )}
           {!isAdmin && sources.titles.length > 0 ? (
-            <SourceChip titles={sources.titles} quote={sources.quote} />
+            <SourceChip titles={sources.titles} quote={sources.quote} onLight={lime} />
           ) : null}
         </div>
       </div>

@@ -196,7 +196,7 @@ export default async function DashboardPage({
               previous.knowledgeCoveragePct,
             )}
             deltaLabel={vsPrevious}
-            deltaUnit=" percentage points"
+            deltaUnit=" pp"
           />
           <StatCard
             label="Time saved"

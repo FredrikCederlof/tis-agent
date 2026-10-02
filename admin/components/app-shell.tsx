@@ -388,7 +388,7 @@ function AppShellInner({
 
         <div
           className={`mt-3 space-y-2 border-t pt-3 ${
-            lime ? "border-tina-border" : "border-white/15"
+            lime ? "border-tina-border pb-3" : "border-white/15"
           }`}
         >
           {iconsOnly ? (

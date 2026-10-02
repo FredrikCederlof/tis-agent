@@ -10,9 +10,12 @@ type MatchedDoc = { id: string; title: string };
 export function SourceChip({
   titles,
   quote,
+  /** Soft lime Tina bubbles need dark ink; classic navy bubbles keep the light chip. */
+  onLight = false,
 }: {
   titles: string[];
   quote?: string | null;
+  onLight?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [matches, setMatches] = useState<MatchedDoc[] | null>(null);
@@ -66,7 +69,11 @@ export function SourceChip({
     <div className="relative mt-1.5" ref={rootRef}>
       <button
         type="button"
-        className="inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-left text-[11px] font-semibold text-white transition hover:bg-white/25"
+        className={
+          onLight
+            ? "inline-flex max-w-full items-center gap-1.5 rounded-full border border-tina-border bg-white px-2.5 py-1 text-left text-[11px] font-semibold text-tina-text transition hover:bg-tina-subtle"
+            : "inline-flex max-w-full items-center gap-1.5 rounded-full border border-white/25 bg-white/15 px-2.5 py-1 text-left text-[11px] font-semibold text-white transition hover:bg-white/25"
+        }
         aria-expanded={open}
         aria-controls={panelId}
         aria-label={label}
