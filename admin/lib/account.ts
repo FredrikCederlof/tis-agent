@@ -1,5 +1,7 @@
 /** Account profile helpers (INS-15). */
 
+import { DEFAULT_UI_THEME, type UiTheme } from "./themes.ts";
+
 export const AVATAR_BUCKET = "admin-avatars";
 export const AVATAR_MAX_BYTES = 10 * 1024 * 1024;
 export const AVATAR_MIME_TYPES = [
@@ -20,7 +22,12 @@ export type AdminProfile = {
   role: AdminRole;
   /** When true, Needs attention push notifications include a short question preview. Default false. */
   notify_message_previews?: boolean;
+  /** Per-user Admin UI theme. Defaults to Lime Licorice. */
+  ui_theme?: UiTheme;
 };
+
+export { DEFAULT_UI_THEME };
+export type { UiTheme };
 
 export function roleLabel(role: AdminRole | string | null | undefined): string {
   if (role === "member") return "Member";

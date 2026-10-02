@@ -1,17 +1,13 @@
+@import "./themes.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 :root {
   color-scheme: light;
-  --tis-racing: #05513d;
-  --tis-paper: #f1f1ee;
-  --tis-ink: #1a191b;
-  --tis-acid: #90ff09;
-  --tis-unread: #9b7bff;
-  --tis-blue: #4d6bff;
-  --tis-lilac: #9b7bff;
-  --tis-amber: #ffc857;
+  --tis-racing: var(--tis-navy);
+  --tis-paper: var(--tis-cream);
 }
 
 html,
@@ -22,6 +18,7 @@ body {
 
 body {
   @apply bg-tis-cream font-sans text-tis-ink antialiased;
+  font-family: var(--tis-font);
 }
 
 @layer components {

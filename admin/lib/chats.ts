@@ -322,7 +322,7 @@ export function dayLabel(iso: string): string {
 
 export type SessionFilters = {
   query: string;
-  read: "" | "unread" | "read" | "attention";
+  read: "" | "unread" | "read" | "attention" | "resolved";
   language: string;
   outcome: string;
   from: string;
@@ -338,6 +338,7 @@ export function filterSessions(
     if (read === "unread" && !row.unread) return false;
     if (read === "read" && row.unread) return false;
     if (read === "attention" && !row.needs_attention) return false;
+    if (read === "resolved" && row.needs_attention) return false;
     if (language && (row.primary_language || "") !== language) return false;
     if (outcome === "gap" && !GAP_OUTCOMES.includes((row.last_outcome || "") as (typeof GAP_OUTCOMES)[number])) {
       return false;

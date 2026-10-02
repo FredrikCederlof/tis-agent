@@ -18,7 +18,7 @@ export default async function AccountPage() {
     >
       <PageHeader
         title="Account settings"
-        subtitle="Manage your profile, password, and Needs attention alerts."
+        subtitle="Manage your profile, theme, password, and Needs attention alerts."
       />
       <AccountSettingsForm
         profile={profile}

@@ -63,12 +63,18 @@ import {
   questionCountBadge,
   replyTarget,
 } from "@/lib/chats";
+import { useUiTheme } from "@/components/theme-provider";
+import { isLimeLicorice } from "@/lib/themes";
 
-const iconButtonClass = (active?: boolean) =>
+const iconButtonClass = (active?: boolean, lime?: boolean) =>
   `inline-flex h-9 w-9 items-center justify-center rounded-xl border transition disabled:opacity-50 ${
-    active
-      ? "border-tis-navy bg-tis-mist text-tis-navy"
-      : "border-black/[0.08] bg-white text-tis-muted hover:bg-tis-mist hover:text-tis-navy"
+    lime
+      ? active
+        ? "border-tina-border bg-tina-subtle text-tina-text"
+        : "border-tina-border bg-white text-tina-muted hover:bg-tina-subtle hover:text-tina-text"
+      : active
+        ? "border-tis-navy bg-tis-mist text-tis-navy"
+        : "border-black/[0.08] bg-white text-tis-muted hover:bg-tis-mist hover:text-tis-navy"
   }`;
 
 function IconButton({
@@ -78,6 +84,7 @@ function IconButton({
   active,
   disabled,
   children,
+  lime = false,
 }: {
   label: string;
   onClick?: () => void;
@@ -85,6 +92,7 @@ function IconButton({
   active?: boolean;
   disabled?: boolean;
   children: React.ReactNode;
+  lime?: boolean;
 }) {
   if (href && !disabled) {
     return (
@@ -92,7 +100,7 @@ function IconButton({
         href={href}
         aria-label={label}
         title={label}
-        className={iconButtonClass(active)}
+        className={iconButtonClass(active, lime)}
       >
         {children}
       </Link>
@@ -106,7 +114,7 @@ function IconButton({
       aria-pressed={active}
       disabled={disabled}
       onClick={onClick}
-      className={iconButtonClass(active)}
+      className={iconButtonClass(active, lime)}
     >
       {children}
     </button>
@@ -132,6 +140,7 @@ export function ChatsWorkspace({
   children?: React.ReactNode;
 }) {
   const router = useRouter();
+  const lime = isLimeLicorice(useUiTheme());
   const [filters, setFilters] = useState<SessionFilters>({
     query: "",
     read: "",
@@ -161,6 +170,10 @@ export function ChatsWorkspace({
   const unreadTotal = useMemo(() => sessions.filter((row) => row.unread).length, [sessions]);
   const attentionTotal = useMemo(
     () => sessions.filter((row) => row.needs_attention).length,
+    [sessions],
+  );
+  const resolvedTotal = useMemo(
+    () => sessions.filter((row) => !row.needs_attention).length,
     [sessions],
   );
 
@@ -232,63 +245,126 @@ export function ChatsWorkspace({
   }
 
   return (
-    <div className="grid h-full min-h-0 flex-1 overflow-hidden rounded-2xl border border-black/[0.06] bg-white shadow-card lg:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
+    <div
+      className={`grid h-full min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(320px,420px)_minmax(0,1fr)] ${
+        lime
+          ? "gap-2.5 bg-transparent"
+          : "rounded-2xl border border-black/[0.06] bg-white shadow-card"
+      }`}
+    >
       <aside
-        className={`flex min-h-0 flex-col border-slate-100 bg-slate-50 lg:border-r ${
-          selectedId ? "hidden lg:flex" : "flex"
-        }`}
+        className={`flex min-h-0 flex-col ${
+          lime
+            ? "rounded-pane border border-tina-border bg-white"
+            : "border-slate-100 bg-slate-50 lg:border-r"
+        } ${selectedId ? "hidden lg:flex" : "flex"}`}
       >
         <div className="space-y-3 p-4">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              className="!rounded-2xl !bg-slate-50 !pl-9"
-              value={filters.query}
-              onChange={(e) => setFilter("query", e.target.value)}
-              placeholder="Search"
-            />
+          {lime ? (
+            <div>
+              <h1 className="text-[28px] font-semibold leading-tight tracking-tight text-tina-text">
+                Chats
+              </h1>
+              <p className="mt-1 text-sm text-tina-muted">
+                WhatsApp sessions with Tina. A new session starts after 10 minutes of silence.
+              </p>
+            </div>
+          ) : null}
+          <div className="relative flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                className={
+                  lime
+                    ? "!rounded-xl !border-transparent !bg-tina-subtle !pl-9 !shadow-none focus:!ring-tina-active/15"
+                    : "!rounded-2xl !bg-slate-50 !pl-9"
+                }
+                value={filters.query}
+                onChange={(e) => setFilter("query", e.target.value)}
+                placeholder={lime ? "Search conversations..." : "Search"}
+              />
+            </div>
+            {lime ? (
+              <button
+                type="button"
+                className={`inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl transition ${
+                  advancedOn || showFilters
+                    ? "bg-tina-active text-white"
+                    : "bg-tina-subtle text-tina-secondary hover:text-tina-text"
+                }`}
+                aria-label="Filters"
+                aria-expanded={showFilters}
+                onClick={() => setShowFilters((v) => !v)}
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </button>
+            ) : null}
           </div>
 
-          <div className="flex items-center gap-1.5 rounded-2xl bg-slate-100 p-1">
+          <div
+            className={
+              lime
+                ? "flex flex-wrap items-center gap-2"
+                : "flex items-center gap-1.5 rounded-2xl bg-slate-100 p-1"
+            }
+          >
             <SegmentButton
               label="All"
               count={sessions.length}
               active={filters.read === ""}
+              lime={lime}
               onClick={() => setFilter("read", "")}
             />
             <SegmentButton
               label="Unread"
               count={unreadTotal}
               active={filters.read === "unread"}
+              lime={lime}
               onClick={() => setFilter("read", "unread")}
             />
             <SegmentButton
-              label="Attention"
+              label={lime ? "Needs attention" : "Attention"}
               count={attentionTotal}
               tone="amber"
               active={filters.read === "attention"}
+              lime={lime}
               onClick={() => setFilter("read", "attention")}
             />
+            {lime ? (
+              <SegmentButton
+                label="Resolved"
+                count={resolvedTotal}
+                active={filters.read === "resolved"}
+                lime={lime}
+                onClick={() => setFilter("read", "resolved")}
+              />
+            ) : null}
           </div>
 
           <div className="flex items-center justify-between">
-            <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+            <p
+              className={`text-[11px] font-bold uppercase tracking-[0.14em] ${
+                lime ? "text-tina-muted" : "text-slate-400"
+              }`}
+            >
               Conversations
             </p>
-            <button
-              type="button"
-              className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-bold transition ${
-                advancedOn || showFilters
-                  ? "bg-tis-mist text-tis-navy"
-                  : "text-tis-muted hover:bg-slate-50 hover:text-tis-navy"
-              }`}
-              aria-expanded={showFilters}
-              onClick={() => setShowFilters((v) => !v)}
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5" />
-              Filters{advancedOn ? " · on" : ""}
-            </button>
+            {lime ? null : (
+              <button
+                type="button"
+                className={`inline-flex items-center gap-1.5 rounded-lg px-2 py-1 text-[11px] font-bold transition ${
+                  advancedOn || showFilters
+                    ? "bg-tis-mist text-tis-navy"
+                    : "text-tis-muted hover:bg-slate-50 hover:text-tis-navy"
+                }`}
+                aria-expanded={showFilters}
+                onClick={() => setShowFilters((v) => !v)}
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                Filters{advancedOn ? " · on" : ""}
+              </button>
+            )}
           </div>
 
           {showFilters && (
@@ -351,7 +427,7 @@ export function ChatsWorkspace({
         ) : filtered.length === 0 ? (
           <p className="px-4 pb-4 text-sm text-tis-muted">No sessions match these filters.</p>
         ) : (
-          <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto px-3 pb-2">
+          <ul className={`min-h-0 flex-1 overflow-y-auto px-3 pb-2 ${lime ? "space-y-1" : "space-y-2"}`}>
             {visible.map((row) => {
               const active = row.id === selectedId;
               const questions = questionCountBadge(row.message_count);
@@ -359,13 +435,23 @@ export function ChatsWorkspace({
               return (
                 <li key={row.id}>
                   <div
-                    className={`flex items-start gap-1 rounded-2xl border shadow-sm transition ${
-                      row.needs_attention && !active
-                        ? "border-amber-200/80 bg-amber-50/50 hover:bg-amber-50/70"
-                        : active
-                          ? "border-tis-navy/20 bg-tis-mist"
-                          : "border-black/[0.06] bg-white hover:bg-white"
-                    } ${row.needs_attention && active ? "ring-1 ring-amber-300/70" : ""}`}
+                    className={`flex items-start gap-1 transition ${
+                      lime
+                        ? `rounded-2xl ${
+                            active
+                              ? "bg-tina-subtle"
+                              : row.needs_attention
+                                ? "bg-amber-50/60 hover:bg-amber-50"
+                                : "hover:bg-tina-subtle/70"
+                          }`
+                        : `rounded-2xl border shadow-sm ${
+                            row.needs_attention && !active
+                              ? "border-amber-200/80 bg-amber-50/50 hover:bg-amber-50/70"
+                              : active
+                                ? "border-tis-navy/20 bg-tis-mist"
+                                : "border-black/[0.06] bg-white hover:bg-white"
+                          } ${row.needs_attention && active ? "ring-1 ring-amber-300/70" : ""}`
+                    }`}
                   >
                     <label
                       className="flex cursor-pointer items-start px-2.5 pt-4"
@@ -383,30 +469,40 @@ export function ChatsWorkspace({
                       href={`/chats/${row.id}`}
                       className="relative flex min-w-0 flex-1 items-start gap-3 py-3 pr-3"
                     >
-                      {row.unread && (
+                      {row.unread && !lime && (
                         <span
                           className="absolute left-0 top-1/2 h-1.5 w-1.5 -translate-x-1 -translate-y-1/2 rounded-full bg-tis-unread"
                           aria-label="Unread"
                         />
                       )}
-                      <ParentAvatar waFrom={row.wa_from} size={40} />
+                      <ParentAvatar waFrom={row.wa_from} size={lime ? 44 : 40} />
                       <div className="min-w-0 flex-1">
                         <div className="flex items-baseline justify-between gap-2">
                           <p
-                            className={`truncate text-sm text-tis-navy ${
-                              row.unread ? "font-bold" : "font-semibold"
-                            }`}
+                            className={`truncate text-sm ${
+                              lime ? "text-tina-text" : "text-tis-navy"
+                            } ${row.unread ? "font-bold" : "font-semibold"}`}
                           >
                             {parentLabel(row.wa_from)}
                           </p>
-                          <span className="shrink-0 text-[11px] text-slate-400">
+                          <span
+                            className={`shrink-0 text-[11px] ${
+                              lime ? "text-tina-muted" : "text-slate-400"
+                            }`}
+                          >
                             {formatRelativeTime(row.last_message_at)}
                           </span>
                         </div>
                         <div className="mt-0.5 flex items-center gap-2">
                           <p
                             className={`min-w-0 flex-1 truncate text-[13px] ${
-                              row.unread ? "font-medium text-tis-ink" : "text-tis-muted"
+                              row.unread
+                                ? lime
+                                  ? "font-medium text-tina-text"
+                                  : "font-medium text-tis-ink"
+                                : lime
+                                  ? "text-tina-muted"
+                                  : "text-tis-muted"
                             }`}
                           >
                             {row.last_question
@@ -414,15 +510,27 @@ export function ChatsWorkspace({
                               : "No messages"}
                           </p>
                           {questions != null ? (
-                            <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-tis-unread px-1.5 text-[10px] font-bold text-white">
+                            <span
+                              className={`inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${
+                                lime
+                                  ? "bg-tis-lime text-tis-on-lime"
+                                  : "bg-tis-unread text-white"
+                              }`}
+                            >
                               {questions}
                             </span>
                           ) : null}
                         </div>
                         <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-                          <LanguageBadge language={row.primary_language} size="sm" />
+                          {lime ? null : (
+                            <LanguageBadge language={row.primary_language} size="sm" />
+                          )}
                           {row.needs_attention ? (
-                            <AttentionBadge count={row.needs_attention_count} size="sm" />
+                            lime ? (
+                              <span className="inline-flex h-2 w-2 rounded-full bg-tis-danger" aria-label="Needs attention" />
+                            ) : (
+                              <AttentionBadge count={row.needs_attention_count} size="sm" />
+                            )
                           ) : null}
                         </div>
                       </div>
@@ -484,9 +592,17 @@ export function ChatsWorkspace({
         )}
       </aside>
 
-      <section className={`${selectedId ? "flex" : "hidden lg:flex"} min-h-0 min-w-0 flex-col`}>
+      <section
+        className={`${selectedId ? "flex" : "hidden lg:flex"} min-h-0 min-w-0 flex-col ${
+          lime ? "overflow-hidden rounded-pane border border-tina-border bg-white" : ""
+        }`}
+      >
         {children ?? (
-          <div className="flex flex-1 items-center justify-center p-8 text-center text-sm text-tis-muted">
+          <div
+            className={`flex flex-1 items-center justify-center p-8 text-center text-sm ${
+              lime ? "text-tina-muted" : "text-tis-muted"
+            }`}
+          >
             Select a session to read the parent ↔ Tina conversation.
           </div>
         )}
@@ -500,14 +616,38 @@ function SegmentButton({
   count,
   active,
   tone = "sky",
+  lime = false,
   onClick,
 }: {
   label: string;
   count: number;
   active: boolean;
   tone?: "sky" | "amber";
+  lime?: boolean;
   onClick: () => void;
 }) {
+  if (lime) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className={`inline-flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold transition ${
+          active
+            ? "bg-tina-active text-white"
+            : "bg-tina-subtle text-tina-secondary hover:text-tina-text"
+        }`}
+      >
+        {label}
+        <span
+          className={`inline-flex min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-bold ${
+            active ? "bg-tis-lime text-tis-on-lime" : "bg-white text-tina-muted"
+          }`}
+        >
+          {count}
+        </span>
+      </button>
+    );
+  }
   const badge = active
     ? tone === "amber" && count > 0
       ? "bg-tis-amber text-tis-ink"
@@ -545,6 +685,7 @@ export function ChatThreadDetail({
   threadError?: string | null;
 }) {
   const router = useRouter();
+  const lime = isLimeLicorice(useUiTheme());
   const [showInfo, setShowInfo] = useState(true);
   const onToggleInfo = () => setShowInfo((v) => !v);
   const onDeleted = () => router.push("/chats");
@@ -635,7 +776,11 @@ export function ChatThreadDetail({
   return (
     <div className={`grid min-h-0 flex-1 ${showInfo ? "lg:grid-cols-[1fr_auto]" : ""}`}>
       <div className="flex min-h-0 min-w-0 flex-col">
-        <header className="flex items-center justify-between gap-3 border-b border-slate-100 px-4 py-3 sm:px-5">
+        <header
+          className={`flex items-center justify-between gap-3 px-4 py-3 sm:px-5 ${
+            lime ? "border-b border-tina-border" : "border-b border-slate-100"
+          }`}
+        >
           <div className="flex min-w-0 items-center gap-3">
             <Link
               href="/chats"
@@ -644,10 +789,20 @@ export function ChatThreadDetail({
             >
               <ChevronLeft className="h-4 w-4" />
             </Link>
-            <ParentAvatar waFrom={session.wa_from} />
+            <ParentAvatar waFrom={session.wa_from} size={lime ? 48 : 40} />
             <div className="min-w-0">
-              <p className="truncate font-bold text-tis-navy">{parentLabel(session.wa_from)}</p>
-              <div className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-tis-muted">
+              <p
+                className={`truncate font-bold ${
+                  lime ? "text-[20px] font-semibold text-tina-text" : "text-tis-navy"
+                }`}
+              >
+                {parentLabel(session.wa_from)}
+              </p>
+              <div
+                className={`mt-0.5 flex flex-wrap items-center gap-1.5 text-xs ${
+                  lime ? "text-tina-muted" : "text-tis-muted"
+                }`}
+              >
                 <span>
                   {session.message_count} question{session.message_count === 1 ? "" : "s"}
                 </span>
@@ -662,20 +817,42 @@ export function ChatThreadDetail({
                 <AttentionBadge count={session.needs_attention_count} />
               </span>
             )}
+            {lime ? (
+              <button
+                type="button"
+                className={`inline-flex h-10 items-center gap-2 rounded-xl px-3.5 text-sm font-semibold transition ${
+                  showInfo
+                    ? "bg-tina-active text-white"
+                    : "bg-tina-subtle text-tina-text hover:bg-tina-subtle/80"
+                }`}
+                onClick={onToggleInfo}
+              >
+                <UserRound className="h-4 w-4" />
+                View profile
+              </button>
+            ) : null}
             {target && isKnowledgeCandidateQuestion(target.question) ? (
               <IconButton
                 label="Add to Knowledge Hub"
                 href={knowledgeHubUrl(target.id)}
+                lime={lime}
               >
                 <BookOpen className="h-4 w-4" />
               </IconButton>
             ) : null}
-            <IconButton label="Delete session" disabled={deleting} onClick={() => void onDelete()}>
+            <IconButton
+              label="Delete session"
+              disabled={deleting}
+              onClick={() => void onDelete()}
+              lime={lime}
+            >
               <Trash2 className="h-4 w-4" />
             </IconButton>
-            <IconButton label="Session information" active={showInfo} onClick={onToggleInfo}>
-              <PanelRight className="h-4 w-4" />
-            </IconButton>
+            {lime ? null : (
+              <IconButton label="Session information" active={showInfo} onClick={onToggleInfo}>
+                <PanelRight className="h-4 w-4" />
+              </IconButton>
+            )}
           </div>
         </header>
 
@@ -685,19 +862,29 @@ export function ChatThreadDetail({
           </p>
         )}
 
-        <div className="min-h-0 flex-1 space-y-4 overflow-y-auto bg-tis-cream/60 px-4 py-5 sm:px-6">
+        <div
+          className={`min-h-0 flex-1 space-y-4 overflow-y-auto px-4 py-5 sm:px-6 ${
+            lime ? "bg-tina-workspace/40" : "bg-tis-cream/60"
+          }`}
+        >
           {timeline.length === 0 ? (
-            <p className="text-sm text-tis-muted">No messages in this session.</p>
+            <p className={`text-sm ${lime ? "text-tina-muted" : "text-tis-muted"}`}>
+              No messages in this session.
+            </p>
           ) : (
             timeline.map((message, index) => (
               <div key={message.id} className="space-y-4">
                 {(index === 0 || dayLabel(timeline[index - 1].at) !== dayLabel(message.at)) && (
                   <div className="flex items-center gap-3">
-                    <span className="h-px flex-1 bg-slate-200" />
-                    <span className="text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                    <span className={`h-px flex-1 ${lime ? "bg-tina-border" : "bg-slate-200"}`} />
+                    <span
+                      className={`text-[11px] font-bold uppercase tracking-wide ${
+                        lime ? "text-tina-muted" : "text-slate-400"
+                      }`}
+                    >
                       {dayLabel(message.at)}
                     </span>
-                    <span className="h-px flex-1 bg-slate-200" />
+                    <span className={`h-px flex-1 ${lime ? "bg-tina-border" : "bg-slate-200"}`} />
                   </div>
                 )}
                 <Bubble
@@ -715,6 +902,7 @@ export function ChatThreadDetail({
                       : null
                   }
                   lastInboundAt={lastInboundAt}
+                  lime={lime}
                   onToggleMenu={() =>
                     setMenuId((current) => (current === message.id ? null : message.id))
                   }
@@ -729,7 +917,11 @@ export function ChatThreadDetail({
           )}
         </div>
 
-        <footer className="border-t border-slate-100 bg-white px-4 py-2.5 sm:px-5">
+        <footer
+          className={`bg-white px-4 py-2.5 sm:px-5 ${
+            lime ? "border-t border-tina-border" : "border-t border-slate-100"
+          }`}
+        >
           {target ? (
             <div className="flex items-center justify-between gap-3">
               <p className="min-w-0 truncate text-xs text-tis-muted">
@@ -754,6 +946,7 @@ export function ChatThreadDetail({
           parentStats={parentStats}
           userEmail={userEmail}
           flagging={flaggingId != null}
+          lime={lime}
           onClose={onToggleInfo}
           onMarkNeedsAttention={(id) => void markNeedsAttention(id)}
         />
@@ -771,6 +964,7 @@ function Bubble({
   isReplyTarget,
   replyTarget: target,
   lastInboundAt,
+  lime = false,
   onToggleMenu,
   onMarkNeedsAttention,
 }: {
@@ -782,6 +976,7 @@ function Bubble({
   isReplyTarget?: boolean;
   replyTarget?: ChatInteraction | null;
   lastInboundAt?: string | null;
+  lime?: boolean;
   onToggleMenu: () => void;
   onMarkNeedsAttention?: () => void;
 }) {
@@ -796,8 +991,14 @@ function Bubble({
         <ParentAvatar waFrom={waFrom} size={32} />
         <div className="min-w-0 max-w-[85%] sm:max-w-[68%]">
           <div className="mb-1 flex flex-wrap items-center gap-2">
-            <span className="text-[13px] font-bold text-tis-navy">Parent</span>
-            <span className="text-[11px] text-slate-400">{timeOnly(message.at)}</span>
+            <span
+              className={`text-[13px] font-bold ${lime ? "text-tina-text" : "text-tis-navy"}`}
+            >
+              Parent
+            </span>
+            <span className={`text-[11px] ${lime ? "text-tina-muted" : "text-slate-400"}`}>
+              {timeOnly(message.at)}
+            </span>
             {message.needsAttention && message.outcome ? (
               <OutcomeBadge outcome={message.outcome} size="sm" />
             ) : message.needsAttention ? (
@@ -806,7 +1007,11 @@ function Bubble({
             <div className="relative">
               <button
                 type="button"
-                className="rounded p-0.5 text-slate-400 hover:bg-slate-200/70 hover:text-tis-navy"
+                className={`rounded p-0.5 ${
+                  lime
+                    ? "text-tina-muted hover:bg-tina-subtle hover:text-tina-text"
+                    : "text-slate-400 hover:bg-slate-200/70 hover:text-tis-navy"
+                }`}
                 aria-label="Parent message actions"
                 aria-expanded={menuOpen}
                 onClick={onToggleMenu}
@@ -841,7 +1046,13 @@ function Bubble({
               )}
             </div>
           </div>
-          <div className="rounded-2xl rounded-tl-md border border-slate-200/70 bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm">
+          <div
+            className={`rounded-2xl px-3.5 py-2.5 text-sm shadow-sm ${
+              lime
+                ? "rounded-2xl bg-tina-subtle text-tina-text"
+                : "rounded-tl-md border border-slate-200/70 bg-white text-tis-ink"
+            }`}
+          >
             <AdminEnglishText
               text={message.text}
               language={language}
@@ -853,15 +1064,26 @@ function Bubble({
             <div className="mt-2 space-y-2">
               <button
                 type="button"
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-2.5 text-[13px] font-bold text-emerald-950 transition hover:bg-emerald-50"
+                className={`flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-bold transition ${
+                  lime
+                    ? "bg-tis-lime text-tis-on-lime hover:brightness-95"
+                    : "border border-emerald-200 bg-emerald-50/70 text-emerald-950 hover:bg-emerald-50"
+                }`}
                 aria-expanded={answerOpen}
                 onClick={() => setAnswerOpen((v) => !v)}
               >
-                <MessageSquareReply className="h-4 w-4 text-emerald-700" aria-hidden />
+                <MessageSquareReply
+                  className={`h-4 w-4 ${lime ? "text-tis-on-lime" : "text-emerald-700"}`}
+                  aria-hidden
+                />
                 {answerOpen ? "Hide answer" : "Answer"}
               </button>
               {answerOpen ? (
-                <div className="rounded-2xl border border-slate-200 bg-white p-3">
+                <div
+                  className={`rounded-2xl border bg-white p-3 ${
+                    lime ? "border-tina-border" : "border-slate-200"
+                  }`}
+                >
                   <ReplyComposer
                     interactionId={target.id}
                     question={target.question}
@@ -893,8 +1115,10 @@ function Bubble({
     <div className="flex items-start justify-end gap-2.5">
       <div className="min-w-0 max-w-[85%] sm:max-w-[68%]">
         <div className="mb-1 flex items-center justify-end gap-2">
-          <span className="text-[11px] text-slate-400">{timeOnly(message.at)}</span>
-          <span className="text-[13px] font-bold text-tis-navy">
+          <span className={`text-[11px] ${lime ? "text-tina-muted" : "text-slate-400"}`}>
+            {timeOnly(message.at)}
+          </span>
+          <span className={`text-[13px] font-bold ${lime ? "text-tina-text" : "text-tis-navy"}`}>
             {isAdmin ? adminName : "Tina"}
           </span>
           {failed && (
@@ -904,12 +1128,16 @@ function Bubble({
           )}
         </div>
         <div
-          className={`rounded-2xl rounded-tr-md px-3.5 py-2.5 text-sm ${
+          className={`rounded-2xl px-3.5 py-2.5 text-sm ${
             failed
               ? "border border-rose-200 bg-rose-50 text-rose-900"
-              : isAdmin
-                ? "bg-tis-blue text-white"
-                : "bg-tis-navy text-white"
+              : lime
+                ? isAdmin
+                  ? "bg-tis-blue text-white"
+                  : "bg-tis-lime-soft text-tina-text"
+                : isAdmin
+                  ? "rounded-tr-md bg-tis-blue text-white"
+                  : "rounded-tr-md bg-tis-navy text-white"
           }`}
         >
           {isAdmin ? (
@@ -955,6 +1183,7 @@ function InfoPanel({
   parentStats,
   userEmail,
   flagging,
+  lime = false,
   onClose,
   onMarkNeedsAttention,
 }: {
@@ -964,6 +1193,7 @@ function InfoPanel({
   parentStats: ParentHistoryStats;
   userEmail: string;
   flagging: boolean;
+  lime?: boolean;
   onClose: () => void;
   onMarkNeedsAttention: (interactionId: string) => void;
 }) {
@@ -982,17 +1212,37 @@ function InfoPanel({
   }`;
 
   return (
-    <aside className="w-full min-h-0 overflow-y-auto border-t border-slate-100 bg-white p-4 lg:w-[300px] lg:border-l lg:border-t-0">
+    <aside
+      className={`w-full min-h-0 overflow-y-auto bg-white p-4 lg:w-[300px] lg:border-t-0 ${
+        lime
+          ? "border-t border-tina-border lg:border-l"
+          : "border-t border-slate-100 lg:border-l"
+      }`}
+    >
       <div className="mb-4 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h2 className="text-[15px] font-bold tracking-tight text-tis-navy">Session details</h2>
-          <p className="mt-0.5 text-[12px] leading-snug text-tis-muted">
+          <h2
+            className={`text-[15px] font-bold tracking-tight ${
+              lime ? "text-tina-text" : "text-tis-navy"
+            }`}
+          >
+            Session details
+          </h2>
+          <p
+            className={`mt-0.5 text-[12px] leading-snug ${
+              lime ? "text-tina-muted" : "text-tis-muted"
+            }`}
+          >
             Overview of this parent&apos;s conversation
           </p>
         </div>
         <button
           type="button"
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-tis-navy"
+          className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition ${
+            lime
+              ? "text-tina-muted hover:bg-tina-subtle hover:text-tina-text"
+              : "text-slate-400 hover:bg-slate-100 hover:text-tis-navy"
+          }`}
           aria-label="Close session details"
           onClick={onClose}
         >
@@ -1000,19 +1250,37 @@ function InfoPanel({
         </button>
       </div>
 
-      <div className="rounded-2xl border border-slate-200/80 bg-white p-3 shadow-sm">
+      <div
+        className={`rounded-2xl p-3 shadow-sm ${
+          lime
+            ? "border border-tina-border bg-tina-subtle/60"
+            : "border border-slate-200/80 bg-white"
+        }`}
+      >
         <div className="flex items-center gap-3">
           <ParentAvatar waFrom={session.wa_from} size={48} />
           <div className="min-w-0">
-            <p className="truncate text-[14px] font-bold text-tis-navy">
+            <p
+              className={`truncate text-[14px] font-bold ${
+                lime ? "text-tina-text" : "text-tis-navy"
+              }`}
+            >
               {parentLabel(session.wa_from)}
             </p>
-            <p className="text-[12px] text-tis-muted">WhatsApp parent</p>
+            <p className={`text-[12px] ${lime ? "text-tina-muted" : "text-tis-muted"}`}>
+              WhatsApp parent
+            </p>
           </div>
         </div>
         <div className="mt-3 flex flex-wrap items-center gap-1.5">
           <LanguageBadge language={session.primary_language} size="sm" />
-          <span className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-tis-navy">
+          <span
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+              lime
+                ? "bg-white text-tina-text ring-1 ring-tina-border"
+                : "border border-slate-200 bg-slate-50 text-tis-navy"
+            }`}
+          >
             {questionLabel}
           </span>
         </div>
@@ -1143,7 +1411,9 @@ function Section({
   return (
     <div
       className={`overflow-hidden rounded-xl border transition ${
-        open ? "border-slate-200 bg-white shadow-sm" : "border-transparent bg-slate-50"
+        open
+          ? "border-tina-border bg-white shadow-sm"
+          : "border-transparent bg-tina-subtle"
       }`}
     >
       <button
@@ -1152,23 +1422,23 @@ function Section({
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
       >
-        <Icon className="h-4 w-4 shrink-0 text-slate-500" aria-hidden />
+        <Icon className="h-4 w-4 shrink-0 text-tina-muted" aria-hidden />
         <span className="min-w-0 flex-1 truncate text-[13px] font-bold text-tis-navy">
           {title}
         </span>
         {count != null ? (
-          <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-white px-1.5 text-[10px] font-bold tabular-nums text-tis-navy ring-1 ring-slate-200">
+          <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-white px-1.5 text-[10px] font-bold tabular-nums text-tis-navy ring-1 ring-tina-border">
             {count}
           </span>
         ) : null}
         {open ? (
-          <ChevronUp className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+          <ChevronUp className="h-4 w-4 shrink-0 text-tina-muted" aria-hidden />
         ) : (
-          <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" aria-hidden />
+          <ChevronRight className="h-4 w-4 shrink-0 text-tina-muted" aria-hidden />
         )}
       </button>
       {open ? (
-        <div className="divide-y divide-slate-100 border-t border-slate-100 px-3 pb-1.5 pt-0.5">
+        <div className="divide-y divide-tina-border border-t border-tina-border px-3 pb-1.5 pt-0.5">
           {children}
         </div>
       ) : null}
