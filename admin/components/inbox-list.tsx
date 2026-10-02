@@ -97,7 +97,7 @@ export function InboxList({
                   />
                 </div>
                 {row.reply && (
-                  <div className="mt-2 text-sm text-tis-muted">
+                  <div className="mt-2 text-sm text-tis-navy">
                     <AdminEnglishText
                       text={row.reply}
                       language={row.language}
@@ -113,15 +113,13 @@ export function InboxList({
                     />
                   </div>
                 )}
-                <dl className="mt-3 grid gap-1 text-xs text-slate-500 sm:grid-cols-2">
+                <dl className="mt-3 grid gap-1 text-xs text-tis-navy/70 sm:grid-cols-2">
                   <div>
-                    <dt className="inline font-semibold text-slate-600">Top similarity: </dt>
-                    <dd className="inline">
-                      {row.top_similarity != null ? row.top_similarity.toFixed(3) : "—"}
-                    </dd>
+                    <dt className="inline font-semibold text-tis-navy">Top similarity: </dt>
+                    <dd className="inline">{row.top_similarity != null ? row.top_similarity.toFixed(3) : "—"}</dd>
                   </div>
                   <div>
-                    <dt className="inline font-semibold text-slate-600">When: </dt>
+                    <dt className="inline font-semibold text-tis-navy">When: </dt>
                     <dd className="inline">{new Date(row.created_at).toLocaleString()}</dd>
                   </div>
                 </dl>

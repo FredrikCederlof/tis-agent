@@ -1154,7 +1154,7 @@ function Bubble({
             />
           )}
           {!isAdmin && sources.titles.length > 0 ? (
-            <SourceChip titles={sources.titles} quote={sources.quote} />
+            <SourceChip titles={sources.titles} quote={sources.quote} onLight={lime} />
           ) : null}
         </div>
       </div>
