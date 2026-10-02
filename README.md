@@ -46,6 +46,7 @@ Always-on hosting so Meta has a stable Callback URL (no cloudflared churn).
 3. Set env vars from `.env.example` (at least `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`, `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_VERIFY_TOKEN`).
 4. Generate a Railway public domain; Callback URL = `https://YOUR_RAILWAY_HOST/webhook`.
 5. In Meta → WhatsApp → Configuration: paste that URL, verify token = `WHATSAPP_VERIFY_TOKEN`, subscribe to `messages`.
+6. Optional Slack chat mirrors: create Slack Incoming Webhooks for `#tina-parent-questions` and `#tina-needs-attention`, then set `SLACK_WEBHOOK_PARENT_QUESTIONS` and `SLACK_WEBHOOK_NEEDS_ATTENTION` on the Railway WhatsApp service (never commit the URLs). Every WhatsApp Q&A posts to parent-questions; gap outcomes (`no_evidence` / `low_confidence`) also post to needs-attention.
 
 Nightly Drive → Supabase sync stays on Cursor Cloud Agents (`AGENTS.md`), not on Railway.
 

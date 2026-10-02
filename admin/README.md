@@ -49,6 +49,8 @@ On **Railway** (WhatsApp + admin sync API), also set:
 - `TIS_PORTAL_USERNAME` and `TIS_PORTAL_PASSWORD` so TIS Times can sync from the login-gated parent portal.
 - `TINA_ADMIN_URL` (Vercel admin origin, e.g. `https://admin-lac-zeta.vercel.app`) so gap outcomes can trigger Web Push via `/api/push/notify`.
 - `ADMIN_SYNC_SECRET` (same value as Vercel).
+- `SLACK_WEBHOOK_PARENT_QUESTIONS` — Slack Incoming Webhook URL for `#tina-parent-questions` (every WhatsApp Q&A).
+- `SLACK_WEBHOOK_NEEDS_ATTENTION` — Slack Incoming Webhook URL for `#tina-needs-attention` (auto gaps: `no_evidence` / `low_confidence`). Create a separate Incoming Webhook per channel; never commit the URLs.
 
 For automatic updates, add a **second Railway service** with cron `30 18 * * 2,5` (Wed/Sat 03:30 JST) and start command `python -m tis_agent sync web`. See root `AGENTS.md`.
 

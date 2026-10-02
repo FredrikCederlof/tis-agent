@@ -407,6 +407,20 @@ def _reply_to_inbound(
             wa_message_id=wa_message_id,
             settings=app_settings,
         )
+        try:
+            from tis_agent.slack_notify import notify_slack_interaction
+
+            notify_slack_interaction(
+                wa_from=sender,
+                question=text,
+                reply=result.reply,
+                outcome=result.outcome,
+                language=result.language,
+                session_id=session_id,
+                wa_message_id=wa_message_id,
+            )
+        except Exception:
+            logger.exception("Slack notify hook failed for %s", sender)
     except Exception:
         logger.exception("Failed to log interaction for %s", sender)
 

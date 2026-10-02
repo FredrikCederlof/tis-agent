@@ -76,3 +76,4 @@ WhatsApp test preview via Meta Cloud API test number.
 - Production-style hosting: Railway (stable HTTPS for Meta). Local cloudflared only for ad-hoc debug.
 - Nightly Drive sync remains on Cursor Cloud Agents, not Railway.
 - No parent-facing web app
+- **Slack chat mirrors:** every WhatsApp Q&A posts to `#tina-parent-questions` via Incoming Webhook `SLACK_WEBHOOK_PARENT_QUESTIONS`. Auto gaps (`no_evidence` / `low_confidence`) also post to `#tina-needs-attention` via `SLACK_WEBHOOK_NEEDS_ATTENTION`. One webhook URL per channel; set only on Railway (never commit). Empty env = skip. Fire-and-forget — never blocks WhatsApp.
