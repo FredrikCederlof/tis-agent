@@ -118,6 +118,11 @@ def test_format_includes_question_reply_mask_outcome() -> None:
     assert "/chats/sess-1" in blocks_blob
     assert payload["blocks"][-1]["type"] == "actions"
     assert payload["blocks"][-1]["elements"][0]["url"].endswith("/chats/sess-1")
+    assert payload["blocks"][-1]["elements"][0]["text"]["text"] == "Open Message"
+    # No duplicate markdown link in the meta section.
+    meta_blob = payload["blocks"][-2]["text"]["text"]
+    assert "Open Message" not in meta_blob
+    assert "<http" not in meta_blob
 
 
 def test_format_needs_attention_deep_link_fallback(

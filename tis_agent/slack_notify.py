@@ -187,9 +187,7 @@ def format_slack_payload(
     reply_text = _truncate(reply or "")
     question_text = question or ""
     link = admin_deep_link(session_id=session_id, needs_attention=needs_attention)
-    button_label = (deep_link_label or (
-        "Open in Needs attention" if needs_attention else "Open chat in Tina Admin"
-    ))[:75]
+    button_label = (deep_link_label or "Open Message")[:75]
 
     meta_lines = [
         f"*When:* {when_label}",
@@ -205,7 +203,6 @@ def format_slack_payload(
         meta_lines.append(f"*Window closes:* {expires_label}")
     if extra_meta:
         meta_lines.extend(extra_meta)
-    meta_lines.append(f"<{link}|{button_label}>")
 
     fallback = (
         f"{title}\n"
@@ -359,7 +356,6 @@ def notify_needs_attention(
                 remaining_seconds=rem,
                 expires_at=exp,
                 needs_attention=True,
-                deep_link_label="Open in Tina Admin",
             )
             _post_webhook(url, payload, label="needs_attention")
         except urllib.error.HTTPError as exc:
@@ -404,7 +400,6 @@ def notify_window_reminder(
         remaining_seconds=remaining_seconds,
         expires_at=expires_at,
         needs_attention=True,
-        deep_link_label="Open chat before window closes",
         extra_meta=[f"*Reminder:* `{milestone}` before WhatsApp free-form replies close"],
     )
     _post_async(
