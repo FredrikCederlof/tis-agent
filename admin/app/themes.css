@@ -44,6 +44,19 @@
   --tina-lime: #90ff09;
   --tina-on-lime: #1a191b;
   --tina-lime-soft: #e7f3ec;
+  --tina-danger: #d64545;
+  --tina-danger-soft: #ffe9ed;
+  --tina-warning: #8a6500;
+  --tina-warning-soft: #fff0d2;
+  --tina-chart-green: #2b725b;
+  --tina-chart-blue: #6096f8;
+  --tina-chart-purple: #9170ff;
+  --tina-chart-amber: #ffc75e;
+  --tina-chart-neutral: #c9ced8;
+  --tina-icon-green-bg: #ecfbdd;
+  --tina-icon-blue-bg: #e7efff;
+  --tina-icon-purple-bg: #eee8ff;
+  --tina-icon-amber-bg: #fff3dd;
 }
 
 [data-theme="lime_licorice"] {
@@ -91,6 +104,15 @@
   --tina-danger-soft: #ffe9ed;
   --tina-warning: #8b4b00;
   --tina-warning-soft: #fff0d2;
+  --tina-chart-green: #2b725b;
+  --tina-chart-blue: #6096f8;
+  --tina-chart-purple: #9170ff;
+  --tina-chart-amber: #ffc75e;
+  --tina-chart-neutral: #c9ced8;
+  --tina-icon-green-bg: #ecfbdd;
+  --tina-icon-blue-bg: #e7efff;
+  --tina-icon-purple-bg: #eee8ff;
+  --tina-icon-amber-bg: #fff3dd;
   --tina-radius-card: 16px;
   --tina-radius-pane: 24px;
   --tina-radius-pill: 999px;
