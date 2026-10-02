@@ -28,6 +28,8 @@ import {
   roleLabel,
   type AdminProfile,
 } from "@/lib/account";
+import { ThemeProvider } from "@/components/theme-provider";
+import { isLimeLicorice, normalizeUiTheme } from "@/lib/themes";
 
 const NAV_COLLAPSED_KEY = "tis-admin-nav-collapsed";
 
@@ -78,12 +80,39 @@ export function AppShell({
   profile?: AdminProfile | null;
   children: React.ReactNode;
 }) {
+  return (
+    <AppShellInner
+      email={email}
+      unansweredCount={unansweredCount}
+      chatsUnreadCount={chatsUnreadCount}
+      profile={profileProp}
+    >
+      {children}
+    </AppShellInner>
+  );
+}
+
+function AppShellInner({
+  email,
+  unansweredCount = 0,
+  chatsUnreadCount,
+  profile: profileProp,
+  children,
+}: {
+  email: string;
+  unansweredCount?: number;
+  chatsUnreadCount?: number;
+  profile?: AdminProfile | null;
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [fetchedUnread, setFetchedUnread] = useState(0);
   const [liveUnanswered, setLiveUnanswered] = useState<number | null>(null);
   const [profile, setProfile] = useState<AdminProfile | null>(profileProp || null);
+  const theme = normalizeUiTheme(profile?.ui_theme ?? profileProp?.ui_theme);
+  const lime = isLimeLicorice(theme);
   const unreadChats = chatsUnreadCount ?? fetchedUnread;
   const inboxCount = liveUnanswered ?? unansweredCount;
   const fillCanvas = pathname.startsWith("/chats") || pathname.startsWith("/sandbox");
@@ -114,7 +143,7 @@ export function AppShell({
       if (!user) return;
       const { data } = await supabase
         .from("admin_profiles")
-        .select("user_id, email, first_name, last_name, avatar_path, role")
+        .select("user_id, email, first_name, last_name, avatar_path, role, ui_theme")
         .eq("user_id", user.id)
         .maybeSingle();
       if (data) setProfile(data as AdminProfile);
@@ -164,7 +193,8 @@ export function AppShell({
   }
 
   return (
-    <div className="admin-shell">
+    <ThemeProvider theme={theme}>
+    <div className={`admin-shell ${lime ? "bg-tina-workspace" : ""}`}>
       {/* Mobile top bar */}
       <div className="z-30 flex shrink-0 items-center justify-between border-b border-black/[0.06] bg-white px-4 py-3 lg:hidden">
         <div className="flex items-center gap-3">
@@ -202,9 +232,13 @@ export function AppShell({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex w-[248px] flex-col border-r border-tis-navy/40 bg-tis-navy p-3 text-white shadow-soft transition-transform lg:static lg:h-full lg:shrink-0 lg:shadow-none ${
-          collapsed ? "lg:w-[76px]" : "lg:w-[248px]"
-        } ${open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}`}
+        className={`fixed inset-y-0 left-0 z-40 flex flex-col p-3 shadow-soft transition-transform lg:static lg:h-full lg:shrink-0 lg:shadow-none ${
+          lime
+            ? "w-[280px] rounded-none border-r border-tina-border bg-white text-tina-secondary lg:my-3 lg:ml-3 lg:rounded-pane lg:border"
+            : "w-[248px] border-r border-tis-navy/40 bg-tis-navy text-white"
+        } ${collapsed ? (lime ? "lg:w-[84px]" : "lg:w-[76px]") : lime ? "lg:w-[280px]" : "lg:w-[248px]"} ${
+          open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        }`}
       >
         <div
           className={`hidden items-center gap-2 px-1 pb-4 pt-1 lg:flex ${
@@ -222,10 +256,18 @@ export function AppShell({
                 priority
               />
               <div className="min-w-0">
-                <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-tis-acid">
+                <p
+                  className={`text-[9px] font-bold uppercase tracking-[0.16em] ${
+                    lime ? "text-tina-muted" : "text-tis-acid"
+                  }`}
+                >
                   TIS Agent
                 </p>
-                <p className="truncate text-[15px] font-bold leading-tight text-white">
+                <p
+                  className={`truncate text-[15px] font-bold leading-tight ${
+                    lime ? "text-tina-text" : "text-white"
+                  }`}
+                >
                   Tina Admin
                 </p>
               </div>
@@ -233,7 +275,11 @@ export function AppShell({
           )}
           <button
             type="button"
-            className="rounded-lg p-2 text-white/70 transition hover:bg-white/10 hover:text-white"
+            className={`rounded-lg p-2 transition ${
+              lime
+                ? "text-tina-muted hover:bg-tina-subtle hover:text-tina-text"
+                : "text-white/70 hover:bg-white/10 hover:text-white"
+            }`}
             aria-label={iconsOnly ? "Expand navigation" : "Collapse navigation"}
             aria-pressed={collapsed}
             title={iconsOnly ? "Expand navigation" : "Collapse navigation"}
@@ -247,9 +293,16 @@ export function AppShell({
           {visibleSections.map((section) => (
             <div key={section.label} className="space-y-0.5">
               {iconsOnly ? (
-                <div className="mx-auto mb-1 h-px w-6 bg-white/20" aria-hidden />
+                <div
+                  className={`mx-auto mb-1 h-px w-6 ${lime ? "bg-tina-border" : "bg-white/20"}`}
+                  aria-hidden
+                />
               ) : (
-                <p className="px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] text-white/50">
+                <p
+                  className={`px-3 pb-1 text-[10px] font-bold uppercase tracking-[0.14em] ${
+                    lime ? "text-tina-muted" : "text-white/50"
+                  }`}
+                >
                   {section.label}
                 </p>
               )}
@@ -265,19 +318,30 @@ export function AppShell({
                     onClick={() => setOpen(false)}
                     title={iconsOnly ? link.label : undefined}
                     aria-label={iconsOnly ? link.label : undefined}
+                    aria-current={active ? "page" : undefined}
                     className={`group relative flex items-center rounded-xl text-sm font-semibold transition ${
                       iconsOnly ? "justify-center px-0 py-2.5" : "justify-between px-3 py-2.5"
                     } ${
-                      active
-                        ? "bg-tis-acid text-tis-ink shadow-sm"
-                        : "text-white/80 hover:bg-white/10 hover:text-white"
+                      lime
+                        ? active
+                          ? "bg-tina-active text-white shadow-sm"
+                          : "text-tina-secondary hover:bg-tina-subtle hover:text-tina-text"
+                        : active
+                          ? "bg-tis-acid text-tis-ink shadow-sm"
+                          : "text-white/80 hover:bg-white/10 hover:text-white"
                     }`}
                   >
                     <span className="flex items-center gap-3">
                       <span className="relative">
                         <Icon
                           className={`h-[18px] w-[18px] ${
-                            active ? "text-tis-ink" : "text-white/70 group-hover:text-white"
+                            lime
+                              ? active
+                                ? "text-tis-lime"
+                                : "text-tina-muted group-hover:text-tina-text"
+                              : active
+                                ? "text-tis-ink"
+                                : "text-white/70 group-hover:text-white"
                           }`}
                         />
                         {iconsOnly && count > 0 && (
@@ -285,9 +349,11 @@ export function AppShell({
                             className={`absolute -right-2 -top-1.5 inline-flex h-4 shrink-0 items-center justify-center rounded-full text-[9px] font-bold leading-none tabular-nums ${
                               count < 10 ? "w-4" : "min-w-4 px-1"
                             } ${
-                              link.badge === "chats"
-                                ? "bg-tis-unread text-white"
-                                : "bg-tis-amber text-tis-ink"
+                              lime
+                                ? "bg-tis-lime text-tis-on-lime"
+                                : link.badge === "chats"
+                                  ? "bg-tis-unread text-white"
+                                  : "bg-tis-amber text-tis-ink"
                             }`}
                           >
                             {count > 99 ? "99+" : count}
@@ -301,9 +367,13 @@ export function AppShell({
                         className={`inline-flex h-5 shrink-0 items-center justify-center rounded-full text-[10px] font-bold leading-none tabular-nums ${
                           count < 10 ? "w-5" : "min-w-5 px-1.5"
                         } ${
-                          link.badge === "inbox"
-                            ? "bg-tis-amber text-tis-ink"
-                            : "bg-tis-unread text-white"
+                          lime
+                            ? active
+                              ? "bg-tis-lime text-tis-on-lime"
+                              : "bg-tina-subtle text-tina-text"
+                            : link.badge === "inbox"
+                              ? "bg-tis-amber text-tis-ink"
+                              : "bg-tis-unread text-white"
                         }`}
                       >
                         {count > 99 ? "99+" : count}
@@ -316,14 +386,24 @@ export function AppShell({
           ))}
         </nav>
 
-        <div className="mt-3 space-y-2 border-t border-white/15 pt-3">
+        <div
+          className={`mt-3 space-y-2 border-t pt-3 ${
+            lime ? "border-tina-border" : "border-white/15"
+          }`}
+        >
           {iconsOnly ? (
             <div className="flex flex-col items-center gap-2">
               <Link
                 href="/account"
                 onClick={() => setOpen(false)}
-                className={`rounded-xl p-2.5 text-white/75 transition hover:bg-white/10 hover:text-white ${
-                  pathname.startsWith("/account") ? "bg-white/15 text-white" : ""
+                className={`rounded-xl p-2.5 transition ${
+                  lime
+                    ? `text-tina-muted hover:bg-tina-subtle hover:text-tina-text ${
+                        pathname.startsWith("/account") ? "bg-tina-subtle text-tina-text" : ""
+                      }`
+                    : `text-white/75 hover:bg-white/10 hover:text-white ${
+                        pathname.startsWith("/account") ? "bg-white/15 text-white" : ""
+                      }`
                 }`}
                 title="Account settings"
                 aria-label="Account settings"
@@ -333,7 +413,11 @@ export function AppShell({
               <form action="/auth/signout" method="post" className="w-full">
                 <button
                   type="submit"
-                  className="inline-flex w-full items-center justify-center rounded-xl border border-white/20 bg-transparent py-2.5 text-white transition hover:bg-white/10"
+                  className={`inline-flex w-full items-center justify-center rounded-xl border py-2.5 transition ${
+                    lime
+                      ? "border-tina-border bg-transparent text-tina-secondary hover:bg-tina-subtle"
+                      : "border-white/20 bg-transparent text-white hover:bg-white/10"
+                  }`}
                   title="Sign out"
                   aria-label="Sign out"
                 >
@@ -343,28 +427,54 @@ export function AppShell({
             </div>
           ) : (
             <>
-              <div className="flex items-center gap-2 rounded-xl bg-white/10 px-2 py-2">
+              <div
+                className={`flex items-center gap-2 rounded-xl px-2 py-2 ${
+                  lime ? "bg-tina-subtle" : "bg-white/10"
+                }`}
+              >
                 {avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={avatarUrl}
                     alt=""
-                    className="h-9 w-9 shrink-0 rounded-full border border-white object-cover"
+                    className={`h-9 w-9 shrink-0 rounded-full object-cover ${
+                      lime ? "ring-1 ring-tina-border" : "border border-white"
+                    }`}
                   />
                 ) : (
-                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white bg-tis-acid text-sm font-bold text-tis-ink">
+                  <span
+                    className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                      lime
+                        ? "bg-white text-tina-text ring-1 ring-tina-border"
+                        : "border border-white bg-tis-acid text-tis-ink"
+                    }`}
+                  >
                     {avatarInitial(profile || { first_name: firstName, email })}
                   </span>
                 )}
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-xs font-bold text-white">{firstName}</p>
-                  <p className="text-[11px] text-white/60">{roleText}</p>
+                  <p
+                    className={`truncate text-xs font-bold ${
+                      lime ? "text-tina-text" : "text-white"
+                    }`}
+                  >
+                    {firstName}
+                  </p>
+                  <p className={`text-[11px] ${lime ? "text-tina-muted" : "text-white/60"}`}>
+                    {roleText}
+                  </p>
                 </div>
                 <Link
                   href="/account"
                   onClick={() => setOpen(false)}
-                  className={`rounded-lg p-2 text-white/75 transition hover:bg-white/10 hover:text-white ${
-                    pathname.startsWith("/account") ? "bg-white/15 text-white" : ""
+                  className={`rounded-lg p-2 transition ${
+                    lime
+                      ? `text-tina-muted hover:bg-white hover:text-tina-text ${
+                          pathname.startsWith("/account") ? "bg-white text-tina-text" : ""
+                        }`
+                      : `text-white/75 hover:bg-white/10 hover:text-white ${
+                          pathname.startsWith("/account") ? "bg-white/15 text-white" : ""
+                        }`
                   }`}
                   title="Account settings"
                   aria-label="Account settings"
@@ -375,7 +485,11 @@ export function AppShell({
               <form action="/auth/signout" method="post">
                 <button
                   type="submit"
-                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-white/20 bg-transparent px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10"
+                  className={`inline-flex w-full items-center justify-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition ${
+                    lime
+                      ? "border-tina-border bg-transparent text-tina-secondary hover:bg-tina-subtle"
+                      : "border-white/20 bg-transparent text-white hover:bg-white/10"
+                  }`}
                 >
                   <LogOut className="h-4 w-4" />
                   Sign out
@@ -387,9 +501,16 @@ export function AppShell({
       </aside>
 
       <main className="admin-main">
-        <div className={`admin-canvas${fillCanvas ? " admin-canvas-fill" : ""}`}>{children}</div>
+        <div
+          className={`admin-canvas${fillCanvas ? " admin-canvas-fill" : ""}${
+            lime && fillCanvas ? " !px-3 !py-3 lg:!px-3 lg:!py-3" : ""
+          }`}
+        >
+          {children}
+        </div>
       </main>
     </div>
+    </ThemeProvider>
   );
 }
 

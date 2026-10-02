@@ -1,4 +1,4 @@
-import { isTinaHandled, TIME_SAVED_DEFINITION } from "@/lib/time-saved";
+import { isTinaHandled, TIME_SAVED_DEFINITION } from "./time-saved.ts";
 import {
   TOKYO,
   buildWeeklySeries,
@@ -8,7 +8,7 @@ import {
   tokyoYmd,
   weekStartYmd,
   type WeeklyPoint,
-} from "./tokyo-weeks";
+} from "./tokyo-weeks.ts";
 
 export {
   TOKYO,
@@ -42,6 +42,18 @@ export function formatDayLabel(ymd: string): string {
     month: "short",
     day: "numeric",
   }).format(tokyoDayStart(ymd));
+}
+
+/** Compact chart axis label, e.g. "Mon 22". */
+export function formatChartDayLabel(ymd: string): string {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: TOKYO,
+    weekday: "short",
+    day: "numeric",
+  }).formatToParts(tokyoDayStart(ymd));
+  const weekday = parts.find((p) => p.type === "weekday")?.value || "";
+  const day = parts.find((p) => p.type === "day")?.value || "";
+  return `${weekday} ${day}`.trim();
 }
 
 export function formatRangeLabel(startYmd: string, endYmd: string): string {
@@ -141,6 +153,11 @@ export type KnowledgeGap = {
   count: number;
 };
 
+export type TopQuestion = {
+  topic: string;
+  count: number;
+};
+
 export function percentChange(current: number, previous: number): number | null {
   if (previous === 0) return current === 0 ? 0 : null;
   return Math.round(((current - previous) / previous) * 100);
@@ -202,30 +219,42 @@ function statsFor(interactions: InteractionRow[]): PeriodStats {
   };
 }
 
-/** Normalize gap questions into crude topic keys for ranking. */
-export function rankKnowledgeGaps(
+function rankQuestions(
   interactions: InteractionRow[],
-  limit = 5,
-): KnowledgeGap[] {
+  limit: number,
+  predicate: (row: InteractionRow) => boolean,
+): TopQuestion[] {
   const counts = new Map<string, number>();
+  const samples = new Map<string, string>();
   for (const row of interactions) {
-    if (!isGap(row.outcome)) continue;
+    if (!predicate(row)) continue;
     const raw = (row.question || "").trim();
     if (!raw) continue;
     const topic = raw.replace(/\s+/g, " ").slice(0, 72);
     const key = topic.toLowerCase();
     counts.set(key, (counts.get(key) || 0) + 1);
+    if (!samples.has(key)) samples.set(key, topic);
   }
   return [...counts.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
     .slice(0, limit)
-    .map(([key, count]) => {
-      const sample = interactions.find(
-        (i) => isGap(i.outcome) && (i.question || "").trim().toLowerCase().startsWith(key.slice(0, 24)),
-      );
-      const topic = (sample?.question || key).trim().replace(/\s+/g, " ").slice(0, 72);
-      return { topic, count };
-    });
+    .map(([key, count]) => ({ topic: samples.get(key) || key, count }));
+}
+
+/** Normalize gap questions into crude topic keys for ranking. */
+export function rankKnowledgeGaps(
+  interactions: InteractionRow[],
+  limit = 5,
+): KnowledgeGap[] {
+  return rankQuestions(interactions, limit, (row) => isGap(row.outcome));
+}
+
+/** Most common parent questions in the period (any outcome). */
+export function rankTopQuestions(
+  interactions: InteractionRow[],
+  limit = 5,
+): TopQuestion[] {
+  return rankQuestions(interactions, limit, () => true);
 }
 
 export function buildDashboardModel(
@@ -287,6 +316,7 @@ export function buildDashboardModel(
     days,
     weeks,
     topGaps: rankKnowledgeGaps(currentIx, 5),
+    topQuestions: rankTopQuestions(currentIx, 5),
   };
 }
 
@@ -304,8 +334,12 @@ export const KPI_DEFINITIONS = {
   addedThisPeriod: "Knowledge Hub entries created during the current date range (last 30 days by default).",
 } as const;
 
-export function attentionReason(outcome: string): { label: string; tone: "amber" | "rose" } {
-  if (outcome === "low_confidence") return { label: "Low confidence", tone: "amber" };
-  if (outcome === "no_evidence") return { label: "No knowledge", tone: "rose" };
-  return { label: "No match", tone: "rose" };
+export function attentionReason(outcome: string): {
+  label: string;
+  tone: "amber" | "rose" | "blue" | "gray";
+} {
+  if (outcome === "low_confidence") return { label: "Needs review", tone: "amber" };
+  if (outcome === "no_evidence") return { label: "Unanswered", tone: "rose" };
+  if (outcome === "fixed_answer") return { label: "Follow up", tone: "blue" };
+  return { label: "Clarify", tone: "gray" };
 }

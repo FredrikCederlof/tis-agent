@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  attentionReason,
+  formatChartDayLabel,
+  rankTopQuestions,
+} from "./dashboard.ts";
+import {
   buildWeeklySeries,
   formatWeekLabel,
   weekStartYmd,
@@ -30,5 +35,30 @@ describe("weekly performance series", () => {
     assert.equal(weeks[1].key, "2026-10-05");
     assert.equal(weeks[1].questions, 4);
     assert.equal(weeks[1].answeredPct, 100);
+  });
+});
+
+describe("dashboard ranking helpers", () => {
+  it("ranks top questions across outcomes", () => {
+    const ranked = rankTopQuestions(
+      [
+        { created_at: "2026-10-01T00:00:00Z", outcome: "success", question: "When is sports day?" },
+        { created_at: "2026-10-01T01:00:00Z", outcome: "no_evidence", question: "When is sports day?" },
+        { created_at: "2026-10-01T02:00:00Z", outcome: "success", question: "Uniform policy?" },
+      ],
+      5,
+    );
+    assert.equal(ranked[0].topic, "When is sports day?");
+    assert.equal(ranked[0].count, 2);
+    assert.equal(ranked[1].count, 1);
+  });
+
+  it("formats chart day labels", () => {
+    assert.match(formatChartDayLabel("2026-09-28"), /^Mon\s+28$/);
+  });
+
+  it("maps attention reasons to dashboard status pills", () => {
+    assert.equal(attentionReason("no_evidence").label, "Unanswered");
+    assert.equal(attentionReason("low_confidence").label, "Needs review");
   });
 });

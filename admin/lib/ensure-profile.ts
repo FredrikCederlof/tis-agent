@@ -1,6 +1,10 @@
 import type { User } from "@supabase/supabase-js";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { AdminProfile, AdminRole } from "@/lib/account";
+import { DEFAULT_UI_THEME, normalizeUiTheme } from "@/lib/themes";
+
+const PROFILE_COLUMNS =
+  "user_id, email, first_name, last_name, avatar_path, role, notify_message_previews, ui_theme";
 
 function inferredFirstName(user: User): string {
   const meta = (user.user_metadata || {}) as Record<string, unknown>;
@@ -33,12 +37,15 @@ export async function ensureAdminProfile(
 ): Promise<AdminProfile> {
   const { data: existing } = await supabase
     .from("admin_profiles")
-    .select("user_id, email, first_name, last_name, avatar_path, role, notify_message_previews")
+    .select(PROFILE_COLUMNS)
     .eq("user_id", user.id)
     .maybeSingle();
 
   if (existing) {
-    return existing as AdminProfile;
+    return {
+      ...(existing as AdminProfile),
+      ui_theme: normalizeUiTheme((existing as AdminProfile).ui_theme),
+    };
   }
 
   const role = bootstrapRole(user);
@@ -52,12 +59,13 @@ export async function ensureAdminProfile(
     role,
     status: "active",
     notify_message_previews: true,
+    ui_theme: DEFAULT_UI_THEME,
   };
 
   const { data: created, error } = await supabase
     .from("admin_profiles")
     .upsert(row, { onConflict: "user_id" })
-    .select("user_id, email, first_name, last_name, avatar_path, role, notify_message_previews")
+    .select(PROFILE_COLUMNS)
     .single();
 
   if (error || !created) {
@@ -69,7 +77,11 @@ export async function ensureAdminProfile(
       avatar_path: null,
       role,
       notify_message_previews: true,
+      ui_theme: DEFAULT_UI_THEME,
     };
   }
-  return created as AdminProfile;
+  return {
+    ...(created as AdminProfile),
+    ui_theme: normalizeUiTheme((created as AdminProfile).ui_theme),
+  };
 }

@@ -11,6 +11,8 @@ import {
   type AdminProfile,
 } from "@/lib/account";
 import { AccountNotificationsCard } from "@/components/account-notifications-card";
+import { AccountThemeCard } from "@/components/account-theme-card";
+import { normalizeUiTheme } from "@/lib/themes";
 
 export function AccountSettingsForm({
   profile,
@@ -322,6 +324,8 @@ export function AccountSettingsForm({
           </button>
         </form>
       </section>
+
+      <AccountThemeCard initialTheme={normalizeUiTheme(profile.ui_theme)} />
 
       <AccountNotificationsCard
         initialShowPreviews={profile.notify_message_previews !== false}

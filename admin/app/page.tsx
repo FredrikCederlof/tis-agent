@@ -5,12 +5,18 @@ import { StatCard } from "@/components/stat-card";
 import { OutcomeDonut, PerformanceChart } from "@/components/charts";
 import { RefreshButton } from "@/components/refresh-button";
 import { DashboardDateRange } from "@/components/dashboard-date-range";
-import { NeedsAttentionTable, TopKnowledgeGapsCard } from "@/components/dashboard-panels";
+import {
+  KnowledgeHubCard,
+  NeedsAttentionPanel,
+  RecentConversationsPanel,
+  TopQuestionsCard,
+} from "@/components/dashboard-panels";
 import {
   KPI_DEFINITIONS,
   buildDashboardModel,
   fetchSinceIso,
   fetchUntilIso,
+  formatChartDayLabel,
   percentagePointChange,
   resolveDateRange,
   type InteractionRow,
@@ -21,8 +27,25 @@ import {
   formatSavedTimeDelta,
   timeSavedMinutes,
 } from "@/lib/time-saved";
+import { displayFirstName } from "@/lib/account";
+import { ensureAdminProfile } from "@/lib/ensure-profile";
+import { TOKYO } from "@/lib/tokyo-weeks";
+import type { ChatSessionRow } from "@/lib/chats";
 
 export const dynamic = "force-dynamic";
+
+function greetingForNow(now = new Date()): string {
+  const hour = Number(
+    new Intl.DateTimeFormat("en-US", {
+      timeZone: TOKYO,
+      hour: "numeric",
+      hour12: false,
+    }).format(now),
+  );
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
 
 export default async function DashboardPage({
   searchParams,
@@ -35,31 +58,43 @@ export default async function DashboardPage({
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  const profile = await ensureAdminProfile(supabase, user);
+  const firstName = displayFirstName(profile);
+
   const { from, to } = resolveDateRange(searchParams?.from, searchParams?.to);
   const since = fetchSinceIso(from, to);
   const until = fetchUntilIso(to);
 
-  const [{ data: interactions, error: interactionsError }, unansweredRes, configRes] =
-    await Promise.all([
-      supabase
-        .from("interactions")
-        .select("created_at, outcome, question, human_replied_at")
-        .gte("created_at", since)
-        .lte("created_at", until)
-        .limit(10000),
-      supabase
-        .from("unanswered_interactions")
-        .select("id, session_id, question, outcome, created_at, wa_from", { count: "exact" })
-        .order("created_at", { ascending: false })
-        .limit(5),
-      supabase.from("agent_config").select("minutes_saved_per_question").eq("id", 1).maybeSingle(),
-    ]);
+  const [
+    { data: interactions, error: interactionsError },
+    unansweredRes,
+    configRes,
+    sessionsRes,
+  ] = await Promise.all([
+    supabase
+      .from("interactions")
+      .select("created_at, outcome, question, human_replied_at")
+      .gte("created_at", since)
+      .lte("created_at", until)
+      .limit(10000),
+    supabase
+      .from("unanswered_interactions")
+      .select("id, session_id, question, outcome, created_at, wa_from", { count: "exact" })
+      .order("created_at", { ascending: false })
+      .limit(5),
+    supabase.from("agent_config").select("minutes_saved_per_question").eq("id", 1).maybeSingle(),
+    supabase
+      .from("admin_session_list")
+      .select("*")
+      .order("last_message_at", { ascending: false })
+      .limit(5),
+  ]);
 
   const minutesPerQuestion = clampMinutesPerQuestion(
     configRes.data?.minutes_saved_per_question,
   );
   const dash = buildDashboardModel((interactions || []) as InteractionRow[], from, to);
-  const { current, previous, days, weeks, dayCount, topGaps } = dash;
+  const { current, previous, days, weeks, dayCount, topQuestions } = dash;
   const unansweredCount = unansweredRes.count ?? 0;
   const currentSaved = timeSavedMinutes(current.tinaHandledCount, minutesPerQuestion);
   const previousSaved = timeSavedMinutes(previous.tinaHandledCount, minutesPerQuestion);
@@ -75,22 +110,39 @@ export default async function DashboardPage({
     weekCount === 1 ? "1 week" : `${weekCount} weeks (${dayCount} ${periodNoun})`;
   const vsPrevious = `vs previous ${dayCount} ${periodNoun}`;
   const attentionDelta = current.gapCount - previous.gapCount;
+  const useDailyBars = dayCount <= 14;
+  const performancePoints = useDailyBars
+    ? days.map((d) => ({
+        label: formatChartDayLabel(d.key),
+        answered: d.success,
+        unanswered: Math.max(0, d.questions - d.success),
+      }))
+    : weeks.map((w) => ({
+        label: w.label,
+        answered: w.success,
+        unanswered: Math.max(0, w.questions - w.success),
+      }));
+  const recentSessions = (sessionsRes.data || []) as ChatSessionRow[];
+  const greeting = greetingForNow();
 
   return (
-    <AppShell email={user.email || ""} unansweredCount={unansweredCount}>
+    <AppShell
+      email={user.email || ""}
+      unansweredCount={unansweredCount}
+      profile={profile}
+    >
       <div className="min-w-0 pb-24">
         <div className="mb-6 grid gap-4 sm:mb-8 lg:grid-cols-[1fr_auto] lg:items-start">
           <div>
-            <h1 className="page-title">Dashboard</h1>
-            <p className="page-subtitle">
-              An overview of Tina&apos;s performance, knowledge and what needs your attention.
-            </p>
+            <h1 className="page-title">
+              {greeting}, {firstName}{" "}
+              <span aria-hidden className="font-normal">
+                👋
+              </span>
+            </h1>
+            <p className="page-subtitle">Here&apos;s what&apos;s happening with Tina today.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            <p className="inline-flex w-fit items-center gap-2 rounded-full border border-tis-navy/10 bg-tis-mist px-3 py-1.5 text-sm font-semibold text-tis-navy">
-              <span className="h-2 w-2 rounded-full bg-tis-navy" />
-              All systems operational
-            </p>
             <DashboardDateRange from={from} to={to} />
             <RefreshButton />
           </div>
@@ -161,37 +213,23 @@ export default async function DashboardPage({
           />
         </div>
 
-        <div className="mt-6 grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(0,0.9fr)_minmax(0,1fr)]">
-          <section className="card flex min-h-[340px] min-w-0 flex-col">
-            <div className="min-h-0 flex-1">
-              <PerformanceChart
-                rangeLabel={chartRangeLabel}
-                points={weeks.map((w) => ({
-                  label: w.label,
-                  questions: w.questions,
-                  answeredPct: w.answeredPct,
-                  attentionPct: w.attentionPct,
-                }))}
-              />
-            </div>
+        <div className="mt-6 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <section className="card min-w-0">
+            <PerformanceChart points={performancePoints} rangeLabel={chartRangeLabel} />
           </section>
 
-          <section className="card flex min-h-[340px] min-w-0 flex-col">
-            <div className="min-h-0 flex-1">
-              <OutcomeDonut
-                success={current.successCount}
-                gaps={current.gapCount}
-                human={humanSlice}
-                errors={current.errorCount}
-              />
-            </div>
+          <section className="card min-w-0">
+            <OutcomeDonut
+              success={current.successCount}
+              gaps={current.gapCount}
+              human={humanSlice}
+              errors={current.errorCount}
+            />
           </section>
-
-          <TopKnowledgeGapsCard gaps={topGaps} />
         </div>
 
-        <div className="mt-6 min-w-0">
-          <NeedsAttentionTable
+        <div className="mt-6 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1.1fr)_minmax(0,1fr)]">
+          <NeedsAttentionPanel
             rows={(unansweredRes.data || []) as {
               id: string;
               session_id: string;
@@ -202,6 +240,11 @@ export default async function DashboardPage({
             }[]}
             total={unansweredCount}
           />
+          <RecentConversationsPanel sessions={recentSessions} />
+          <div className="flex min-w-0 flex-col gap-4">
+            <TopQuestionsCard questions={topQuestions} />
+            <KnowledgeHubCard suggestedCount={unansweredCount} />
+          </div>
         </div>
       </div>
     </AppShell>

@@ -1,0 +1,120 @@
+/* Tina Admin theme tokens.
+ * Green Garden = classic TIS (current look).
+ * Lime Licorice = new default (styleguide tokens).
+ */
+
+:root,
+[data-theme="green_garden"] {
+  --tis-navy: #05513d;
+  --tis-ink: #1a191b;
+  --tis-sky: #05513d;
+  --tis-mist: #e7f3ec;
+  --tis-gold: #90ff09;
+  --tis-cream: #f1f1ee;
+  --tis-acid: #90ff09;
+  --tis-unread: #9b7bff;
+  --tis-blue: #4d6bff;
+  --tis-lilac: #9b7bff;
+  --tis-amber: #ffc857;
+  --tis-success: #05513d;
+  --tis-danger: #d64545;
+  --tis-muted: #5c635f;
+  --tis-surface: #ffffff;
+  --tis-surface-subtle: #f8faf9;
+  --tis-border: rgba(0, 0, 0, 0.06);
+  --tis-active: #05513d;
+  --tis-on-active: #ffffff;
+  --tis-lime: #90ff09;
+  --tis-on-lime: #1a191b;
+  --tis-lime-soft: #e7f3ec;
+  --tis-sidebar: #05513d;
+  --tis-sidebar-text: #ffffff;
+  --tis-font: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+  --tis-shadow-card: 0 4px 18px rgba(5, 81, 61, 0.08);
+  --tis-radius-pane: 1rem;
+  --tina-workspace: #f1f1ee;
+  --tina-surface: #ffffff;
+  --tina-surface-subtle: #f3f4f8;
+  --tina-text: #1a191b;
+  --tina-text-secondary: #5c635f;
+  --tina-text-muted: #5c635f;
+  --tina-border: #e5e7eb;
+  --tina-active: #05513d;
+  --tina-on-active: #ffffff;
+  --tina-lime: #90ff09;
+  --tina-on-lime: #1a191b;
+  --tina-lime-soft: #e7f3ec;
+  --tina-danger: #d64545;
+  --tina-danger-soft: #ffe9ed;
+  --tina-warning: #8a6500;
+  --tina-warning-soft: #fff0d2;
+  --tina-chart-green: #2b725b;
+  --tina-chart-blue: #6096f8;
+  --tina-chart-purple: #9170ff;
+  --tina-chart-amber: #ffc75e;
+  --tina-chart-neutral: #c9ced8;
+  --tina-icon-green-bg: #ecfbdd;
+  --tina-icon-blue-bg: #e7efff;
+  --tina-icon-purple-bg: #eee8ff;
+  --tina-icon-amber-bg: #fff3dd;
+}
+
+[data-theme="lime_licorice"] {
+  --tis-navy: #0b0d15;
+  --tis-ink: #0b0d15;
+  --tis-sky: #0b0d15;
+  --tis-mist: #f3f4f8;
+  --tis-gold: #b6f34d;
+  --tis-cream: #f4f5f9;
+  --tis-acid: #b6f34d;
+  --tis-unread: #b6f34d;
+  --tis-blue: #6096f8;
+  --tis-lilac: #9170ff;
+  --tis-amber: #ffc75e;
+  --tis-success: #00852d;
+  --tis-danger: #d71938;
+  --tis-muted: #7b839f;
+  --tis-surface: #ffffff;
+  --tis-surface-subtle: #f3f4f8;
+  --tis-border: #e9ecf3;
+  --tis-active: #090d15;
+  --tis-on-active: #ffffff;
+  --tis-lime: #b6f34d;
+  --tis-on-lime: #182508;
+  --tis-lime-soft: #effae7;
+  --tis-sidebar: #ffffff;
+  --tis-sidebar-text: #565c73;
+  --tis-font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+    sans-serif;
+  --tis-shadow-card: 0 2px 8px rgb(11 13 21 / 3%);
+  --tis-radius-pane: 24px;
+  --tina-workspace: #f4f5f9;
+  --tina-surface: #ffffff;
+  --tina-surface-subtle: #f3f4f8;
+  --tina-text: #0b0d15;
+  --tina-text-secondary: #565c73;
+  --tina-text-muted: #7b839f;
+  --tina-border: #e9ecf3;
+  --tina-active: #090d15;
+  --tina-on-active: #ffffff;
+  --tina-lime: #b6f34d;
+  --tina-on-lime: #182508;
+  --tina-lime-soft: #effae7;
+  --tina-danger: #d71938;
+  --tina-danger-soft: #ffe9ed;
+  --tina-warning: #8b4b00;
+  --tina-warning-soft: #fff0d2;
+  --tina-chart-green: #2b725b;
+  --tina-chart-blue: #6096f8;
+  --tina-chart-purple: #9170ff;
+  --tina-chart-amber: #ffc75e;
+  --tina-chart-neutral: #c9ced8;
+  --tina-icon-green-bg: #ecfbdd;
+  --tina-icon-blue-bg: #e7efff;
+  --tina-icon-purple-bg: #eee8ff;
+  --tina-icon-amber-bg: #fff3dd;
+  --tina-radius-card: 16px;
+  --tina-radius-pane: 24px;
+  --tina-radius-pill: 999px;
+  --tina-control-height: 44px;
+}

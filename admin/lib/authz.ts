@@ -7,6 +7,7 @@ import {
   type AdminProfile,
   type AdminRole,
 } from "@/lib/account";
+import { normalizeUiTheme } from "@/lib/themes";
 import { createClient } from "@/lib/supabase/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { ensureAdminProfile } from "@/lib/ensure-profile";
@@ -17,7 +18,7 @@ export type AuthzProfile = AdminProfile & {
 };
 
 const PROFILE_SELECT =
-  "user_id, email, first_name, last_name, avatar_path, role, status";
+  "user_id, email, first_name, last_name, avatar_path, role, status, notify_message_previews, ui_theme";
 
 export async function loadAuthzProfile(
   supabase: SupabaseClient,
@@ -31,13 +32,19 @@ export async function loadAuthzProfile(
     .maybeSingle();
 
   if (data) {
+    const row = data as AdminProfile & { status?: string };
     return {
-      ...(data as AdminProfile),
-      status: ((data as { status?: string }).status as ProfileStatus) || "active",
+      ...row,
+      ui_theme: normalizeUiTheme(row.ui_theme),
+      status: (row.status as ProfileStatus) || "active",
     };
   }
 
-  return { ...base, status: "active" };
+  return {
+    ...base,
+    ui_theme: normalizeUiTheme(base.ui_theme),
+    status: "active",
+  };
 }
 
 export function isActiveAdmin(profile: Pick<AuthzProfile, "role" | "status">): boolean {
