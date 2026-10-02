@@ -686,8 +686,8 @@ export function ChatThreadDetail({
 }) {
   const router = useRouter();
   const lime = isLimeLicorice(useUiTheme());
-  /** Session details open by default; View profile opens it, panel close hides it. */
-  const [showInfo, setShowInfo] = useState(true);
+  /** Session details stay closed until View profile; panel close hides it. */
+  const [showInfo, setShowInfo] = useState(false);
   const openInfo = () => setShowInfo(true);
   const closeInfo = () => setShowInfo(false);
   const onDeleted = () => router.push("/chats");
