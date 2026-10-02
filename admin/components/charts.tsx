@@ -166,7 +166,7 @@ export function PerformanceChart({
         <svg
           viewBox={`0 0 ${width} ${height}`}
           className="absolute inset-0 block h-full w-full"
-          preserveAspectRatio="none"
+          preserveAspectRatio="xMinYMid meet"
         >
           {yTicks.map((t) => {
             const y = yBar(t);

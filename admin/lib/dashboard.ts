@@ -1,4 +1,4 @@
-import { isTinaHandled, TIME_SAVED_DEFINITION } from "./time-saved.ts";
+import { isTinaHandled, TIME_SAVED_DEFINITION } from "./time-saved";
 import {
   TOKYO,
   buildWeeklySeries,
@@ -8,7 +8,7 @@ import {
   tokyoYmd,
   weekStartYmd,
   type WeeklyPoint,
-} from "./tokyo-weeks.ts";
+} from "./tokyo-weeks";
 
 export {
   TOKYO,

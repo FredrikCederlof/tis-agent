@@ -1,6 +1,6 @@
 /** Account profile helpers (INS-15). */
 
-import { DEFAULT_UI_THEME, type UiTheme } from "./themes.ts";
+import { DEFAULT_UI_THEME, type UiTheme } from "./themes";
 
 export const AVATAR_BUCKET = "admin-avatars";
 export const AVATAR_MAX_BYTES = 10 * 1024 * 1024;
