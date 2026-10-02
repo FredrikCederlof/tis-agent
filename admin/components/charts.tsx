@@ -71,9 +71,9 @@ export function PerformanceChart({
   points: PerformancePoint[];
   rangeLabel?: string;
 }) {
-  const width = 560;
+  const width = 640;
   const height = 148;
-  const pad = { top: 6, right: 8, bottom: 26, left: 32 };
+  const pad = { top: 6, right: 4, bottom: 26, left: 28 };
   const plotW = width - pad.left - pad.right;
   const plotH = height - pad.top - pad.bottom;
   const totals = points.map((p) => p.answered + p.unanswered);
@@ -81,7 +81,8 @@ export function PerformanceChart({
   const niceMax = niceCeil(maxQ);
   const n = Math.max(1, points.length);
   const slot = plotW / n;
-  const barW = Math.max(8, Math.min(28, slot * 0.42));
+  // Fill most of each slot so bars span the widget; leave a small gutter.
+  const barW = Math.max(10, Math.min(slot * 0.62, slot - 6));
   const yBar = (v: number) => pad.top + plotH - (v / niceMax) * plotH;
 
   const [hover, setHover] = useState<number | null>(null);
@@ -155,13 +156,18 @@ export function PerformanceChart({
       <div className="mb-2 sm:hidden">{legend}</div>
       <div
         ref={wrapRef}
-        className="relative h-[168px] w-full"
+        className="relative w-full"
+        style={{ aspectRatio: `${width} / ${height}` }}
         onMouseLeave={() => setHover(null)}
         onMouseMove={(e) => onMove(e.clientX)}
         role="img"
         aria-label="Stacked bar chart of questions answered by Tina versus unanswered over time"
       >
-        <svg viewBox={`0 0 ${width} ${height}`} className="h-full w-full">
+        <svg
+          viewBox={`0 0 ${width} ${height}`}
+          className="absolute inset-0 block h-full w-full"
+          preserveAspectRatio="none"
+        >
           {yTicks.map((t) => {
             const y = yBar(t);
             return (
