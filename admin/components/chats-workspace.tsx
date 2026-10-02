@@ -277,7 +277,7 @@ export function ChatsWorkspace({
                 type="text"
                 className={
                   lime
-                    ? "!rounded-xl !border-transparent !bg-tina-subtle !pl-9 !shadow-none focus:!ring-tina-active/15"
+                    ? "!rounded-xl !border-transparent !bg-tina-subtle !pl-9 !shadow-none focus:!ring-black/10"
                     : "!rounded-2xl !bg-slate-50 !pl-9"
                 }
                 value={filters.query}
