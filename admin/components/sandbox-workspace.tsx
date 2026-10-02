@@ -369,19 +369,20 @@ function UserAvatar({ user, size = 32 }: { user: UserIdentity; size?: number }) 
 
 function TinaTypingIndicator() {
   return (
-    <div className="flex items-start gap-2.5" aria-live="polite" aria-label="Tina is typing">
+    <div className="flex items-end gap-2" aria-live="polite" aria-label="Tina is typing">
       <Image
         src="/tina.png"
         alt=""
-        width={32}
-        height={32}
-        className="shrink-0 rounded-full object-cover ring-1 ring-tis-ink"
+        width={28}
+        height={28}
+        className="mb-0.5 shrink-0 rounded-full object-cover ring-1 ring-tis-ink"
       />
-      <div className="rounded-2xl rounded-tl-md bg-tis-navy px-4 py-3 shadow-sm">
-        <div className="flex items-center gap-1.5">
-          <span className="wa-typing-dot h-2 w-2 rounded-full bg-white" />
-          <span className="wa-typing-dot h-2 w-2 rounded-full bg-white" />
-          <span className="wa-typing-dot h-2 w-2 rounded-full bg-white" />
+      {/* Compact WhatsApp-scale typing bubble (~32×22). */}
+      <div className="rounded-full bg-tis-navy px-2 py-1 shadow-sm">
+        <div className="flex h-3 items-center gap-[2px]">
+          <span className="wa-typing-dot h-1 w-1 rounded-full bg-white/90" />
+          <span className="wa-typing-dot h-1 w-1 rounded-full bg-white/90" />
+          <span className="wa-typing-dot h-1 w-1 rounded-full bg-white/90" />
         </div>
       </div>
     </div>
