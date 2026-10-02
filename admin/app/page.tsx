@@ -214,21 +214,17 @@ export default async function DashboardPage({
         </div>
 
         <div className="mt-6 grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-          <section className="card flex min-h-[320px] min-w-0 flex-col">
-            <div className="min-h-0 flex-1">
-              <PerformanceChart points={performancePoints} rangeLabel={chartRangeLabel} />
-            </div>
+          <section className="card min-w-0">
+            <PerformanceChart points={performancePoints} rangeLabel={chartRangeLabel} />
           </section>
 
-          <section className="card flex min-h-[320px] min-w-0 flex-col">
-            <div className="min-h-0 flex-1">
-              <OutcomeDonut
-                success={current.successCount}
-                gaps={current.gapCount}
-                human={humanSlice}
-                errors={current.errorCount}
-              />
-            </div>
+          <section className="card min-w-0">
+            <OutcomeDonut
+              success={current.successCount}
+              gaps={current.gapCount}
+              human={humanSlice}
+              errors={current.errorCount}
+            />
           </section>
         </div>
 

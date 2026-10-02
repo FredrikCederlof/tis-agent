@@ -72,8 +72,8 @@ export function PerformanceChart({
   rangeLabel?: string;
 }) {
   const width = 560;
-  const height = 168;
-  const pad = { top: 8, right: 8, bottom: 28, left: 32 };
+  const height = 148;
+  const pad = { top: 6, right: 8, bottom: 26, left: 32 };
   const plotW = width - pad.left - pad.right;
   const plotH = height - pad.top - pad.bottom;
   const totals = points.map((p) => p.answered + p.unanswered);
