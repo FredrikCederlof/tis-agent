@@ -97,7 +97,7 @@ export function roleDescription(role: AdminRole): string {
   if (role === "admin") {
     return "Full access including Users and Tina config.";
   }
-  return "Can manage knowledge and use Tina Admin. Cannot manage users or Tina config.";
+  return "Can manage knowledge and use Nabo. Cannot manage users or Config.";
 }
 
 export function validateInviteFields(args: {

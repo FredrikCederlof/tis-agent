@@ -52,7 +52,7 @@ export default async function UsersPage() {
     <AppShell email={user.email || ""} unansweredCount={count ?? 0} profile={profile}>
       <PageHeader
         title="Users"
-        subtitle="Invite people to Tina Admin and manage roles and access."
+        subtitle="Invite people to Nabo and manage roles and access."
       />
       <UsersManagement
         initialProfiles={profiles}
