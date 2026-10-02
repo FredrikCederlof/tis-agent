@@ -50,7 +50,7 @@ export function NeedsAttentionPanel({
           href="/inbox"
           className="inline-flex items-center gap-1 text-sm font-semibold text-tina-text"
         >
-          View all{total > 0 ? ` (${total})` : ""}
+          View all
           <ChevronRight className="h-4 w-4" />
         </Link>
       </div>
