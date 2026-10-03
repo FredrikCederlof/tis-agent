@@ -116,7 +116,6 @@ function AppShellInner({
   const unreadChats = chatsUnreadCount ?? fetchedUnread;
   const inboxCount = liveUnanswered ?? unansweredCount;
   const chatsCanvas = pathname.startsWith("/chats");
-  const fillCanvas = chatsCanvas || pathname.startsWith("/sandbox");
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const firstName = displayFirstName(profile || { first_name: "", email });
   const roleText = roleLabel(profile?.role);
@@ -496,7 +495,7 @@ function AppShellInner({
 
       <main className="admin-main">
         <div
-          className={`admin-canvas${fillCanvas ? " admin-canvas-fill" : ""}${
+          className={`admin-canvas${chatsCanvas ? " admin-canvas-fill" : ""}${
             lime && chatsCanvas ? " !px-3 !py-3 lg:!px-3 lg:!py-3" : ""
           }`}
         >
