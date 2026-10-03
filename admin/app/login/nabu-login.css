@@ -1,0 +1,636 @@
+/* Nabu login prototype, scoped so it does not restyle the rest of Tina Admin. */
+.nabu-login {
+  --login-ink: #182019;
+  --login-muted: #535e55;
+  --login-glass: rgba(255, 255, 255, 0.94);
+  --tina-lime: #b6f34d;
+  --tina-on-lime: #182508;
+  margin: 0;
+  min-height: 100dvh;
+  color: var(--login-ink);
+  background: #dce4d6;
+  position: relative;
+  isolation: isolate;
+}
+
+.nabu-login,
+.nabu-login * {
+  box-sizing: border-box;
+}
+
+.nabu-login button,
+.nabu-login input {
+  font: inherit;
+}
+
+.nabu-login button {
+  cursor: pointer;
+}
+
+.nabu-login button:disabled {
+  cursor: wait;
+}
+
+.nabu-login button:focus-visible,
+.nabu-login a:focus-visible,
+.nabu-login input:focus-visible {
+  outline: 2px solid #247039;
+  outline-offset: 4px;
+}
+
+.nabu-login .landscape {
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  background: #dce4d6 url("/login-landscape.webp") center / cover no-repeat;
+}
+
+.nabu-login .landscape:after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(241, 244, 232, 0.16),
+    rgba(229, 234, 218, 0.04) 65%,
+    rgba(32, 48, 38, 0.16)
+  );
+}
+
+.nabu-login .page-header {
+  max-width: 1480px;
+  margin: auto;
+  padding: 34px 54px;
+  display: flex;
+  align-items: center;
+  gap: 36px;
+}
+
+.nabu-login .wordmark {
+  color: var(--login-ink);
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+/* The source logo has a large transparent margin. Crop to the mark. */
+.nabu-login .wordmark-crop {
+  display: block;
+  width: 152px;
+  height: 42px;
+  overflow: hidden;
+  position: relative;
+}
+
+.nabu-login .wordmark-logo {
+  position: absolute;
+  height: 90px;
+  width: 180px;
+  max-width: none;
+  left: -17px;
+  top: -25px;
+}
+
+.nabu-login .header-note,
+.nabu-login .staff-label {
+  font-size: 13px;
+}
+
+.nabu-login .header-note {
+  color: #47534b;
+}
+
+.nabu-login .staff-label {
+  margin-left: auto;
+  padding: 10px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.nabu-login .layout {
+  display: grid;
+  grid-template-columns: minmax(0, 460px) minmax(0, 430px);
+  grid-template-rows: 1fr auto;
+  gap: 16px;
+  max-width: 906px;
+  margin: 38px auto 42px;
+  align-items: stretch;
+}
+
+.nabu-login .login-panel {
+  grid-column: 1;
+  grid-row: 1 / 3;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  padding: 30px 36px 26px;
+  background: var(--login-glass);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(255, 255, 255, 0.86);
+  border-radius: 24px;
+  box-shadow:
+    0 18px 64px rgba(64, 76, 56, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+.nabu-login .login-panel::before {
+  content: "";
+  position: absolute;
+  inset: -45px;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 95% 8%, rgba(209, 228, 191, 0.68), transparent 48%),
+    radial-gradient(ellipse at 10% 94%, rgba(185, 220, 139, 0.52), transparent 55%),
+    radial-gradient(ellipse at 95% 90%, rgba(218, 223, 204, 0.56), transparent 48%);
+  filter: blur(36px);
+}
+
+.nabu-login .panel-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.nabu-login .product-label {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+}
+
+.nabu-login .staff-pill {
+  font-size: 11px;
+  color: #3e5040;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.56);
+  border-radius: 999px;
+}
+
+.nabu-login .intro {
+  margin: 43px 0 26px;
+}
+
+.nabu-login h1 {
+  font-size: 42px;
+  line-height: 1.1;
+  font-weight: 500;
+  letter-spacing: -1.9px;
+  margin: 0 0 14px;
+}
+
+.nabu-login .intro p {
+  font-size: 15px;
+  line-height: 1.6;
+  color: var(--login-muted);
+  margin: 0;
+}
+
+.nabu-login .mode-switch {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  background: rgba(226, 231, 222, 0.7);
+  padding: 5px;
+  border-radius: 14px;
+  margin-bottom: 27px;
+}
+
+.nabu-login .mode {
+  border: 0;
+  background: transparent;
+  min-height: 42px;
+  border-radius: 10px;
+  font-size: 14px;
+  color: #535e55;
+  transition:
+    background 160ms,
+    box-shadow 160ms;
+}
+
+.nabu-login .mode.active {
+  background: #fff;
+  color: #172219;
+  box-shadow: 0 2px 5px rgba(60, 79, 51, 0.05);
+  font-weight: 600;
+}
+
+.nabu-login .mode:hover:not(.active) {
+  background: rgba(255, 255, 255, 0.35);
+}
+
+.nabu-login label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: 10px;
+}
+
+.nabu-login .input-shell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(255, 255, 255, 0.86);
+  border: 1px solid #b2bcb0;
+  min-height: 56px;
+  border-radius: 999px;
+  padding: 6px 16px 6px 8px;
+}
+
+.nabu-login .input-shell:focus-within {
+  border-color: #247039;
+}
+
+.nabu-login .field-symbol {
+  display: grid;
+  place-items: center;
+  background: #f1f4ee;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.nabu-login .input-shell input {
+  width: 100%;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+  color: #182019;
+  padding: 10px 4px;
+  font-size: 15px;
+  line-height: 1.4;
+  outline: none;
+}
+
+.nabu-login .input-shell input:focus {
+  border: 0;
+  box-shadow: none;
+  outline: none;
+}
+
+.nabu-login .input-shell:has(input:focus-visible) {
+  outline: 2px solid #247039;
+  outline-offset: 3px;
+}
+
+.nabu-login .input-shell input::placeholder {
+  color: #657160;
+}
+
+.nabu-login .form-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--login-muted);
+  margin: 12px 2px 24px;
+}
+
+.nabu-login .submit {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 8px 8px 8px 23px;
+  min-height: 58px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--tina-lime);
+  color: var(--tina-on-lime);
+  font-size: 15px;
+  font-weight: 600;
+  transition:
+    background 160ms,
+    transform 160ms;
+}
+
+.nabu-login .arrow {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #1c2819;
+  color: #d5f4b2;
+  font-size: 23px;
+  font-weight: 400;
+}
+
+.nabu-login .submit:hover {
+  background: #a9e943;
+}
+
+.nabu-login .submit:active {
+  transform: scale(0.985);
+}
+
+.nabu-login .submit:disabled {
+  opacity: 0.65;
+}
+
+.nabu-login .label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+  gap: 8px;
+}
+
+.nabu-login .text-button {
+  border: 0;
+  background: none;
+  padding: 0;
+  font-size: 11px;
+  color: #36593c;
+  margin-bottom: 10px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.nabu-login .show-button {
+  border: 0;
+  border-radius: 999px;
+  background: #edf2e8;
+  padding: 9px 12px;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.nabu-login .feedback {
+  font-size: 12px;
+  line-height: 1.6;
+  background: #f1f8e9;
+  padding: 12px;
+  border-radius: 12px;
+  margin: 16px 0 0;
+  color: #375636;
+}
+
+.nabu-login .feedback.error {
+  background: #ffe9ed;
+  color: #a51a30;
+}
+
+.nabu-login .school-panel {
+  display: flex;
+  flex-direction: column;
+  grid-column: 2;
+  grid-row: 1;
+  position: relative;
+  overflow: hidden;
+  min-height: 0;
+  padding: 30px 32px 24px;
+  border-radius: 24px;
+  background: #fbfcf7;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 18px 64px rgba(64, 76, 56, 0.1);
+}
+
+.nabu-login .school-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.nabu-login .school-caption {
+  font-size: 12px;
+  color: #52604e;
+}
+
+.nabu-login .school-monogram {
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid #d9dfd2;
+  border-radius: 50%;
+  width: 42px;
+  height: 42px;
+  display: grid;
+  place-items: center;
+}
+
+.nabu-login .school-heading {
+  position: relative;
+  z-index: 1;
+  margin-top: 34px;
+}
+
+.nabu-login h2 {
+  font-size: 48px;
+  line-height: 1.06;
+  letter-spacing: -2.3px;
+  font-weight: 500;
+  margin: 0;
+}
+
+.nabu-login h2 > span:not(.lime-period) {
+  display: block;
+}
+
+.nabu-login .lime-period {
+  color: #77a923;
+}
+
+.nabu-login .school-heading p {
+  font-size: 14px;
+  line-height: 1.65;
+  color: #56634f;
+  max-width: 260px;
+  margin-top: 18px;
+}
+
+.nabu-login .bottom-note {
+  grid-column: 2;
+  grid-row: 2;
+  padding: 22px 27px;
+  background: #182219;
+  color: #f1f6e9;
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 115px;
+  font-size: 22px;
+  line-height: 1.28;
+  letter-spacing: -0.6px;
+}
+
+.nabu-login .note-arrow {
+  font-size: 32px;
+  color: #b6f34d;
+}
+
+.nabu-login .page-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  max-width: 1480px;
+  margin: auto;
+  padding: 0 54px 28px;
+  color: #344739;
+  font-size: 11px;
+}
+
+.nabu-login .skip {
+  position: absolute;
+  top: -100px;
+  left: 20px;
+  padding: 12px;
+  background: white;
+  border-radius: 12px;
+  z-index: 5;
+}
+
+.nabu-login .skip:focus {
+  top: 12px;
+}
+
+.nabu-login [hidden] {
+  display: none !important;
+}
+
+@media (min-width: 1600px) {
+  .nabu-login .layout {
+    margin-top: 65px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .nabu-login .layout {
+    margin: 26px 32px 36px;
+    max-width: none;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.93fr);
+  }
+
+  .nabu-login .page-header {
+    padding: 26px 32px;
+  }
+
+  .nabu-login .header-note {
+    display: none;
+  }
+
+  .nabu-login .page-footer {
+    padding: 0 32px 24px;
+  }
+
+  .nabu-login .login-panel {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    padding: 28px;
+  }
+
+  .nabu-login h1 {
+    font-size: 36px;
+  }
+
+  .nabu-login h2 {
+    font-size: 42px;
+  }
+
+  .nabu-login .school-panel {
+    padding: 28px;
+    min-height: 0;
+  }
+}
+
+@media (max-width: 680px) {
+  .nabu-login .page-header {
+    padding: 22px;
+  }
+
+  .nabu-login .staff-label {
+    font-size: 11px;
+  }
+
+  .nabu-login .layout {
+    margin: 18px 18px 26px;
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .nabu-login .login-panel {
+    grid-column: 1;
+    grid-row: 1 / 3;
+    padding: 25px;
+  }
+
+  .nabu-login .intro {
+    margin-top: 30px;
+  }
+
+  .nabu-login h1 {
+    font-size: 36px;
+  }
+
+  .nabu-login .school-panel {
+    grid-column: 1;
+    grid-row: auto;
+    min-height: 0;
+    padding: 24px;
+  }
+
+  .nabu-login .school-heading {
+    margin-top: 20px;
+  }
+
+  .nabu-login h2 {
+    font-size: 30px;
+    line-height: 1.15;
+  }
+
+  .nabu-login h2 > span:not(.lime-period) {
+    display: inline;
+  }
+
+  .nabu-login .school-heading p {
+    max-width: 100%;
+    font-size: 13px;
+  }
+
+  .nabu-login .bottom-note {
+    display: none;
+  }
+
+  .nabu-login .page-footer {
+    padding: 0 24px 24px;
+    flex-direction: column;
+    font-size: 10px;
+    gap: 6px;
+  }
+
+  .nabu-login .landscape {
+    background-position: 65% center;
+  }
+
+  .nabu-login .label-row {
+    align-items: flex-start;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .nabu-login .login-panel {
+    background: #f6f8f1;
+    backdrop-filter: none;
+  }
+
+  .nabu-login .login-panel::before {
+    display: none;
+  }
+
+  .nabu-login .staff-label {
+    background: #f3f5ed;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nabu-login *,
+  .nabu-login *::before,
+  .nabu-login *::after {
+    transition: none !important;
+    animation: none !important;
+  }
+}
