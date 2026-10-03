@@ -238,25 +238,23 @@ export function StatCard({
                 </InfoTip>
               </div>
             </div>
-            {/* Pin value / detail / delta / sparkline to the card bottom */}
-            <div className="mt-auto flex items-end justify-between gap-3 pt-4">
-              <div className="flex min-w-0 flex-col justify-end">
-                <p className="font-display text-[28px] font-bold leading-none tracking-[-0.03em] text-tina-text tabular-nums sm:text-[32px]">
-                  {value}
-                </p>
-                <p className="mt-1 min-h-[1rem] truncate text-xs text-tina-muted">
-                  {detail || "\u00a0"}
-                </p>
-                <div className="mt-2 min-h-[22px]">
-                  {deltaPill ? (
-                    <DeltaPill
-                      text={deltaPill.text}
-                      label={deltaLabel}
-                      positive={deltaPill.positive}
-                      neutral={deltaPill.neutral}
-                    />
-                  ) : null}
-                </div>
+            <p className="mt-2 font-display text-[28px] font-bold leading-none tracking-[-0.03em] text-tina-text tabular-nums sm:text-[32px]">
+              {value}
+            </p>
+            <p className="mt-1 min-h-[1rem] truncate text-xs text-tina-muted">
+              {detail || "\u00a0"}
+            </p>
+            {/* Keep delta + sparkline bottom-aligned across the KPI row */}
+            <div className="mt-auto flex items-end justify-between gap-3 pt-3">
+              <div className="min-h-[22px] min-w-0">
+                {deltaPill ? (
+                  <DeltaPill
+                    text={deltaPill.text}
+                    label={deltaLabel}
+                    positive={deltaPill.positive}
+                    neutral={deltaPill.neutral}
+                  />
+                ) : null}
               </div>
               {sparkline ? (
                 <BarSparkline
