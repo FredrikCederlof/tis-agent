@@ -63,6 +63,22 @@ export function adminNameMap(
   return map;
 }
 
+/** Build email → avatar public URL map from admin_profiles rows. */
+export function adminAvatarMap(
+  profiles: { email?: string | null; avatar_path?: string | null }[],
+  supabaseUrl: string,
+  toPublicUrl: (supabaseUrl: string, avatarPath: string | null | undefined) => string | null,
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const row of profiles) {
+    const email = (row.email || "").trim().toLowerCase();
+    if (!email) continue;
+    const url = toPublicUrl(supabaseUrl, row.avatar_path);
+    if (url) map[email] = url;
+  }
+  return map;
+}
+
 const SOURCE_LINE =
   /^(?:[_*]?\s*)?(?:Source|Källa)\s*:\s*(.+?)\s*(?:[_*]?\s*)$/i;
 

@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  adminAvatarMap,
   adminDisplayName,
   adminNameMap,
   isKnowledgeCandidateQuestion,
@@ -54,6 +55,24 @@ describe("adminDisplayName", () => {
     assert.equal(adminDisplayName("jane.doe@school.edu"), "Jane");
     assert.equal(adminDisplayName(null), "Admin");
     assert.equal(adminDisplayName(""), "Admin");
+  });
+});
+
+describe("adminAvatarMap", () => {
+  it("maps emails with avatar_path to public URLs", () => {
+    const map = adminAvatarMap(
+      [
+        { email: "a@b.com", avatar_path: "uid/avatar.jpg" },
+        { email: "c@d.com", avatar_path: null },
+      ],
+      "https://example.supabase.co",
+      (base, path) => (path ? `${base}/storage/v1/object/public/admin-avatars/${path}` : null),
+    );
+    assert.equal(
+      map["a@b.com"],
+      "https://example.supabase.co/storage/v1/object/public/admin-avatars/uid/avatar.jpg",
+    );
+    assert.equal(map["c@d.com"], undefined);
   });
 });
 
