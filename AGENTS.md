@@ -1,6 +1,6 @@
 # TIS Agent — nightly knowledge sync
 
-Cloud agent contract for syncing TIS knowledge from Google Drive into Supabase.
+Contract for syncing TIS knowledge from Google Drive into Supabase.
 
 ## Goal
 
@@ -16,32 +16,17 @@ Drop PDFs or Google Docs into the Drive folder. The nightly job uploads new/chan
 
 ## Nightly sync procedure
 
-1. Read `decisions.md` for product constraints.
-2. Install deps if needed: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
-3. Load secrets from environment (Cloud Agent secrets / `.env`):
-   - `SUPABASE_URL`
-   - `SUPABASE_SECRET_KEY`
-   - `OPENAI_API_KEY`
-4. Run `python -m tis_agent sync state` to list currently synced documents.
-5. Use **Google Drive** integration to list files in folder `1P0XZLFtIBivKEx55BjvUZH6_xsWZUDZa`, **including nested subfolders** (e.g. `Curriculum Guides`). Walk folders recursively.
-6. For each file (skip folder entries themselves, but process files inside them):
-   - Compare `id` + `modifiedTime` with synced state from step 4.
-   - If missing or `modifiedTime` is newer, download the file:
-     - PDF: download as-is
-     - Google Doc (`application/vnd.google-apps.document`): export as `text/plain` or `application/pdf`
-   - Save to `/tmp/tis-sync/<filename>`
-   - Run:
+Drive sync is a Railway cron service, separate from the WhatsApp service. It walks the knowledge folder (including nested folders such as `Curriculum Guides`), skips files whose Drive `modifiedTime` is already stored, and ingests new or changed files through the existing pipeline. The process prints a summary and exits.
 
-```bash
-.venv/bin/python -m tis_agent sync file /tmp/tis-sync/<filename> \
-  --title "<Drive title without extension if needed>" \
-  --mime-type "<mime type>" \
-  --drive-id "<Drive file id>" \
-  --modified "<Drive modifiedTime ISO>"
-```
+- **Start command:** `python -m tis_agent sync drive`
+- **Cron schedule (UTC):** `0 18 * * *` — 03:00 Asia/Tokyo
+- **Secrets:** `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`, `GOOGLE_SERVICE_ACCOUNT_JSON`
 
-7. Print a short summary: synced / skipped / failed per file.
-8. Do **not** send WhatsApp messages or email parents.
+`GOOGLE_SERVICE_ACCOUNT_JSON` is a Google service account key (raw JSON or base64). Share the Drive folder with that service account email as a Viewer.
+
+`python -m tis_agent sync file` remains for a single local file. Do **not** send WhatsApp messages or email parents. Do **not** run a second Drive download alongside this command.
+
+
 
 ## Supported file types
 
@@ -50,6 +35,22 @@ Drop PDFs or Google Docs into the Drive folder. The nightly job uploads new/chan
 - Markdown (`.md` / `text/markdown`)
 - CSV (`.csv` / `text/csv`)
 - Other types: skip and report in summary
+
+
+
+## Testing
+
+Do not open the browser, run browser-based tests, or take screenshots unless explicitly requested by the user.
+
+For normal feature development:
+
+- Run lint/type checks and relevant automated tests.
+
+- Do not perform visual browser verification automatically.
+
+- Tell the user what should be manually verified instead.
+
+Browser testing is allowed only when the user explicitly asks for it.
 
 ## Web and calendar sources
 
@@ -83,6 +84,8 @@ Sync only the portal section:
 python -m tis_agent sync web --url "https://portal.tokyois.com/tis-times/" --title "TIS Times (Parent Portal)"
 ```
 
+
+
 ## Bi-weekly web sync (Wed + Sat)
 
 Run `sync web` twice a week so TIS Times, calendar, and public pages stay fresh. Unchanged documents are **skipped** automatically (content hash) — only new or edited text is re-embedded.
@@ -95,7 +98,7 @@ Run `sync web` twice a week so TIS Times, calendar, and public pages stay fresh.
 4. Copy the same secrets as production: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`, `TIS_PORTAL_USERNAME`, `TIS_PORTAL_PASSWORD`
 5. The service must **exit** when sync finishes (do not run the WhatsApp server on this service).
 
-Alternative: extend the nightly Cloud Agent procedure to run `sync web` after Drive sync on the same days.
+Alternative: run `python -m tis_agent sync web` after `sync drive` on Wednesday and Saturday.
 
 ## Sunday school-mail bulletin (standalone Cloud Agent)
 
