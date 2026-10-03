@@ -16,7 +16,6 @@ import {
   ExternalLink,
   ListChecks,
   MessageCircle,
-  MessageSquareReply,
   MoreHorizontal,
   PanelRight,
   Search,
@@ -902,15 +901,6 @@ export function ChatThreadDetail({
                   language={session.primary_language}
                   menuOpen={menuId === message.id}
                   flagging={flaggingId === message.interactionId}
-                  isReplyTarget={Boolean(
-                    target && message.kind === "parent" && message.interactionId === target.id,
-                  )}
-                  replyTarget={
-                    target && message.kind === "parent" && message.interactionId === target.id
-                      ? target
-                      : null
-                  }
-                  lastInboundAt={lastInboundAt}
                   lime={lime}
                   onToggleMenu={() =>
                     setMenuId((current) => (current === message.id ? null : message.id))
@@ -927,17 +917,37 @@ export function ChatThreadDetail({
         </div>
 
         <footer
-          className={`bg-white px-4 py-2.5 sm:px-5 ${
+          className={`bg-white px-4 py-3 sm:px-5 ${
             lime ? "border-t border-tina-border" : "border-t border-slate-100"
           }`}
         >
           {target ? (
-            <div className="flex items-center justify-between gap-3">
-              <p className="min-w-0 truncate text-xs text-tis-muted">
-                Current question — use <span className="font-semibold text-tis-navy">Answer</span>{" "}
-                under the parent message
-              </p>
-              <ReplyWindowBadge lastInboundAt={lastInboundAt} />
+            <div
+              className={`rounded-2xl border bg-white p-3 ${
+                lime ? "border-tina-border" : "border-slate-200"
+              }`}
+            >
+              <div className="mb-2 flex items-start justify-between gap-3">
+                <p className="min-w-0 truncate text-xs text-tis-muted">
+                  Reply to parent{" "}
+                  <span className="font-semibold text-tis-navy">
+                    <AdminEnglishText
+                      text={target.question}
+                      language={session.primary_language}
+                      plain
+                    />
+                  </span>
+                </p>
+                <ReplyWindowBadge lastInboundAt={lastInboundAt} />
+              </div>
+              <ReplyComposer
+                interactionId={target.id}
+                question={target.question}
+                lastInboundAt={lastInboundAt}
+                answeredAt={target.human_replied_at}
+                answeredBy={target.human_replied_by}
+                compact
+              />
             </div>
           ) : (
             <p className="text-xs text-tis-muted">
@@ -970,9 +980,6 @@ function Bubble({
   language,
   menuOpen,
   flagging,
-  isReplyTarget,
-  replyTarget: target,
-  lastInboundAt,
   lime = false,
   onToggleMenu,
   onMarkNeedsAttention,
@@ -982,15 +989,10 @@ function Bubble({
   language?: string | null;
   menuOpen: boolean;
   flagging?: boolean;
-  isReplyTarget?: boolean;
-  replyTarget?: ChatInteraction | null;
-  lastInboundAt?: string | null;
   lime?: boolean;
   onToggleMenu: () => void;
   onMarkNeedsAttention?: () => void;
 }) {
-  const [answerOpen, setAnswerOpen] = useState(false);
-
   if (message.kind === "parent") {
     const canAddToHub =
       Boolean(message.interactionId) && isKnowledgeCandidateQuestion(message.text);
@@ -1069,42 +1071,6 @@ function Bubble({
               translationStatus={message.translationStatus}
             />
           </div>
-          {isReplyTarget && target ? (
-            <div className="mt-2 space-y-2">
-              <button
-                type="button"
-                className={`flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-bold transition ${
-                  lime
-                    ? "bg-tis-lime text-tis-on-lime hover:brightness-95"
-                    : "border border-emerald-200 bg-emerald-50/70 text-emerald-950 hover:bg-emerald-50"
-                }`}
-                aria-expanded={answerOpen}
-                onClick={() => setAnswerOpen((v) => !v)}
-              >
-                <MessageSquareReply
-                  className={`h-4 w-4 ${lime ? "text-tis-on-lime" : "text-emerald-700"}`}
-                  aria-hidden
-                />
-                {answerOpen ? "Hide answer" : "Answer"}
-              </button>
-              {answerOpen ? (
-                <div
-                  className={`rounded-2xl border bg-white p-3 ${
-                    lime ? "border-tina-border" : "border-slate-200"
-                  }`}
-                >
-                  <ReplyComposer
-                    interactionId={target.id}
-                    question={target.question}
-                    lastInboundAt={lastInboundAt || target.created_at}
-                    answeredAt={target.human_replied_at}
-                    answeredBy={target.human_replied_by}
-                    compact
-                  />
-                </div>
-              ) : null}
-            </div>
-          ) : null}
         </div>
       </div>
     );
