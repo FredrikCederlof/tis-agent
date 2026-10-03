@@ -185,6 +185,15 @@ def main(argv: list[str] | None = None) -> None:
 
     sub.add_parser("state", help="Show synced document metadata.")
 
+    drive_cmd = sub.add_parser(
+        "drive",
+        help="Sync the TIS Google Drive folder into Supabase, then exit.",
+    )
+    drive_cmd.add_argument(
+        "--folder-id",
+        help="Drive folder id. Defaults to the TIS knowledge folder.",
+    )
+
     web_cmd = sub.add_parser("web", help="Sync configured public web/calendar sources.")
     web_cmd.add_argument(
         "--url",
@@ -225,6 +234,19 @@ def main(argv: list[str] | None = None) -> None:
 
     if args.command == "state":
         print_sync_state(settings)
+        return
+
+    if args.command == "drive":
+        from tis_agent.drive_auth import DriveAuthError
+        from tis_agent.drive_sync import DriveSyncError, run_drive_sync
+
+        try:
+            summary = run_drive_sync(settings, folder_id=args.folder_id)
+        except (DriveAuthError, DriveSyncError) as exc:
+            print(str(exc))
+            raise SystemExit(1) from exc
+        print()
+        print(summary.render())
         return
 
     if args.command == "local-handbook":

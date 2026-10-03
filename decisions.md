@@ -59,11 +59,12 @@ Prove reliable answers over the *Community Handbook 2026–2027* (English PDF), 
 
 ## Milestone 2
 
-Google Drive folder → Supabase Storage (`tis-ass`) → pgvector sync, with a nightly Cloud Agent at 03:30.
+Google Drive folder → Supabase Storage (`tis-ass`) → pgvector sync, nightly on Railway at 03:00 Asia/Tokyo.
 
 - Drive folder id: `1P0XZLFtIBivKEx55BjvUZH6_xsWZUDZa`
 - Sync tracks `drive_file_id`, `drive_modified_time`, and `content_hash` on `documents`
-- Nightly agent uses Google Drive MCP + `python -m tis_agent sync file ...`
+- Nightly command: `python -m tis_agent sync drive` (Railway cron `0 18 * * *` UTC)
+- Auth: `GOOGLE_SERVICE_ACCOUNT_JSON` (service account, folder shared as Viewer)
 - Run `sql/002_sync.sql` once after `001_rag.sql`
 - Nested Drive subfolders are in scope (e.g. `Curriculum Guides`). Nightly sync must walk recursively.
 
@@ -74,6 +75,6 @@ WhatsApp test preview via Meta Cloud API test number.
 - Webhook: `python -m tis_agent whatsapp` (FastAPI; local `:8080`, Railway uses `$PORT`)
 - Flow: inbound WhatsApp text → `answer_question` → Cloud API reply
 - Production-style hosting: Railway (stable HTTPS for Meta). Local cloudflared only for ad-hoc debug.
-- Nightly Drive sync remains on Cursor Cloud Agents, not Railway.
+- Nightly Drive sync is a separate Railway cron service (`python -m tis_agent sync drive`), not the WhatsApp service.
 - No parent-facing web app
 - **Slack chat mirrors:** every WhatsApp Q&A posts to `#tina-parent-questions` via Incoming Webhook `SLACK_WEBHOOK_PARENT_QUESTIONS` (Railway alias `SLACK_WEBHOOK_URL`). Needs attention (auto gaps `no_evidence` / `low_confidence`, plus manual Admin flags) posts to `#tina-needs-attention` via `SLACK_WEBHOOK_NEEDS_ATTENTION` (Railway alias `SLACK_NEEDS_ATTENTION_WEBHOOK_URL`). Open items get Slack reminders at ~4h and ~1h before the WhatsApp 24h free-form reply window closes (deduped in `slack_attention_reminders`). One webhook URL per channel; set only on Railway (never commit). Empty env = skip. Fire-and-forget — never blocks WhatsApp.

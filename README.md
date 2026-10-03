@@ -48,6 +48,4 @@ Always-on hosting so Meta has a stable Callback URL (no cloudflared churn).
 5. In Meta → WhatsApp → Configuration: paste that URL, verify token = `WHATSAPP_VERIFY_TOKEN`, subscribe to `messages`.
 6. Optional Slack chat mirrors: create Slack Incoming Webhooks for `#tina-parent-questions` and `#tina-needs-attention`, then set `SLACK_WEBHOOK_PARENT_QUESTIONS` and `SLACK_WEBHOOK_NEEDS_ATTENTION` on the Railway WhatsApp service (never commit the URLs). Every WhatsApp Q&A posts to parent-questions; Needs attention (auto gaps + manual Admin flags) posts to needs-attention. Open items also get reminders at ~4h and ~1h before the WhatsApp 24h reply window closes (WhatsApp process scans every 10 minutes; or `python -m tis_agent remind-attention`). Run `sql/025_slack_attention_reminders.sql` once.
 
-Nightly Drive → Supabase sync stays on Cursor Cloud Agents (`AGENTS.md`), not on Railway.
-
-Nightly sync instructions: see `AGENTS.md`.
+Nightly Drive → Supabase sync is a separate Railway cron service: start command `python -m tis_agent sync drive`, schedule `0 18 * * *` UTC (03:00 Japan time). Details are in `AGENTS.md`.
