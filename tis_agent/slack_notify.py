@@ -213,46 +213,63 @@ def format_slack_payload(
     )
     if remaining_seconds is not None:
         fallback += f"\n{_format_remaining(remaining_seconds)}"
+    # Mentions in top-level text are what trigger iPhone push for Incoming Webhooks.
+    if needs_attention:
+        fallback = f"<!channel> {fallback}"
 
     blocks: list[dict[str, Any]] = [
         {
             "type": "header",
             "text": {"type": "plain_text", "text": title[:150], "emoji": True},
         },
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"*Question*\n{question_text or '_empty_'}",
-            },
-        },
-        {
-            "type": "section",
-            "text": {
-                "type": "mrkdwn",
-                "text": f"*Tina*\n{reply_text or '_empty_'}",
-            },
-        },
-        {
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": "\n".join(meta_lines)},
-        },
-        {
-            "type": "actions",
-            "elements": [
-                {
-                    "type": "button",
-                    "text": {
-                        "type": "plain_text",
-                        "text": button_label,
-                        "emoji": True,
-                    },
-                    "url": link,
-                    "action_id": "open_tina_admin",
-                }
-            ],
-        },
     ]
+    if needs_attention:
+        blocks.append(
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": "<!channel> Needs a human reply in Tina Admin.",
+                },
+            }
+        )
+    blocks.extend(
+        [
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Question*\n{question_text or '_empty_'}",
+                },
+            },
+            {
+                "type": "section",
+                "text": {
+                    "type": "mrkdwn",
+                    "text": f"*Tina*\n{reply_text or '_empty_'}",
+                },
+            },
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": "\n".join(meta_lines)},
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": button_label,
+                            "emoji": True,
+                        },
+                        "url": link,
+                        "action_id": "open_tina_admin",
+                    }
+                ],
+            },
+        ]
+    )
     return {"text": fallback, "blocks": blocks}
 
 

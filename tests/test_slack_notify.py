@@ -140,6 +140,30 @@ def test_format_needs_attention_deep_link_fallback(
     )
     assert payload["blocks"][-1]["elements"][0]["url"] == "https://admin.example/inbox"
     assert "No matching school info" in payload["text"]
+    assert payload["text"].startswith("<!channel>")
+    assert any(
+        "<!channel>" in (b.get("text") or {}).get("text", "")
+        for b in payload["blocks"]
+        if b.get("type") == "section"
+    )
+
+
+def test_parent_question_has_no_channel_mention() -> None:
+    payload = format_slack_payload(
+        title="Tina parent question",
+        question="Q?",
+        reply="A",
+        wa_from="1234",
+        outcome="success",
+        session_id="sess-1",
+        needs_attention=False,
+    )
+    assert "<!channel>" not in payload["text"]
+    assert all(
+        "<!channel>" not in (b.get("text") or {}).get("text", "")
+        for b in payload["blocks"]
+        if b.get("type") == "section"
+    )
 
 
 def test_format_truncates_long_reply() -> None:
