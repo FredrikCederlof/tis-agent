@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { adminNameMap } from "@/lib/chat-presentation";
 import {
   buildParentHistoryStats,
   emptyParentHistoryStats,
@@ -45,6 +46,7 @@ export async function loadChatSessions(): Promise<{
 export async function loadChatThread(sessionId: string): Promise<{
   messages: ChatInteraction[];
   adminReplies: AdminReply[];
+  adminNames: Record<string, string>;
   parentStats: ParentHistoryStats;
   threadError: string | null;
   session: ChatSessionRow | null;
@@ -64,6 +66,25 @@ export async function loadChatThread(sessionId: string): Promise<{
         .order("created_at", { ascending: true }),
       supabase.from("admin_session_list").select("*").eq("id", sessionId).maybeSingle(),
     ]);
+
+  const adminReplies = (replies || []) as AdminReply[];
+  const senderEmailsRaw = adminReplies
+    .map((reply) => (reply.sent_by || "").trim())
+    .filter(Boolean);
+  const senderEmails = [
+    ...new Set([
+      ...senderEmailsRaw,
+      ...senderEmailsRaw.map((email) => email.toLowerCase()),
+    ]),
+  ];
+  let adminNames: Record<string, string> = {};
+  if (senderEmails.length > 0) {
+    const { data: profiles } = await supabase
+      .from("admin_profiles")
+      .select("email, first_name, last_name")
+      .in("email", senderEmails);
+    adminNames = adminNameMap(profiles || []);
+  }
 
   const session = (sessionRow as ChatSessionRow | null) || null;
   let parentStats = emptyParentHistoryStats();
@@ -107,7 +128,8 @@ export async function loadChatThread(sessionId: string): Promise<{
 
   return {
     messages: (messages || []) as ChatInteraction[],
-    adminReplies: (replies || []) as AdminReply[],
+    adminReplies,
+    adminNames,
     parentStats,
     threadError: threadError?.message || null,
     session,

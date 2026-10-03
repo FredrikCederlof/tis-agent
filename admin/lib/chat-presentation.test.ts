@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   adminDisplayName,
+  adminNameMap,
   isKnowledgeCandidateQuestion,
   knowledgeHubUrl,
   outcomeLabel,
@@ -30,7 +31,25 @@ describe("languageInfo", () => {
 });
 
 describe("adminDisplayName", () => {
-  it("uses email local-part first token", () => {
+  it("prefers profile full name over email local-part", () => {
+    const names = adminNameMap([
+      {
+        email: "kotolynski@example.com",
+        first_name: "Fredrik Sterner",
+        last_name: "Cederlöf",
+      },
+    ]);
+    assert.equal(
+      adminDisplayName("kotolynski@example.com", names),
+      "Fredrik Sterner Cederlöf",
+    );
+    assert.equal(
+      adminDisplayName("Kotolynski@example.com", names),
+      "Fredrik Sterner Cederlöf",
+    );
+  });
+
+  it("falls back to email local-part first token", () => {
     assert.equal(adminDisplayName("fredrik@tokyois.com"), "Fredrik");
     assert.equal(adminDisplayName("jane.doe@school.edu"), "Jane");
     assert.equal(adminDisplayName(null), "Admin");
