@@ -140,7 +140,7 @@ export default async function DashboardPage({
                 👋
               </span>
             </h1>
-            <p className="page-subtitle">Here&apos;s what&apos;s happening at your school today.</p>
+            <p className="page-subtitle">Here&apos;s what&apos;s happening at TIS Parent Community today.</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
             <DashboardDateRange from={from} to={to} />
