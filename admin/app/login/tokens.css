@@ -1,0 +1,86 @@
+/* Tina Admin: estimated from supplied screenshots. Import once globally. */
+:root {
+  --tina-backdrop: #cdd0d4;
+  --tina-workspace: #f4f5f9;
+  --tina-surface: #ffffff;
+  --tina-surface-subtle: #f3f4f8;
+  --tina-text: #0b0d15;
+  --tina-text-secondary: #565c73;
+  --tina-text-muted: #7b839f;
+  --tina-border: #e9ecf3;
+  --tina-active: #090d15;
+  --tina-on-active: #ffffff;
+  --tina-lime: #b6f34d;
+  --tina-on-lime: #182508;
+  --tina-lime-soft: #effae7;
+  --tina-success: #00852d;
+  --tina-success-soft: #effbea;
+  --tina-danger: #d71938;
+  --tina-danger-soft: #ffe9ed;
+  --tina-warning: #8b4b00;
+  --tina-warning-soft: #fff0d2;
+  --tina-chart-green: #2b725b;
+  --tina-chart-blue: #6096f8;
+  --tina-chart-purple: #9170ff;
+  --tina-chart-amber: #ffc75e;
+  --tina-chart-yellow: #ffecaf;
+  --tina-chart-neutral: #c9ced8;
+  --tina-icon-green-bg: #ecfbdd;
+  --tina-icon-blue-bg: #e7efff;
+  --tina-icon-purple-bg: #eee8ff;
+  --tina-icon-amber-bg: #fff3dd;
+  --tina-font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --tina-space-1: 4px;
+  --tina-space-2: 8px;
+  --tina-space-3: 12px;
+  --tina-space-4: 16px;
+  --tina-space-5: 20px;
+  --tina-space-6: 24px;
+  --tina-space-8: 32px;
+  --tina-space-10: 40px;
+  --tina-radius-sm: 8px;
+  --tina-radius-control: 12px;
+  --tina-radius-card: 16px;
+  --tina-radius-pane: 24px;
+  --tina-radius-pill: 999px;
+  --tina-shadow-subtle: 0 2px 8px rgb(11 13 21 / 3%);
+  --tina-sidebar-width: 300px;
+  --tina-control-height: 44px;
+  --tina-transition: 140ms ease;
+}
+
+/* Optional scoped foundations. Add tina-ui to the application's root. */
+.tina-ui { font-family: var(--tina-font); color: var(--tina-text); background: var(--tina-workspace); }
+.tina-ui, .tina-ui * { box-sizing: border-box; }
+.tina-ui :where(button, input, textarea, select) { font: inherit; }
+.tina-ui :where(button, a, input, textarea, select, [tabindex]):focus-visible {
+  outline: 2px solid var(--tina-success);
+  outline-offset: 3px;
+}
+.tina-card { background: var(--tina-surface); border-radius: var(--tina-radius-card); padding: var(--tina-space-6); }
+.tina-pane { background: var(--tina-surface); border-radius: var(--tina-radius-pane); min-width: 0; min-height: 0; }
+.tina-button {
+  min-height: var(--tina-control-height); display: inline-flex; align-items: center;
+  justify-content: center; gap: var(--tina-space-2); padding: 0 var(--tina-space-4);
+  border: 1px solid transparent; border-radius: var(--tina-radius-control);
+  background: var(--tina-surface-subtle); color: var(--tina-text); cursor: pointer;
+  transition: background-color var(--tina-transition), box-shadow var(--tina-transition);
+}
+.tina-button:hover:not(:disabled) { box-shadow: inset 0 0 0 999px rgb(11 13 21 / 4%); }
+.tina-button:active:not(:disabled) { box-shadow: inset 0 0 0 999px rgb(11 13 21 / 8%); }
+.tina-button:disabled { opacity: .5; cursor: not-allowed; }
+.tina-button--primary { background: var(--tina-lime); color: var(--tina-on-lime); }
+.tina-button--active { background: var(--tina-active); color: var(--tina-on-active); }
+.tina-button--active:focus-visible { outline-color: var(--tina-lime); }
+.tina-button--icon { width: 44px; padding: 0; flex-shrink: 0; }
+.tina-button--send { width: 58px; height: 58px; padding: 0; flex-shrink: 0; border-radius: var(--tina-radius-pill); }
+.tina-avatar { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; flex-shrink: 0; border-radius: var(--tina-radius-pill); background: #dfe2e9; color: var(--tina-text); font-weight: 500; overflow: hidden; }
+.tina-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.tina-count { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; min-height: 24px; padding: 2px 7px; border-radius: var(--tina-radius-pill); background: var(--tina-lime); color: var(--tina-on-lime); font-size: 12px; line-height: 18px; font-weight: 500; }
+.tina-status { display: inline-flex; align-items: center; min-height: 24px; padding: 4px 10px; border-radius: var(--tina-radius-pill); background: var(--tina-surface-subtle); color: var(--tina-text-secondary); font-size: 11px; line-height: 16px; }
+.tina-status--danger { background: var(--tina-danger-soft); color: var(--tina-danger); }
+.tina-status--warning { background: var(--tina-warning-soft); color: var(--tina-warning); }
+.tina-message { max-width: min(80%, 420px); padding: 12px 16px; border-radius: var(--tina-radius-card); background: var(--tina-surface-subtle); font-size: 16px; line-height: 24px; overflow-wrap: anywhere; }
+.tina-message--assistant { background: var(--tina-lime-soft); padding: 16px; }
+@media (max-width: 767px) { .tina-message { max-width: 88%; } }
+@media (prefers-reduced-motion: reduce) { .tina-ui *, .tina-ui *::before, .tina-ui *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; } }
