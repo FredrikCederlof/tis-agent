@@ -671,6 +671,7 @@ export function ChatThreadDetail({
   interactions,
   adminReplies,
   adminNames = {},
+  adminAvatars = {},
   parentStats,
   userEmail,
   parentLastMessageAt,
@@ -680,6 +681,7 @@ export function ChatThreadDetail({
   interactions: ChatInteraction[];
   adminReplies: AdminReply[];
   adminNames?: Record<string, string>;
+  adminAvatars?: Record<string, string>;
   parentStats: ParentHistoryStats;
   userEmail: string;
   parentLastMessageAt: string | null;
@@ -902,6 +904,7 @@ export function ChatThreadDetail({
                   waFrom={session.wa_from}
                   language={session.primary_language}
                   adminNames={adminNames}
+                  adminAvatars={adminAvatars}
                   menuOpen={menuId === message.id}
                   flagging={flaggingId === message.interactionId}
                   lime={lime}
@@ -983,6 +986,7 @@ function Bubble({
   waFrom,
   language,
   adminNames = {},
+  adminAvatars = {},
   menuOpen,
   flagging,
   lime = false,
@@ -993,6 +997,7 @@ function Bubble({
   waFrom: string;
   language?: string | null;
   adminNames?: Record<string, string>;
+  adminAvatars?: Record<string, string>;
   menuOpen: boolean;
   flagging?: boolean;
   lime?: boolean;
@@ -1091,6 +1096,7 @@ function Bubble({
     ? { titles: [] as string[], quote: null as string | null }
     : sourceTitles(message.documentTitles, message.text);
   const adminName = adminDisplayName(message.sentBy, adminNames);
+  const adminAvatarUrl = adminAvatars[(message.sentBy || "").trim().toLowerCase()];
 
   return (
     <div className="flex items-start justify-end gap-2.5">
@@ -1137,13 +1143,24 @@ function Bubble({
         </div>
       </div>
       {isAdmin ? (
-        <span
-          className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tis-blue text-[11px] font-bold text-white"
-          aria-label={adminName}
-          title={adminName}
-        >
-          {adminName.slice(0, 1).toUpperCase()}
-        </span>
+        adminAvatarUrl ? (
+          <Image
+            src={adminAvatarUrl}
+            alt={adminName}
+            width={32}
+            height={32}
+            className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-black/10"
+            title={adminName}
+          />
+        ) : (
+          <span
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tis-blue text-[11px] font-bold text-white"
+            aria-label={adminName}
+            title={adminName}
+          >
+            {adminName.slice(0, 1).toUpperCase()}
+          </span>
+        )
       ) : (
         <Image
           src="/tina.png"

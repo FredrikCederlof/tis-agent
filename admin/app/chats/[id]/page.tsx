@@ -29,6 +29,7 @@ export default async function ChatSessionPage({
       interactions={thread.messages}
       adminReplies={thread.adminReplies}
       adminNames={thread.adminNames}
+      adminAvatars={thread.adminAvatars}
       parentStats={thread.parentStats}
       userEmail={email}
       parentLastMessageAt={parentLastMessageAt}

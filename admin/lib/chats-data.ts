@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
-import { adminNameMap } from "@/lib/chat-presentation";
+import { avatarPublicUrl } from "@/lib/account";
+import { adminAvatarMap, adminNameMap } from "@/lib/chat-presentation";
 import {
   buildParentHistoryStats,
   emptyParentHistoryStats,
@@ -47,6 +48,7 @@ export async function loadChatThread(sessionId: string): Promise<{
   messages: ChatInteraction[];
   adminReplies: AdminReply[];
   adminNames: Record<string, string>;
+  adminAvatars: Record<string, string>;
   parentStats: ParentHistoryStats;
   threadError: string | null;
   session: ChatSessionRow | null;
@@ -78,12 +80,15 @@ export async function loadChatThread(sessionId: string): Promise<{
     ]),
   ];
   let adminNames: Record<string, string> = {};
+  let adminAvatars: Record<string, string> = {};
   if (senderEmails.length > 0) {
     const { data: profiles } = await supabase
       .from("admin_profiles")
-      .select("email, first_name, last_name")
+      .select("email, first_name, last_name, avatar_path")
       .in("email", senderEmails);
     adminNames = adminNameMap(profiles || []);
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+    adminAvatars = adminAvatarMap(profiles || [], supabaseUrl, avatarPublicUrl);
   }
 
   const session = (sessionRow as ChatSessionRow | null) || null;
@@ -130,6 +135,7 @@ export async function loadChatThread(sessionId: string): Promise<{
     messages: (messages || []) as ChatInteraction[],
     adminReplies,
     adminNames,
+    adminAvatars,
     parentStats,
     threadError: threadError?.message || null,
     session,
