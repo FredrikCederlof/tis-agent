@@ -57,7 +57,8 @@ export function SandboxWorkspace({ user }: { user: UserIdentity }) {
       const next = { ...prev };
       for (const folder of folders) {
         if (next[folder.key] === undefined) {
-          next[folder.key] = folder.key === currentMonth;
+          // Expand month folders by default so chats are visible immediately.
+          next[folder.key] = true;
         }
       }
       return next;
@@ -312,10 +313,10 @@ export function SandboxWorkspace({ user }: { user: UserIdentity }) {
           {error ? (
             <p className="mb-2 rounded-xl bg-rose-50 px-3 py-2 text-sm text-tis-danger">{error}</p>
           ) : null}
-          <div className="flex items-stretch gap-2">
+          <div className="relative rounded-2xl border border-black/[0.08] bg-white shadow-sm focus-within:border-tis-navy focus-within:ring-4 focus-within:ring-black/10">
             <textarea
               rows={2}
-              className="!min-h-[4.5rem] !rounded-2xl"
+              className="!min-h-[4.5rem] w-full resize-none !rounded-2xl !border-0 !bg-transparent !pr-16 !shadow-none focus:!ring-0"
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               onKeyDown={(e) => {
@@ -330,14 +331,18 @@ export function SandboxWorkspace({ user }: { user: UserIdentity }) {
             />
             <button
               type="button"
-              className="primary shrink-0 !h-auto !min-h-[4.5rem] !px-4"
+              className="primary absolute bottom-2.5 right-2.5 !h-9 !min-h-0 !rounded-xl !px-3"
               disabled={sending || !draft.trim()}
               onClick={() => void sendQuestion()}
+              aria-label="Ask"
             >
               <Send className="h-4 w-4" aria-hidden />
               {sending ? "…" : "Ask"}
             </button>
           </div>
+          <p className="mt-1.5 text-[11px] text-tis-muted">
+            Press Enter to send · Shift+Enter for a new line
+          </p>
         </footer>
       </section>
     </div>

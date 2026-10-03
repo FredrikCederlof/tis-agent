@@ -495,7 +495,7 @@ function AppShellInner({
         </div>
       </aside>
 
-      <main className="admin-main">
+      <main className={`admin-main${lime ? " lg:my-3 lg:mr-3" : ""}`}>
         <div
           className={`admin-canvas${chatsCanvas ? " admin-canvas-fill" : ""}${
             lime && chatsCanvas ? " !px-3 !py-3 lg:!px-3 lg:!py-3" : ""
