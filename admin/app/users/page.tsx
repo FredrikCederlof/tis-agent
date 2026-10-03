@@ -22,7 +22,7 @@ export default async function UsersPage() {
       service
         .from("admin_profiles")
         .select(
-          "user_id, email, first_name, last_name, role, status, deactivated_at, created_at",
+          "user_id, email, first_name, last_name, avatar_path, role, status, deactivated_at, created_at",
         )
         .order("first_name", { ascending: true }),
       service
@@ -41,6 +41,7 @@ export default async function UsersPage() {
         email: profile.email,
         first_name: profile.first_name,
         last_name: profile.last_name,
+        avatar_path: profile.avatar_path,
         role: profile.role,
         status: profile.status,
         deactivated_at: null,
@@ -58,6 +59,7 @@ export default async function UsersPage() {
         initialProfiles={profiles}
         initialInvitations={invitations}
         currentUserId={user.id}
+        supabaseUrl={process.env.NEXT_PUBLIC_SUPABASE_URL || ""}
       />
     </AppShell>
   );

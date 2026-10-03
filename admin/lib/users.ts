@@ -37,6 +37,7 @@ export type AdminProfileManaged = {
   email: string;
   first_name: string;
   last_name: string;
+  avatar_path?: string | null;
   role: AdminRole;
   status: ProfileStatus;
   deactivated_at: string | null;
@@ -49,6 +50,7 @@ export type UserListItem = {
   email: string;
   first_name: string;
   last_name: string;
+  avatar_path?: string | null;
   role: AdminRole;
   status: UserListStatus;
   invited_at?: string | null;
@@ -144,6 +146,7 @@ export function buildUserList(args: {
     email: p.email,
     first_name: p.first_name,
     last_name: p.last_name,
+    avatar_path: p.avatar_path ?? null,
     role: p.role,
     status: p.status === "deactivated" ? "deactivated" : "active",
   }));
@@ -159,6 +162,7 @@ export function buildUserList(args: {
       email: inv.email,
       first_name: inv.first_name,
       last_name: inv.last_name,
+      avatar_path: null,
       role: inv.role,
       status: status === "expired" ? "invitation_expired" : "invitation_pending",
       invited_at: inv.created_at,
