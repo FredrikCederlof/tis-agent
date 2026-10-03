@@ -30,7 +30,7 @@ export async function GET() {
       service
         .from("admin_profiles")
         .select(
-          "user_id, email, first_name, last_name, role, status, deactivated_at, created_at",
+          "user_id, email, first_name, last_name, avatar_path, role, status, deactivated_at, created_at",
         )
         .order("first_name", { ascending: true }),
       service

@@ -1,9 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { UserPlus } from "lucide-react";
-import { roleLabel, type AdminRole } from "@/lib/account";
+import {
+  avatarInitial,
+  avatarPublicUrl,
+  roleLabel,
+  type AdminRole,
+} from "@/lib/account";
 import {
   buildUserList,
   isValidEmail,
@@ -14,14 +20,49 @@ import {
   type UserListItem,
 } from "@/lib/users";
 
+function UserRowAvatar({
+  row,
+  supabaseUrl,
+}: {
+  row: UserListItem;
+  supabaseUrl: string;
+}) {
+  const url = avatarPublicUrl(supabaseUrl, row.avatar_path);
+  const initial = avatarInitial({
+    first_name: row.first_name,
+    email: row.email,
+  });
+  if (url) {
+    return (
+      <Image
+        src={url}
+        alt=""
+        width={32}
+        height={32}
+        className="h-8 w-8 shrink-0 rounded-full object-cover ring-1 ring-tina-border"
+      />
+    );
+  }
+  return (
+    <span
+      className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-tina-subtle text-[11px] font-bold text-tina-text ring-1 ring-tina-border"
+      aria-hidden
+    >
+      {initial}
+    </span>
+  );
+}
+
 export function UsersManagement({
   initialProfiles,
   initialInvitations,
   currentUserId,
+  supabaseUrl = "",
 }: {
   initialProfiles: AdminProfileManaged[];
   initialInvitations: AdminInvitationRow[];
   currentUserId: string;
+  supabaseUrl?: string;
 }) {
   const router = useRouter();
   const [profiles, setProfiles] = useState(initialProfiles);
@@ -200,10 +241,17 @@ export function UsersManagement({
                   return (
                     <tr key={`${row.kind}-${row.id}`}>
                       <td className="px-4 py-3 font-semibold text-tis-ink">
-                        {row.first_name} {row.last_name}
-                        {isSelf ? (
-                          <span className="ml-2 text-xs font-medium text-tis-muted">(you)</span>
-                        ) : null}
+                        <div className="flex min-w-0 items-center gap-3">
+                          <UserRowAvatar row={row} supabaseUrl={supabaseUrl} />
+                          <span className="min-w-0 truncate">
+                            {row.first_name} {row.last_name}
+                            {isSelf ? (
+                              <span className="ml-2 text-xs font-medium text-tis-muted">
+                                (you)
+                              </span>
+                            ) : null}
+                          </span>
+                        </div>
                       </td>
                       <td className="px-4 py-3 text-tis-muted">{row.email}</td>
                       <td className="px-4 py-3">
