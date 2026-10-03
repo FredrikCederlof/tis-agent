@@ -78,6 +78,14 @@ def admin_base_url() -> str:
     return base
 
 
+def slack_icon_url() -> str:
+    """Public Tina avatar for Slack webhook posts (must be https)."""
+    override = (os.environ.get("SLACK_ICON_URL") or "").strip()
+    if override:
+        return override
+    return f"{admin_base_url()}/tina-slack-icon.png"
+
+
 def admin_deep_link(
     *,
     session_id: str | None = None,
@@ -273,8 +281,19 @@ def format_slack_payload(
     return {"text": fallback, "blocks": blocks}
 
 
+def _with_slack_identity(payload: dict[str, Any]) -> dict[str, Any]:
+    """Force Tina display name + portrait; never use Slack's default books emoji."""
+    out = dict(payload)
+    out["username"] = "Tina"
+    # icon_url overrides the Incoming Webhook's configured icon (books).
+    # Do not set icon_emoji — that would replace the portrait with an emoji.
+    out["icon_url"] = slack_icon_url()
+    out.pop("icon_emoji", None)
+    return out
+
+
 def _post_webhook(url: str, payload: dict[str, Any], *, label: str) -> None:
-    body = json.dumps(payload).encode("utf-8")
+    body = json.dumps(_with_slack_identity(payload)).encode("utf-8")
     request = urllib.request.Request(
         url,
         data=body,

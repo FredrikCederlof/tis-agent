@@ -30,6 +30,8 @@ notify_parent_question = _MOD.notify_parent_question
 notify_slack_interaction = _MOD.notify_slack_interaction
 notify_window_reminder = _MOD.notify_window_reminder
 should_notify_needs_attention = _MOD.should_notify_needs_attention
+slack_icon_url = _MOD.slack_icon_url
+_with_slack_identity = _MOD._with_slack_identity
 
 
 class ImmediateThread:
@@ -164,6 +166,40 @@ def test_parent_question_has_no_channel_mention() -> None:
         for b in payload["blocks"]
         if b.get("type") == "section"
     )
+
+
+def test_slack_identity_uses_tina_portrait(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("TINA_ADMIN_URL", "https://admin.example")
+    monkeypatch.delenv("SLACK_ICON_URL", raising=False)
+    assert slack_icon_url() == "https://admin.example/tina-slack-icon.png"
+    payload = _with_slack_identity({"text": "hi", "blocks": []})
+    assert payload["username"] == "Tina"
+    assert payload["icon_url"] == "https://admin.example/tina-slack-icon.png"
+    assert "icon_emoji" not in payload
+
+
+def test_parent_webhook_sends_icon_url(monkeypatch: pytest.MonkeyPatch) -> None:
+    captured: list[dict[str, Any]] = []
+
+    def fake_urlopen(request: Any, timeout: float = 0) -> FakeResponse:
+        captured.append(json.loads(request.data.decode()))
+        return FakeResponse()
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    monkeypatch.setattr(_MOD.threading, "Thread", ImmediateThread)
+    monkeypatch.setenv("TINA_ADMIN_URL", "https://admin.example")
+    monkeypatch.setenv("SLACK_WEBHOOK_URL", "https://hooks.slack.com/services/PARENT")
+    monkeypatch.delenv("SLACK_WEBHOOK_PARENT_QUESTIONS", raising=False)
+
+    notify_parent_question(
+        question="Hi?",
+        reply="Hello",
+        wa_from="1234",
+        outcome="success",
+    )
+    assert captured[0]["username"] == "Tina"
+    assert captured[0]["icon_url"].endswith("/tina-slack-icon.png")
+    assert "icon_emoji" not in captured[0]
 
 
 def test_format_truncates_long_reply() -> None:
