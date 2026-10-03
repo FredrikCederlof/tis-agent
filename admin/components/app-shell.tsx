@@ -237,8 +237,10 @@ function AppShellInner({
         }`}
       >
         <div
-          className={`flex items-center gap-2 px-1 pb-4 pt-1 ${
-            iconsOnly ? "justify-center" : "justify-between"
+          className={`flex px-1 pb-4 pt-1 ${
+            iconsOnly
+              ? "flex-col items-center gap-2"
+              : "items-center justify-between gap-2"
           }`}
         >
           {iconsOnly ? (
