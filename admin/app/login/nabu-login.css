@@ -3,9 +3,10 @@
   --login-ink: #182019;
   --login-muted: #535e55;
   --login-glass: rgba(255, 255, 255, 0.94);
+  --tina-lime: #b6f34d;
+  --tina-on-lime: #182508;
   margin: 0;
   min-height: 100dvh;
-  font-family: var(--tina-font);
   color: var(--login-ink);
   background: #dce4d6;
   position: relative;

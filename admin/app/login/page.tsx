@@ -5,7 +5,6 @@ import { Inter } from "next/font/google";
 import { Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import "./tokens.css";
 import "./nabu-login.css";
 
 const inter = Inter({ subsets: ["latin"], display: "swap" });
@@ -90,7 +89,7 @@ function LoginForm() {
       : "Sign in";
 
   return (
-    <div className={`nabu-login tina-ui ${inter.className}`}>
+    <div className={`nabu-login ${inter.className}`}>
       <a className="skip" href="#email">
         Skip to sign in
       </a>
