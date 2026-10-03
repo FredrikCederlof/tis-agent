@@ -201,9 +201,9 @@ function AppShellInner({
           <Image
             src="/nabo-logo.png"
             alt="Nabo"
-            width={140}
-            height={70}
-            className="h-9 w-auto object-contain object-left"
+            width={168}
+            height={84}
+            className="h-11 w-auto object-contain object-left"
             priority
             unoptimized
           />
