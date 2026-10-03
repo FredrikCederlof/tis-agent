@@ -131,7 +131,7 @@ export default async function DashboardPage({
       unansweredCount={unansweredCount}
       profile={profile}
     >
-      <div className="min-w-0 pb-24">
+      <div className="min-w-0 pb-2">
         <div className="mb-7 grid gap-4 sm:mb-9 lg:grid-cols-[1fr_auto] lg:items-start">
           <div>
             <h1 className="page-title">
