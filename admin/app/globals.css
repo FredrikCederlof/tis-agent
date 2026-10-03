@@ -45,7 +45,6 @@ body {
   }
 
   textarea,
-  select,
   /* Bare <input> defaults to text in browsers but not in CSS attribute selectors. */
   input:not([type]),
   input[type="text"],
@@ -58,6 +57,11 @@ body {
   input[type="tel"],
   input[type="url"] {
     @apply w-full max-w-full rounded-xl border border-black/[0.08] bg-white px-3.5 py-2.5 text-sm text-tis-ink shadow-sm outline-none transition duration-soft ease-soft placeholder:text-slate-400 focus:border-tis-navy focus:ring-4 focus:ring-black/10;
+  }
+
+  /* Extra right padding so the native chevron is not flush with the edge. */
+  select {
+    @apply w-full max-w-full rounded-xl border border-black/[0.08] bg-white py-2.5 pl-3.5 pr-9 text-sm text-tis-ink shadow-sm outline-none transition duration-soft ease-soft focus:border-tis-navy focus:ring-4 focus:ring-black/10;
   }
 
   .page-title {
