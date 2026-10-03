@@ -115,7 +115,8 @@ function AppShellInner({
   const lime = isLimeLicorice(theme);
   const unreadChats = chatsUnreadCount ?? fetchedUnread;
   const inboxCount = liveUnanswered ?? unansweredCount;
-  const fillCanvas = pathname.startsWith("/chats") || pathname.startsWith("/sandbox");
+  const chatsCanvas = pathname.startsWith("/chats");
+  const fillCanvas = chatsCanvas || pathname.startsWith("/sandbox");
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
   const firstName = displayFirstName(profile || { first_name: "", email });
   const roleText = roleLabel(profile?.role);
@@ -496,7 +497,7 @@ function AppShellInner({
       <main className="admin-main">
         <div
           className={`admin-canvas${fillCanvas ? " admin-canvas-fill" : ""}${
-            lime && fillCanvas ? " !px-3 !py-3 lg:!px-3 lg:!py-3" : ""
+            lime && chatsCanvas ? " !px-3 !py-3 lg:!px-3 lg:!py-3" : ""
           }`}
         >
           {children}

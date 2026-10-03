@@ -109,7 +109,7 @@ body {
   }
 
   [data-theme="lime_licorice"] .page-title {
-    @apply text-[1.75rem] font-extrabold tracking-[-0.03em] sm:text-[2.125rem];
+    @apply text-[1.75rem] font-extrabold leading-[1.15] tracking-[-0.03em] sm:text-[2.125rem];
   }
 
   [data-theme="lime_licorice"] .page-subtitle {
