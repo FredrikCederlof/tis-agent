@@ -257,7 +257,7 @@ export function UsersManagement({
                       <td className="px-4 py-3">
                         {row.kind === "profile" && !isSelf && row.status === "active" ? (
                           <select
-                            className="max-w-[9rem]"
+                            className="min-w-[8.5rem] max-w-[9rem]"
                             value={row.role}
                             disabled={busy}
                             onChange={(e) =>
