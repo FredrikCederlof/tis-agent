@@ -194,7 +194,7 @@ function AppShellInner({
 
   return (
     <ThemeProvider theme={theme}>
-    <div className={`admin-shell ${lime ? "bg-tina-workspace" : ""}`}>
+    <div className={`admin-shell ${lime ? "bg-tina-workspace lg:pb-3 lg:pt-6" : ""}`}>
       {/* Mobile top bar */}
       <div className="z-30 flex shrink-0 items-center justify-between border-b border-black/[0.06] bg-white px-4 py-3 lg:hidden">
         <div className="flex min-w-0 items-center gap-3">
@@ -228,9 +228,9 @@ function AppShellInner({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex flex-col p-3 transition-transform duration-soft ease-soft lg:static lg:h-full lg:shrink-0 ${
+        className={`fixed inset-y-0 left-0 z-40 flex min-h-0 flex-col p-3 transition-transform duration-soft ease-soft lg:static lg:shrink-0 ${
           lime
-            ? "w-[280px] rounded-none border-r border-tina-border/80 bg-white/90 text-tina-secondary shadow-float backdrop-blur-xl lg:my-3 lg:ml-3 lg:rounded-pane lg:border lg:bg-white lg:shadow-card"
+            ? "w-[280px] rounded-none border-r border-tina-border/80 bg-white/90 text-tina-secondary shadow-float backdrop-blur-xl lg:ml-3 lg:rounded-pane lg:border lg:bg-white lg:shadow-card"
             : "w-[248px] border-r border-tis-navy/40 bg-tis-navy text-white shadow-soft lg:shadow-none"
         } ${collapsed ? (lime ? "lg:w-[84px]" : "lg:w-[76px]") : lime ? "lg:w-[280px]" : "lg:w-[248px]"} ${
           open ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
@@ -504,7 +504,7 @@ function AppShellInner({
         </div>
       </aside>
 
-      <main className={`admin-main${lime ? " lg:my-3 lg:mr-3" : ""}`}>
+      <main className={`admin-main${lime ? " lg:mr-3" : ""}`}>
         <div
           className={`admin-canvas${chatsCanvas ? " admin-canvas-fill" : ""}${
             lime && chatsCanvas ? " !px-3 !py-3 lg:!px-3 lg:!py-3" : ""
