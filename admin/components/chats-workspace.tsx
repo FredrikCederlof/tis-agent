@@ -1011,7 +1011,7 @@ function Bubble({
             <span
               className={`text-[13px] font-bold ${lime ? "text-tina-text" : "text-tis-navy"}`}
             >
-              Parent
+              Guardian
             </span>
             <span className={`text-[11px] ${lime ? "text-tina-muted" : "text-slate-400"}`}>
               {timeOnly(message.at)}
@@ -1029,7 +1029,7 @@ function Bubble({
                     ? "text-tina-muted hover:bg-tina-subtle hover:text-tina-text"
                     : "text-slate-400 hover:bg-slate-200/70 hover:text-tis-navy"
                 }`}
-                aria-label="Parent message actions"
+                aria-label="Guardian message actions"
                 aria-expanded={menuOpen}
                 onClick={onToggleMenu}
               >

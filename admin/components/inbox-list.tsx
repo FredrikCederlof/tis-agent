@@ -64,7 +64,7 @@ export function InboxList({
                   {waFrom ? <ParentAvatar waFrom={waFrom} size={40} /> : null}
                   <div className="min-w-0">
                     <p className="text-sm font-bold text-tis-navy">
-                      {waFrom ? parentLabel(waFrom) : "Parent"}
+                      {waFrom ? parentLabel(waFrom) : "Guardian"}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-1.5">
                       <span

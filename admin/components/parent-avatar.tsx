@@ -12,7 +12,7 @@ export function ParentAvatar({
   const avatar = parentAvatar(waFrom);
   const masked = parentMaskedId(waFrom);
   const label =
-    masked === "Parent" ? `Parent · ${avatar.label}` : `Parent ${masked} · ${avatar.label}`;
+    masked === "Guardian" ? `Guardian · ${avatar.label}` : `Guardian ${masked} · ${avatar.label}`;
 
   return (
     <span

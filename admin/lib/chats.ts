@@ -136,12 +136,12 @@ export function parentMaskedId(waFrom: string | null | undefined): string {
   const digits = (waFrom || "").replace(/\D/g, "");
   if (digits.length >= 4) return `••${digits.slice(-4)}`;
   if (digits) return `••${digits}`;
-  return "Parent";
+  return "Guardian";
 }
 
 export function parentLabel(waFrom: string | null | undefined): string {
   const masked = parentMaskedId(waFrom);
-  return masked === "Parent" ? "Parent" : `Parent · ${masked}`;
+  return masked === "Guardian" ? "Guardian" : `Guardian · ${masked}`;
 }
 
 /** Distinct avatar fills — same phone number always maps to the same slot. */
