@@ -670,6 +670,7 @@ export function ChatThreadDetail({
   session,
   interactions,
   adminReplies,
+  adminNames = {},
   parentStats,
   userEmail,
   parentLastMessageAt,
@@ -678,6 +679,7 @@ export function ChatThreadDetail({
   session: ChatSessionRow;
   interactions: ChatInteraction[];
   adminReplies: AdminReply[];
+  adminNames?: Record<string, string>;
   parentStats: ParentHistoryStats;
   userEmail: string;
   parentLastMessageAt: string | null;
@@ -899,6 +901,7 @@ export function ChatThreadDetail({
                   message={message}
                   waFrom={session.wa_from}
                   language={session.primary_language}
+                  adminNames={adminNames}
                   menuOpen={menuId === message.id}
                   flagging={flaggingId === message.interactionId}
                   lime={lime}
@@ -962,6 +965,7 @@ export function ChatThreadDetail({
           session={session}
           interactions={interactions}
           adminReplies={adminReplies}
+          adminNames={adminNames}
           parentStats={parentStats}
           userEmail={userEmail}
           flagging={flaggingId != null}
@@ -978,6 +982,7 @@ function Bubble({
   message,
   waFrom,
   language,
+  adminNames = {},
   menuOpen,
   flagging,
   lime = false,
@@ -987,6 +992,7 @@ function Bubble({
   message: ChatMessage;
   waFrom: string;
   language?: string | null;
+  adminNames?: Record<string, string>;
   menuOpen: boolean;
   flagging?: boolean;
   lime?: boolean;
@@ -1084,7 +1090,7 @@ function Bubble({
   const sources = isAdmin
     ? { titles: [] as string[], quote: null as string | null }
     : sourceTitles(message.documentTitles, message.text);
-  const adminName = adminDisplayName(message.sentBy);
+  const adminName = adminDisplayName(message.sentBy, adminNames);
 
   return (
     <div className="flex items-start justify-end gap-2.5">
@@ -1155,6 +1161,7 @@ function InfoPanel({
   session,
   interactions,
   adminReplies,
+  adminNames = {},
   parentStats,
   userEmail,
   flagging,
@@ -1165,6 +1172,7 @@ function InfoPanel({
   session: ChatSessionRow;
   interactions: ChatInteraction[];
   adminReplies: AdminReply[];
+  adminNames?: Record<string, string>;
   parentStats: ParentHistoryStats;
   userEmail: string;
   flagging: boolean;
@@ -1355,7 +1363,7 @@ function InfoPanel({
                 label={`${reply.status === "failed" ? "Failed" : "Sent"} ${formatMessageTime(
                   reply.created_at,
                 )}`}
-                value={adminDisplayName(reply.sent_by)}
+                value={adminDisplayName(reply.sent_by, adminNames)}
               />
             ))
           )}

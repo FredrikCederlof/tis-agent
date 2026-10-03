@@ -31,14 +31,36 @@ export function outcomeLabel(outcome: string | null | undefined): string {
   return OUTCOME_LABELS[outcome] || outcome;
 }
 
-/** First name from email local-part, else Admin. */
-export function adminDisplayName(sentBy: string | null | undefined): string {
+/**
+ * Admin reply label: prefer profile full name (first + last) from `nameByEmail`,
+ * else a short email local-part fallback, else "Admin".
+ */
+export function adminDisplayName(
+  sentBy: string | null | undefined,
+  nameByEmail?: Record<string, string> | null,
+): string {
   const raw = (sentBy || "").trim();
   if (!raw) return "Admin";
+  const fromProfile = nameByEmail?.[raw.toLowerCase()]?.trim();
+  if (fromProfile) return fromProfile;
   const local = raw.includes("@") ? raw.split("@")[0] || "" : raw;
   const token = local.split(/[._+\-]/)[0] || local;
   if (!token) return "Admin";
   return token.charAt(0).toUpperCase() + token.slice(1);
+}
+
+/** Build email → "First Last" map from admin_profiles rows. */
+export function adminNameMap(
+  profiles: { email?: string | null; first_name?: string | null; last_name?: string | null }[],
+): Record<string, string> {
+  const map: Record<string, string> = {};
+  for (const row of profiles) {
+    const email = (row.email || "").trim().toLowerCase();
+    if (!email) continue;
+    const full = `${row.first_name || ""} ${row.last_name || ""}`.trim();
+    if (full) map[email] = full;
+  }
+  return map;
 }
 
 const SOURCE_LINE =
