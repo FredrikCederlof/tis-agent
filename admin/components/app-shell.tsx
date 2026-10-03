@@ -283,6 +283,15 @@ function AppShellInner({
         </div>
 
         <nav className="flex flex-1 flex-col gap-4 overflow-y-auto pt-2 lg:pt-0">
+          {!iconsOnly ? (
+            <p
+              className={`px-3 text-[13px] font-bold leading-snug ${
+                lime ? "text-tina-text" : "text-white"
+              }`}
+            >
+              Tokyo International School
+            </p>
+          ) : null}
           {visibleSections.map((section) => (
             <div key={section.label} className="space-y-0.5">
               {iconsOnly ? (
