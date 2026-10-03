@@ -246,9 +246,9 @@ function AppShellInner({
               <Image
                 src="/nabo-mark.png"
                 alt="Nabo"
-                width={40}
-                height={40}
-                className="h-10 w-10 object-contain"
+                width={48}
+                height={48}
+                className="h-12 w-12 object-contain"
                 priority
                 unoptimized
               />
@@ -258,9 +258,9 @@ function AppShellInner({
               <Image
                 src="/nabo-logo.png"
                 alt="Nabo"
-                width={160}
-                height={80}
-                className="h-10 w-auto max-w-full object-contain object-left"
+                width={192}
+                height={96}
+                className="h-12 w-auto max-w-full object-contain object-left"
                 priority
                 unoptimized
               />
