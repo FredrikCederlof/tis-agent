@@ -20,6 +20,7 @@ Short record of product intent. Change these only with a reason.
 - The weekly bulletin **strips** the names Eldor, Malte, and Vega-Lo / Vega, then **keeps** Kindergarten, Grade 3, and Grade 6 class notices plus school-wide / PYP / MYP / DP facts. It **drops** personal teacher emails directed at one child (and parent Gmail/iCloud threads). Other single-grade mail (e.g. Grade 10 only) is dropped.
 - Documents are uploaded to Supabase, then embedded for RAG.
 - **Knowledge Hub:** Curated parent Q&A (manual or from the unanswered inbox) is one `knowledge_entries` row and one RAG document (`source_type=knowledge`). Not a second retriever or fixed-answer router. Tina still writes WhatsApp replies from retrieved evidence. SQL: `sql/010_knowledge_hub.sql`.
+- **Knowledge Hub lifecycle (INS-23):** Articles carry status (`draft` / `active` / `expired` / `archived`), optional `valid_until` / `review_due_date`, content owner, source URL, audience scope, and AI exclusion guidance. Only Active (and not past `valid_until`) entries are ingested and retrieved. Admin-only field edits skip re-embedding via content hash; `last_ingested_at` updates only on successful ingest. SQL: `sql/026_knowledge_lifecycle.sql`.
 - **Knowledge Hub presentation (INS-21):** Category widgets (not a table) for scanability. Blank categories and sparse named topics (≤3 articles) roll into **Other**; topics with more than three articles become dedicated widgets. Category names stay editor-driven (reviewable), not silent AI auto-publish.
 - **Admin English (INS-21):** Parent/Tina message originals stay in `interactions.question` / `reply`. English for Admin is stored separately (`question_en`, `reply_en`, `translation_status`) at ingest via OpenAI on Railway. Never overwrite originals; never put OpenAI keys in the browser.
 - **Chrome Web Push (INS-21):** Needs attention alerts use a unique notification tag per interaction and `renotify: true` so Chrome does not collapse successive alerts onto a shared tag.
@@ -59,11 +60,12 @@ Prove reliable answers over the *Community Handbook 2026–2027* (English PDF), 
 
 ## Milestone 2
 
-Google Drive folder → Supabase Storage (`tis-ass`) → pgvector sync, with a nightly Cloud Agent at 03:30.
+Google Drive folder → Supabase Storage (`tis-ass`) → pgvector sync, nightly on Railway at 03:00 Asia/Tokyo.
 
 - Drive folder id: `1P0XZLFtIBivKEx55BjvUZH6_xsWZUDZa`
 - Sync tracks `drive_file_id`, `drive_modified_time`, and `content_hash` on `documents`
-- Nightly agent uses Google Drive MCP + `python -m tis_agent sync file ...`
+- Nightly command: `python -m tis_agent sync drive` (Railway cron `0 18 * * *` UTC)
+- Auth: `GOOGLE_SERVICE_ACCOUNT_JSON` (service account, folder shared as Viewer)
 - Run `sql/002_sync.sql` once after `001_rag.sql`
 - Nested Drive subfolders are in scope (e.g. `Curriculum Guides`). Nightly sync must walk recursively.
 
@@ -74,6 +76,6 @@ WhatsApp test preview via Meta Cloud API test number.
 - Webhook: `python -m tis_agent whatsapp` (FastAPI; local `:8080`, Railway uses `$PORT`)
 - Flow: inbound WhatsApp text → `answer_question` → Cloud API reply
 - Production-style hosting: Railway (stable HTTPS for Meta). Local cloudflared only for ad-hoc debug.
-- Nightly Drive sync remains on Cursor Cloud Agents, not Railway.
+- Nightly Drive sync is a separate Railway cron service (`python -m tis_agent sync drive`), not the WhatsApp service.
 - No parent-facing web app
 - **Slack chat mirrors:** every WhatsApp Q&A posts to `#tina-parent-questions` via Incoming Webhook `SLACK_WEBHOOK_PARENT_QUESTIONS` (Railway alias `SLACK_WEBHOOK_URL`). Needs attention (auto gaps `no_evidence` / `low_confidence`, plus manual Admin flags) posts to `#tina-needs-attention` via `SLACK_WEBHOOK_NEEDS_ATTENTION` (Railway alias `SLACK_NEEDS_ATTENTION_WEBHOOK_URL`). Open items get Slack reminders at ~4h and ~1h before the WhatsApp 24h free-form reply window closes (deduped in `slack_attention_reminders`). One webhook URL per channel; set only on Railway (never commit). Empty env = skip. Fire-and-forget — never blocks WhatsApp.

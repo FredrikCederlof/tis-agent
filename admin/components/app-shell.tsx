@@ -232,7 +232,7 @@ function AppShellInner({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex flex-col p-3 transition-transform duration-soft ease-soft lg:static lg:min-h-0 lg:h-auto lg:shrink-0 lg:self-stretch ${
+        className={`fixed inset-y-0 left-0 z-40 flex min-h-0 flex-col p-3 transition-transform duration-soft ease-soft lg:static lg:h-auto lg:shrink-0 lg:self-stretch ${
           lime
             ? "w-[280px] rounded-none border-r border-tina-border/80 bg-white/90 text-tina-secondary shadow-float backdrop-blur-xl lg:rounded-pane lg:border lg:bg-white lg:shadow-card"
             : "w-[248px] border-r border-tis-navy/40 bg-tis-navy text-white shadow-soft lg:shadow-none"

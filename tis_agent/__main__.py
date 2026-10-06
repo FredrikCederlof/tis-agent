@@ -8,6 +8,7 @@ def main() -> None:
         print(
             "Usage:\n"
             "  python -m tis_agent ingest\n"
+            "  python -m tis_agent sync drive\n"
             "  python -m tis_agent sync file --title TITLE --mime-type TYPE PATH\n"
             "  python -m tis_agent sync state\n"
             "  python -m tis_agent sync web\n"

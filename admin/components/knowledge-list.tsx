@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import {
   PAGE_SIZE,
+  effectiveKnowledgeStatus,
+  isReviewOverdue,
   pageCount,
   paginate,
 } from "@/lib/knowledge-hub";
@@ -15,6 +17,19 @@ function formatWhen(iso: string): string {
     day: "numeric",
     year: "numeric",
   });
+}
+
+function statusBadgeClass(status: KnowledgeStatus): string {
+  switch (status) {
+    case "archived":
+      return "bg-rose-50 text-tis-danger";
+    case "draft":
+      return "bg-slate-100 text-slate-600";
+    case "expired":
+      return "bg-amber-50 text-amber-800";
+    default:
+      return "bg-emerald-50 text-tis-success";
+  }
 }
 
 export function KnowledgeList({
@@ -43,8 +58,9 @@ export function KnowledgeList({
   const filtered = useMemo(() => {
     const needle = query.trim().toLowerCase();
     return rows.filter((row) => {
+      const resolved = effectiveKnowledgeStatus(row);
       if (origin && row.origin !== origin) return false;
-      if (status && row.status !== status) return false;
+      if (status && resolved !== status) return false;
       if (tag && !(row.tags || []).includes(tag)) return false;
       if (!needle) return true;
       const haystack = [
@@ -54,6 +70,8 @@ export function KnowledgeList({
         ...(row.similar_questions || []),
         ...(row.tags || []),
         row.source_note || "",
+        row.content_owner || "",
+        ...(row.audience || []),
       ]
         .join(" ")
         .toLowerCase();
@@ -110,6 +128,8 @@ export function KnowledgeList({
             onChange={(e) => setStatus(e.target.value as "" | KnowledgeStatus)}
           >
             <option value="active">Active</option>
+            <option value="draft">Draft</option>
+            <option value="expired">Expired</option>
             <option value="archived">Archived</option>
             <option value="">All</option>
           </select>
@@ -125,59 +145,66 @@ export function KnowledgeList({
       ) : (
         <>
           <ul className="space-y-3">
-            {visible.map((row) => (
-              <li key={row.id}>
-                <Link
-                  href={`/knowledge/${row.id}`}
-                  className="card block transition hover:border-tis-sky/40 hover:shadow-md"
-                >
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="font-semibold text-tis-navy">{row.primary_question}</p>
-                      <p className="mt-1 line-clamp-2 text-sm text-tis-muted">{row.answer}</p>
-                      <p className="mt-2 text-xs text-slate-500">
-                        Updated {formatWhen(row.updated_at)}
-                        {row.created_at !== row.updated_at
-                          ? ` · created ${formatWhen(row.created_at)}`
-                          : ""}
-                      </p>
-                    </div>
-                    <div className="flex shrink-0 flex-nowrap gap-1.5">
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          row.origin === "inbox"
-                            ? "bg-amber-50 text-amber-700"
-                            : "bg-slate-100 text-slate-600"
-                        }`}
-                      >
-                        {row.origin === "inbox" ? "Inbox" : "Manual"}
-                      </span>
-                      <span
-                        className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                          row.status === "archived"
-                            ? "bg-rose-50 text-tis-danger"
-                            : "bg-emerald-50 text-tis-success"
-                        }`}
-                      >
-                        {row.status}
-                      </span>
-                    </div>
-                  </div>
-                  {(row.tags || []).length > 0 && (
-                    <div className="mt-3 flex flex-nowrap gap-1.5 overflow-x-auto">
-                      {(row.tags || []).map((item) => (
+            {visible.map((row) => {
+              const resolved = effectiveKnowledgeStatus(row);
+              const overdue = isReviewOverdue(row);
+              return (
+                <li key={row.id}>
+                  <Link
+                    href={`/knowledge/${row.id}`}
+                    className="card block transition hover:border-tis-sky/40 hover:shadow-md"
+                  >
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div className="min-w-0">
+                        <p className="font-semibold text-tis-navy">{row.primary_question}</p>
+                        <p className="mt-1 line-clamp-2 text-sm text-tis-muted">{row.answer}</p>
+                        <p className="mt-2 text-xs text-slate-500">
+                          Updated {formatWhen(row.updated_at)}
+                          {row.created_at !== row.updated_at
+                            ? ` · created ${formatWhen(row.created_at)}`
+                            : ""}
+                        </p>
+                      </div>
+                      <div className="flex shrink-0 flex-wrap gap-1.5">
                         <span
-                          key={item}
-                          className="shrink-0 rounded-full bg-tis-mist px-2.5 py-0.5 text-xs font-semibold text-tis-sky"
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                            row.origin === "inbox"
+                              ? "bg-amber-50 text-amber-700"
+                              : "bg-slate-100 text-slate-600"
+                          }`}
                         >
-                          {item}
+                          {row.origin === "inbox" ? "Inbox" : "Manual"}
                         </span>
-                      ))}
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${statusBadgeClass(
+                            resolved,
+                          )}`}
+                        >
+                          {resolved}
+                        </span>
+                        {overdue && (
+                          <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                            Review overdue
+                          </span>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </Link>
-              </li>
-            ))}
+                    {(row.tags || []).length > 0 && (
+                      <div className="mt-3 flex flex-nowrap gap-1.5 overflow-x-auto">
+                        {(row.tags || []).map((item) => (
+                          <span
+                            key={item}
+                            className="shrink-0 rounded-full bg-tis-mist px-2.5 py-0.5 text-xs font-semibold text-tis-sky"
+                          >
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </Link>
+                </li>
+              );
+            })}
           </ul>
           {pages > 1 && (
             <div className="flex flex-wrap items-center justify-between gap-3">
