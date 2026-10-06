@@ -32,6 +32,23 @@ export const AUDIENCE_OPTIONS = [
   ...Array.from({ length: 12 }, (_, i) => `Grade ${i + 1}`),
 ] as const;
 
+export const AUDIENCE_ROLES = ["All", "Parents", "Students", "Teachers"] as const;
+export const PROGRAMME_OPTIONS = ["PYP", "MYP", "DP"] as const;
+export const GRADE_OPTIONS = [
+  "Kindergarten",
+  ...Array.from({ length: 12 }, (_, i) => `Grade ${i + 1}`),
+] as const;
+
+export const PRIMARY_QUESTION_MAX = 200;
+export const ANSWER_MAX = 5000;
+export const SIMILAR_QUESTION_MAX = 10;
+
+export type AudienceGroups = {
+  roles: string[];
+  programmes: string[];
+  grades: string[];
+};
+
 export function createSuccessPath(isNew: boolean): string {
   return isNew ? CREATE_SUCCESS_PATH : "";
 }
@@ -393,4 +410,133 @@ export function categoryPageSubtitle(categoryName: string): string {
     return "Knowledge used by Tina that doesn't belong to another category.";
   }
   return `Knowledge Hub articles filed under ${categoryName}.`;
+}
+
+export function parseAudienceGroups(
+  audience: string[] | null | undefined,
+): AudienceGroups {
+  const items = audience?.length ? audience : ["All"];
+  const roles = AUDIENCE_ROLES.filter((role) => role !== "All" && items.includes(role));
+  return {
+    roles: roles.length ? roles : ["All"],
+    programmes: PROGRAMME_OPTIONS.filter((item) => items.includes(item)).slice(),
+    grades: GRADE_OPTIONS.filter((item) => items.includes(item)).slice(),
+  };
+}
+
+export function serializeAudienceGroups(groups: AudienceGroups): string[] {
+  const roles = groups.roles.filter((role) => role !== "All");
+  const next = [...roles, ...groups.programmes, ...groups.grades];
+  return next.length ? next : ["All"];
+}
+
+export function toggleAudienceRole(groups: AudienceGroups, value: string): AudienceGroups {
+  if (value === "All") return { ...groups, roles: ["All"] };
+  const withoutAll = groups.roles.filter((role) => role !== "All");
+  const next = withoutAll.includes(value)
+    ? withoutAll.filter((role) => role !== value)
+    : [...withoutAll, value];
+  return { ...groups, roles: next.length ? next : ["All"] };
+}
+
+export function toggleProgramme(groups: AudienceGroups, value: string): AudienceGroups {
+  if (value === "All") return { ...groups, programmes: [] };
+  const next = groups.programmes.includes(value)
+    ? groups.programmes.filter((item) => item !== value)
+    : [...groups.programmes, value];
+  return { ...groups, programmes: next };
+}
+
+export function toggleGrade(groups: AudienceGroups, value: string): AudienceGroups {
+  if (value === "All grades") return { ...groups, grades: [] };
+  const next = groups.grades.includes(value)
+    ? groups.grades.filter((item) => item !== value)
+    : [...groups.grades, value];
+  return { ...groups, grades: next };
+}
+
+export function knowledgeEditorBackHref(
+  category: string | null | undefined,
+  rows: KnowledgeEntry[] = [],
+): string {
+  const label = categoryLabel(category);
+  if (rows.length === 0) {
+    return `/knowledge/category/${categorySlug(label)}`;
+  }
+  const grouped = groupCategories(rows);
+  const match = grouped.find((item) => item.name.toLowerCase() === label.toLowerCase());
+  if (match) return `/knowledge/category/${match.slug}`;
+  return `/knowledge/category/${OTHER_SLUG}`;
+}
+
+export function knowledgeEditorBackLabel(backHref: string): string {
+  if (backHref.includes("/inbox")) return "Back to Needs attention";
+  const match = backHref.match(/\/knowledge\/category\/([^/?#]+)/);
+  if (match) {
+    const slug = decodeURIComponent(match[1] || "");
+    if (!slug || slug === OTHER_SLUG || slug === "uncategorized") return "Back to Other";
+    return `Back to ${slug}`;
+  }
+  return "Back to Knowledge Hub";
+}
+
+export function categorySelectOptions(
+  existing: string[],
+  current?: string | null,
+): string[] {
+  const found = new Set<string>([OTHER]);
+  for (const name of existing) {
+    const label = normalizeCategoryName(name);
+    if (label) found.add(label);
+  }
+  const currentLabel = normalizeCategoryName(current);
+  if (currentLabel) found.add(currentLabel);
+  return [...found].sort((a, b) => {
+    if (a === OTHER) return 1;
+    if (b === OTHER) return -1;
+    return a.localeCompare(b);
+  });
+}
+
+export function truncateArticleId(id: string, head = 8, tail = 4): string {
+  const value = (id || "").trim();
+  if (value.length <= head + tail + 1) return value;
+  return `${value.slice(0, head)}…${value.slice(-tail)}`;
+}
+
+export function formatEditorTimestamp(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  const date = d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const time = d.toLocaleTimeString(undefined, {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  return `${date} · ${time}`;
+}
+
+export function formatEditorPerson(
+  email: string | null | undefined,
+  nameByEmail: Record<string, string> = {},
+): string | null {
+  const key = (email || "").trim().toLowerCase();
+  if (!key) return null;
+  return nameByEmail[key] || email || null;
+}
+
+export function addChip(values: string[], next: string, max = Infinity): string[] {
+  const text = next.trim();
+  if (!text) return values;
+  if (values.some((item) => item.toLowerCase() === text.toLowerCase())) return values;
+  if (values.length >= max) return values;
+  return [...values, text];
+}
+
+export function removeChip(values: string[], index: number): string[] {
+  return values.filter((_, i) => i !== index);
 }
