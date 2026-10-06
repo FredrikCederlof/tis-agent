@@ -2,8 +2,15 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { createSuccessPath } from "@/lib/knowledge-hub";
-import type { KnowledgeEntry } from "@/lib/types";
+import {
+  AUDIENCE_OPTIONS,
+  CONTENT_OWNERS,
+  createSuccessPath,
+  effectiveKnowledgeStatus,
+  formatIngestedAt,
+  isReviewOverdue,
+} from "@/lib/knowledge-hub";
+import type { KnowledgeEntry, KnowledgeStatus } from "@/lib/types";
 
 type RelatedHit = {
   title?: string;
@@ -12,6 +19,16 @@ type RelatedHit = {
 };
 
 const RELATED_WARN_AT = 0.68;
+
+function toggleAudience(current: string[], value: string): string[] {
+  if (value === "All") return ["All"];
+  const withoutAll = current.filter((item) => item !== "All");
+  if (withoutAll.includes(value)) {
+    const next = withoutAll.filter((item) => item !== value);
+    return next.length ? next : ["All"];
+  }
+  return [...withoutAll, value];
+}
 
 export function KnowledgeEditor({
   entry,
@@ -43,6 +60,19 @@ export function KnowledgeEditor({
   const [tags, setTags] = useState((entry?.tags || []).join(", "));
   const [category, setCategory] = useState(entry?.category || "");
   const [sourceNote, setSourceNote] = useState(entry?.source_note || "");
+  const [audience, setAudience] = useState<string[]>(
+    entry?.audience?.length ? entry.audience : ["All"],
+  );
+  const [contentOwner, setContentOwner] = useState(entry?.content_owner || "");
+  const [sourceUrl, setSourceUrl] = useState(entry?.source_url || "");
+  const [status, setStatus] = useState<KnowledgeStatus>(
+    entry ? effectiveKnowledgeStatus(entry) : "active",
+  );
+  const [validUntil, setValidUntil] = useState(entry?.valid_until?.slice(0, 10) || "");
+  const [reviewDueDate, setReviewDueDate] = useState(
+    entry?.review_due_date?.slice(0, 10) || "",
+  );
+  const [exclusionNotes, setExclusionNotes] = useState(entry?.exclusion_notes || "");
   const [saving, setSaving] = useState(false);
   const [archiving, setArchiving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -50,7 +80,9 @@ export function KnowledgeEditor({
   const [checkingRelated, setCheckingRelated] = useState(false);
 
   const isNew = !entry;
-  const archived = entry?.status === "archived";
+  const displayStatus = entry ? effectiveKnowledgeStatus(entry) : status;
+  const archived = displayStatus === "archived";
+  const reviewOverdue = entry ? isReviewOverdue(entry) : false;
   const configured = Boolean(apiUrl && syncSecret);
   const relatedHits = useMemo(
     () => (related || []).filter((hit) => (hit.similarity ?? 0) >= RELATED_WARN_AT),
@@ -106,6 +138,13 @@ export function KnowledgeEditor({
         category: category.trim(),
         tags,
         source_note: sourceNote.trim(),
+        audience,
+        content_owner: contentOwner.trim() || null,
+        source_url: sourceUrl.trim() || null,
+        status: archived ? "active" : status,
+        valid_until: validUntil || null,
+        review_due_date: reviewDueDate || null,
+        exclusion_notes: exclusionNotes.trim() || null,
         origin,
         origin_interaction_id: originInteractionId || undefined,
         updated_by: userEmail,
@@ -170,7 +209,7 @@ export function KnowledgeEditor({
   }
 
   return (
-    <form className="card space-y-5" onSubmit={onSave}>
+    <form className="card space-y-8" onSubmit={onSave}>
       {origin === "inbox" && (
         <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
           Started from an unanswered inbox question. Saving marks that row reviewed and
@@ -179,106 +218,229 @@ export function KnowledgeEditor({
       )}
       {archived && (
         <p className="rounded-xl bg-slate-100 px-3 py-2 text-sm text-tis-muted">
-          This entry is archived. Saving again re-ingests it into Tina’s knowledge store.
+          This entry is archived. Saving again with Active status re-ingests it into Tina’s
+          knowledge store.
+        </p>
+      )}
+      {reviewOverdue && (
+        <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          Review is overdue. Tina still uses this article until you change status or validity.
         </p>
       )}
 
-      <label className="block">
-        <span className="label">Primary question</span>
-        <input
-          type="text"
-          required
-          value={primaryQuestion}
-          onChange={(e) => setPrimaryQuestion(e.target.value)}
-          onBlur={() => {
-            if (isNew) void checkRelated();
-          }}
-          placeholder="When does Grade 6 finish on Friday?"
-        />
-      </label>
+      <section className="space-y-5">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-tis-muted">Article</h2>
+        <label className="block">
+          <span className="label">Primary question</span>
+          <input
+            type="text"
+            required
+            value={primaryQuestion}
+            onChange={(e) => setPrimaryQuestion(e.target.value)}
+            onBlur={() => {
+              if (isNew) void checkRelated();
+            }}
+            placeholder="When does Grade 6 finish on Friday?"
+          />
+        </label>
 
-      <fieldset className="space-y-2">
-        <legend className="label">Similar questions</legend>
-        <p className="hint !mt-0">
-          Optional phrasings parents might use. They stay on this one document — not separate
-          answers.
-        </p>
-        {similarQuestions.map((item, index) => (
-          <div key={index} className="flex gap-2">
+        <fieldset className="space-y-2">
+          <legend className="label">Similar questions</legend>
+          <p className="hint !mt-0">
+            Optional phrasings parents might use. They stay on this one document — not separate
+            answers.
+          </p>
+          {similarQuestions.map((item, index) => (
+            <div key={index} className="flex gap-2">
+              <input
+                type="text"
+                value={item}
+                onChange={(e) => updateSimilar(index, e.target.value)}
+                placeholder="What time does G6 finish on Fridays?"
+              />
+              <button
+                type="button"
+                className="secondary shrink-0"
+                onClick={() =>
+                  setSimilarQuestions((current) =>
+                    current.length === 1 ? [""] : current.filter((_, i) => i !== index),
+                  )
+                }
+              >
+                Remove
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="secondary"
+            onClick={() => setSimilarQuestions((current) => [...current, ""])}
+          >
+            Add similar question
+          </button>
+        </fieldset>
+
+        <label className="block">
+          <span className="label">Verified answer</span>
+          <textarea
+            required
+            rows={6}
+            value={answer}
+            onChange={(e) => setAnswer(e.target.value)}
+            placeholder="Grade 6 finishes at 2:30pm on Fridays."
+          />
+        </label>
+
+        <label className="block">
+          <span className="label">Category</span>
+          <input
+            type="text"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="School hours"
+          />
+          <p className="hint">
+            Optional. The Knowledge Hub start page groups articles into category widgets.
+          </p>
+        </label>
+
+        <label className="block">
+          <span className="label">Tags</span>
+          <input
+            type="text"
+            value={tags}
+            onChange={(e) => setTags(e.target.value)}
+            placeholder="dismissal, grade 6"
+          />
+          <p className="hint">Comma-separated. Used for filtering in the Hub list.</p>
+        </label>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-tis-muted">
+          Applies to
+        </h2>
+        <p className="hint !mt-0">Audience, programme, or grade. Default is All.</p>
+        <div className="flex flex-wrap gap-2">
+          {AUDIENCE_OPTIONS.map((option) => {
+            const selected = audience.includes(option);
+            return (
+              <button
+                key={option}
+                type="button"
+                className={`rounded-full px-3 py-1.5 text-xs font-semibold transition ${
+                  selected
+                    ? "bg-tis-navy text-white"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                }`}
+                onClick={() => setAudience((current) => toggleAudience(current, option))}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-tis-muted">
+          Source & ownership
+        </h2>
+        <label className="block">
+          <span className="label">Content owner</span>
+          <select
+            value={contentOwner}
+            onChange={(e) => setContentOwner(e.target.value)}
+          >
+            <option value="">Select owner</option>
+            {CONTENT_OWNERS.map((owner) => (
+              <option key={owner} value={owner}>
+                {owner}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block">
+          <span className="label">Source URL</span>
+          <input
+            type="url"
+            value={sourceUrl}
+            onChange={(e) => setSourceUrl(e.target.value)}
+            placeholder="https://…"
+          />
+          <p className="hint">Admin reference only — not included in Tina’s answers.</p>
+        </label>
+        <label className="block">
+          <span className="label">Source note</span>
+          <input
+            type="text"
+            value={sourceNote}
+            onChange={(e) => setSourceNote(e.target.value)}
+            placeholder="Confirmed with TIS office, Aug 2026"
+          />
+        </label>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-tis-muted">
+          Lifecycle
+        </h2>
+        <label className="block">
+          <span className="label">Status</span>
+          <select
+            value={archived ? "archived" : status}
+            disabled={archived}
+            onChange={(e) => setStatus(e.target.value as KnowledgeStatus)}
+          >
+            <option value="draft">Draft</option>
+            <option value="active">Active</option>
+            <option value="expired">Expired</option>
+            <option value="archived">Archived</option>
+          </select>
+        </label>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="label">Valid until</span>
             <input
-              type="text"
-              value={item}
-              onChange={(e) => updateSimilar(index, e.target.value)}
-              placeholder="What time does G6 finish on Fridays?"
+              type="date"
+              value={validUntil}
+              onChange={(e) => setValidUntil(e.target.value)}
             />
-            <button
-              type="button"
-              className="secondary shrink-0"
-              onClick={() =>
-                setSimilarQuestions((current) =>
-                  current.length === 1 ? [""] : current.filter((_, i) => i !== index),
-                )
-              }
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-        <button
-          type="button"
-          className="secondary"
-          onClick={() => setSimilarQuestions((current) => [...current, ""])}
-        >
-          Add similar question
-        </button>
-      </fieldset>
+            <p className="hint">After this date Tina stops using the article.</p>
+          </label>
+          <label className="block">
+            <span className="label">Review due</span>
+            <input
+              type="date"
+              value={reviewDueDate}
+              onChange={(e) => setReviewDueDate(e.target.value)}
+            />
+            <p className="hint">Flags overdue review without removing from Tina.</p>
+          </label>
+        </div>
+      </section>
 
-      <label className="block">
-        <span className="label">Verified answer</span>
-        <textarea
-          required
-          rows={6}
-          value={answer}
-          onChange={(e) => setAnswer(e.target.value)}
-          placeholder="Grade 6 finishes at 2:30pm on Fridays."
-        />
-      </label>
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-tis-muted">
+          AI guidance
+        </h2>
+        <label className="block">
+          <span className="label">Do not use this article when / Common misconceptions</span>
+          <textarea
+            rows={4}
+            value={exclusionNotes}
+            onChange={(e) => setExclusionNotes(e.target.value)}
+            placeholder='Do not interpret "wear green" as requiring the green TIS uniform.'
+          />
+        </label>
+      </section>
 
-      <label className="block">
-        <span className="label">Category</span>
-        <input
-          type="text"
-          value={category}
-          onChange={(e) => setCategory(e.target.value)}
-          placeholder="School hours"
-        />
-        <p className="hint">
-          Optional. The Knowledge Hub start page groups articles into category widgets.
-          Topics with more than three articles become their own category; smaller topics
-          appear under Other.
+      <section className="rounded-xl bg-slate-50 px-4 py-3 text-sm text-tis-muted">
+        <p className="font-semibold text-tis-navy">System</p>
+        <p className="mt-1">
+          Last ingested: {formatIngestedAt(entry?.last_ingested_at)}
         </p>
-      </label>
-
-      <label className="block">
-        <span className="label">Tags</span>
-        <input
-          type="text"
-          value={tags}
-          onChange={(e) => setTags(e.target.value)}
-          placeholder="dismissal, grade 6"
-        />
-        <p className="hint">Comma-separated. Used for filtering in the Hub list.</p>
-      </label>
-
-      <label className="block">
-        <span className="label">Source note</span>
-        <input
-          type="text"
-          value={sourceNote}
-          onChange={(e) => setSourceNote(e.target.value)}
-          placeholder="Confirmed with TIS office, Aug 2026"
-        />
-      </label>
+      </section>
 
       {checkingRelated && (
         <p className="text-sm text-tis-muted">Checking for related Hub entries…</p>

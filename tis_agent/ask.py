@@ -12,6 +12,7 @@ from tis_agent.agent_config import (
     match_fixed_answer,
     pick_no_evidence_reply,
 )
+from tis_agent.knowledge import filter_eligible_knowledge_evidence
 from tis_agent.analytics import (
     OUTCOME_ERROR,
     OUTCOME_FIXED_ANSWER,
@@ -249,7 +250,7 @@ def _vector_retrieve(
     if expand_if_weak and len(queries) > 1 and top < VECTOR_EXPAND_SIMILARITY:
         extra = _vector_retrieve_once(settings, queries[1:2], match_count=match_count)
         evidence = _merge_evidence([evidence, extra])
-    return evidence
+    return filter_eligible_knowledge_evidence(evidence, settings=settings)
 
 
 def use_calendar_fast_path(temporal: TemporalQuery) -> bool:
@@ -919,6 +920,7 @@ def retrieve(
             for item in merged
             if not is_sync_window_stub(item.content, document_title=item.document_title)
         ]
+        merged = filter_eligible_knowledge_evidence(merged, settings=settings, today=today)
         selected = select_dated_evidence(merged, temporal)
         logger.info(
             "retrieve kind=%s intent=%s fast_path cal=%d date=%d selected=%d elapsed=%.2fs",
@@ -958,6 +960,7 @@ def retrieve(
         for item in merged
         if not is_sync_window_stub(item.content, document_title=item.document_title)
     ]
+    merged = filter_eligible_knowledge_evidence(merged, settings=settings, today=today)
 
     if temporal.kind == "event_date_lookup":
         evidence = _rerank(merged, temporal)[: max(match_count, 12)]
