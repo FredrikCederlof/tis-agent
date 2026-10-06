@@ -272,6 +272,18 @@ async def admin_archive_knowledge(entry_id: str, request: Request) -> dict[str, 
         raise _knowledge_http_error(exc) from exc
 
 
+@app.delete("/admin/knowledge/{entry_id}")
+async def admin_delete_knowledge(entry_id: str, request: Request) -> dict[str, object]:
+    """Permanently delete a Hub row and its RAG document."""
+    _require_admin_sync_token(request)
+    from tis_agent.knowledge import delete_knowledge_entry
+
+    try:
+        return delete_knowledge_entry(entry_id)
+    except (ValueError, KeyError) as exc:
+        raise _knowledge_http_error(exc) from exc
+
+
 @app.get("/admin/reply/window")
 async def admin_reply_window(request: Request, session_id: str = "") -> dict[str, object]:
     """Is the parent's 24-hour WhatsApp reply window still open for this session?"""

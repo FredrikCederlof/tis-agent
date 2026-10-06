@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowDown,
@@ -97,10 +98,15 @@ const STATUS_TABS: { id: KnowledgeListStatusTab; label: string }[] = [
 export function KnowledgeList({
   rows,
   emptyLabel = "No Knowledge Hub entries match these filters.",
+  apiUrl = "",
+  syncSecret = "",
 }: {
   rows: KnowledgeEntry[];
   emptyLabel?: string;
+  apiUrl?: string;
+  syncSecret?: string;
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("");
   const [origin, setOrigin] = useState<"" | KnowledgeOrigin>("");
@@ -114,6 +120,9 @@ export function KnowledgeList({
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [removedIds, setRemovedIds] = useState<Set<string>>(() => new Set());
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const tags = useMemo(() => {
@@ -134,20 +143,26 @@ export function KnowledgeList({
     return [...found].sort((a, b) => a.localeCompare(b));
   }, [rows]);
 
-  const tabCounts = useMemo(() => knowledgeListTabCounts(rows), [rows]);
+  const tabCounts = useMemo(
+    () => knowledgeListTabCounts(rows.filter((row) => !removedIds.has(row.id))),
+    [removedIds, rows],
+  );
 
   const filtered = useMemo(
     () =>
-      filterKnowledgeList(rows, {
-        query,
-        statusTab,
-        status,
-        origin,
-        audience,
-        owner,
-        tag,
-      }),
-    [audience, origin, owner, query, rows, status, statusTab, tag],
+      filterKnowledgeList(
+        rows.filter((row) => !removedIds.has(row.id)),
+        {
+          query,
+          statusTab,
+          status,
+          origin,
+          audience,
+          owner,
+          tag,
+        },
+      ),
+    [audience, origin, owner, query, removedIds, rows, status, statusTab, tag],
   );
 
   const sorted = useMemo(
@@ -204,6 +219,42 @@ export function KnowledgeList({
       else next.add(id);
       return next;
     });
+  }
+
+  async function deleteArticle(row: KnowledgeEntry) {
+    if (!apiUrl || !syncSecret) {
+      setError("Delete is not configured. Set NEXT_PUBLIC_TINA_API_URL and ADMIN_SYNC_SECRET.");
+      return;
+    }
+    if (
+      !window.confirm(
+        `Delete “${row.primary_question}” permanently?\n\nTina will stop using this article. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setDeletingId(row.id);
+    setError(null);
+    setMenuOpenId(null);
+    try {
+      const response = await fetch(
+        `${apiUrl.replace(/\/$/, "")}/admin/knowledge/${row.id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${syncSecret}` },
+        },
+      );
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.detail || `Delete failed (${response.status})`);
+      }
+      setRemovedIds((current) => new Set(current).add(row.id));
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   function SortHeader({
@@ -366,9 +417,13 @@ export function KnowledgeList({
         </div>
       )}
 
+      {error && (
+        <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-tis-danger">{error}</p>
+      )}
+
       {sorted.length === 0 ? (
         <div className="card text-sm text-tis-muted">
-          {rows.length === 0
+          {rows.filter((row) => !removedIds.has(row.id)).length === 0
             ? "No knowledge articles in this category yet."
             : emptyLabel || "No matching search results."}
         </div>
@@ -498,6 +553,14 @@ export function KnowledgeList({
                                 >
                                   Edit
                                 </Link>
+                                <button
+                                  type="button"
+                                  className="block w-full px-3 py-2 text-left text-sm font-medium text-tis-danger hover:bg-rose-50 disabled:opacity-50"
+                                  disabled={deletingId === row.id}
+                                  onClick={() => void deleteArticle(row)}
+                                >
+                                  {deletingId === row.id ? "Deleting…" : "Delete"}
+                                </button>
                               </div>
                             )}
                           </div>

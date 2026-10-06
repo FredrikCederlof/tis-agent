@@ -13,6 +13,7 @@ from tis_agent.knowledge import (
     KNOWLEDGE_SOURCE_TYPE,
     archive_knowledge_entry,
     chunk_knowledge_markdown,
+    delete_knowledge_entry,
     effective_status,
     filter_eligible_knowledge_evidence,
     is_retrieval_eligible,
@@ -481,6 +482,36 @@ def test_archive_deletes_linked_document() -> None:
     entry = client.db["knowledge_entries"][0]
     assert entry["status"] == "archived"
     assert entry["document_id"] is None
+
+
+def test_delete_removes_entry_and_linked_document() -> None:
+    client = FakeClient()
+    client.db["knowledge_entries"].append(
+        {
+            "id": ENTRY_ID,
+            "document_id": "doc-1",
+            "status": "active",
+        }
+    )
+    client.db["documents"].append({"id": "doc-1", "source_type": "knowledge"})
+
+    with patch("tis_agent.knowledge.make_supabase", return_value=client):
+        result = delete_knowledge_entry(ENTRY_ID, settings=SETTINGS)
+
+    assert result["status"] == "deleted"
+    assert result["id"] == ENTRY_ID
+    assert client.db["documents"] == []
+    assert client.db["knowledge_entries"] == []
+
+
+def test_delete_missing_entry_raises() -> None:
+    client = FakeClient()
+    with patch("tis_agent.knowledge.make_supabase", return_value=client):
+        try:
+            delete_knowledge_entry(ENTRY_ID, settings=SETTINGS)
+            raise AssertionError("expected KeyError")
+        except KeyError:
+            pass
 
 
 def test_filter_eligible_knowledge_evidence_drops_ineligible() -> None:

@@ -119,7 +119,11 @@ export default async function KnowledgeHubPage({
         ) : useCategories ? (
           <KnowledgeCategories rows={rows} />
         ) : (
-          <KnowledgeList rows={rows} />
+          <KnowledgeList
+            rows={rows}
+            apiUrl={process.env.NEXT_PUBLIC_TINA_API_URL || ""}
+            syncSecret={(process.env.ADMIN_SYNC_SECRET || "").trim()}
+          />
         )}
       </div>
     </AppShell>
