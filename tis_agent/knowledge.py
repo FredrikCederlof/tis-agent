@@ -388,6 +388,29 @@ def archive_knowledge_entry(
     return {"status": "archived", "id": entry_id, "document_id": document_id}
 
 
+def delete_knowledge_entry(
+    entry_id: str,
+    *,
+    settings: Settings | None = None,
+) -> dict[str, Any]:
+    """Remove a Hub row and its RAG document. Tina will no longer retrieve it."""
+    settings = settings or get_settings()
+    client = make_supabase(settings)
+    existing = (
+        client.table("knowledge_entries")
+        .select("id, document_id")
+        .eq("id", entry_id)
+        .limit(1)
+        .execute()
+    )
+    if not existing.data:
+        raise KeyError(f"knowledge entry not found: {entry_id}")
+    document_id = existing.data[0].get("document_id")
+    _clear_document(client, document_id)
+    client.table("knowledge_entries").delete().eq("id", entry_id).execute()
+    return {"status": "deleted", "id": entry_id, "document_id": document_id}
+
+
 def eligible_knowledge_document_ids(
     *,
     settings: Settings | None = None,

@@ -9,6 +9,7 @@ import {
   Copy,
   ExternalLink,
   Plus,
+  Trash2,
   X,
 } from "lucide-react";
 import {
@@ -242,6 +243,7 @@ export function KnowledgeEditor({
   const [exclusionNotes, setExclusionNotes] = useState(entry?.exclusion_notes || "");
   const [saving, setSaving] = useState(false);
   const [archiving, setArchiving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [related, setRelated] = useState<RelatedHit[] | null>(null);
   const [checkingRelated, setCheckingRelated] = useState(false);
@@ -401,6 +403,32 @@ export function KnowledgeEditor({
     }
   }
 
+  async function onDelete() {
+    if (!entry) return;
+    if (
+      !window.confirm(
+        `Delete “${entry.primary_question}” permanently?\n\nTina will stop using this article. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/knowledge/${entry.id}`, { method: "DELETE" });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.detail || `Delete failed (${response.status})`);
+      }
+      router.push(backHref);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function copyId() {
     if (!entry?.id) return;
     try {
@@ -412,7 +440,7 @@ export function KnowledgeEditor({
     }
   }
 
-  const busy = saving || archiving;
+  const busy = saving || archiving || deleting;
 
   return (
     <form
@@ -841,6 +869,20 @@ export function KnowledgeEditor({
                 {updatedByName && (
                   <p className="mt-0.5 text-xs text-tis-muted">by {updatedByName}</p>
                 )}
+              </div>
+              <div className="border-t border-black/[0.06] pt-4">
+                <button
+                  type="button"
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-white px-4 py-2.5 text-sm font-semibold text-tis-danger shadow-sm transition hover:bg-rose-50 disabled:opacity-50"
+                  disabled={busy}
+                  onClick={() => void onDelete()}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden />
+                  {deleting ? "Deleting…" : "Delete article"}
+                </button>
+                <p className="hint">
+                  Permanently remove this article from the Hub and Tina’s retrieval.
+                </p>
               </div>
             </section>
           )}
