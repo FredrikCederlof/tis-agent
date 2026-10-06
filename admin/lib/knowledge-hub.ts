@@ -179,14 +179,218 @@ export function entriesInCategory(
 ): KnowledgeEntry[] {
   const counts = activeCounts(rows);
   return rows.filter((row) => {
-    if (effectiveKnowledgeStatus(row) !== "active") return false;
     const label = categoryLabel(row.category);
     const key = label.toLowerCase();
-    const count = counts.get(key)?.count || 0;
+    const activeCount = counts.get(key)?.count || 0;
+    // Sparse folding uses active counts; drafts/expired/archived still list in
+    // the same category bucket as their topic (or Other when sparse).
     if (category === null) {
-      return label === OTHER || count <= SPARSE_CATEGORY_MAX;
+      return label === OTHER || activeCount <= SPARSE_CATEGORY_MAX;
     }
-    if (count <= SPARSE_CATEGORY_MAX) return false;
+    if (activeCount <= SPARSE_CATEGORY_MAX) return false;
     return key === category.toLowerCase();
   });
+}
+
+export type KnowledgeListSortKey =
+  | "question"
+  | "tags"
+  | "status"
+  | "review"
+  | "ingested";
+
+export type KnowledgeListStatusTab =
+  | "all"
+  | "active"
+  | "needs_review"
+  | "draft"
+  | "expired";
+
+export type KnowledgeListSortDir = "asc" | "desc";
+
+/** Display label for the Status column (Review due overrides Active). */
+export function knowledgeListStatusLabel(
+  row: Pick<KnowledgeEntry, "status" | "valid_until" | "review_due_date">,
+  todayIso = tokyoTodayIso(),
+): string {
+  const resolved = effectiveKnowledgeStatus(row, todayIso);
+  if (resolved === "active" && isReviewOverdue(row, todayIso)) return "Review due";
+  if (resolved === "draft") return "Draft";
+  if (resolved === "expired") return "Expired";
+  if (resolved === "archived") return "Archived";
+  return "Active";
+}
+
+export function formatKnowledgeDate(iso: string | null | undefined): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export function formatIngestedParts(value: string | null | undefined): {
+  date: string;
+  time: string;
+} | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return {
+    date: d.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }),
+    time: d.toLocaleTimeString(undefined, {
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    }),
+  };
+}
+
+function reviewSortValue(
+  row: Pick<KnowledgeEntry, "status" | "valid_until" | "review_due_date">,
+  todayIso = tokyoTodayIso(),
+): string {
+  const resolved = effectiveKnowledgeStatus(row, todayIso);
+  if (resolved === "expired") return dateOnly(row.valid_until) || "9999-12-31";
+  return dateOnly(row.review_due_date) || "9999-12-31";
+}
+
+function statusSortRank(
+  row: Pick<KnowledgeEntry, "status" | "valid_until" | "review_due_date">,
+  todayIso = tokyoTodayIso(),
+): number {
+  const label = knowledgeListStatusLabel(row, todayIso);
+  switch (label) {
+    case "Review due":
+      return 0;
+    case "Expired":
+      return 1;
+    case "Draft":
+      return 2;
+    case "Archived":
+      return 3;
+    default:
+      return 4;
+  }
+}
+
+export function filterKnowledgeList(
+  rows: KnowledgeEntry[],
+  opts: {
+    query?: string;
+    statusTab?: KnowledgeListStatusTab;
+    status?: "" | KnowledgeEntry["status"];
+    origin?: "" | KnowledgeEntry["origin"];
+    audience?: string;
+    owner?: string;
+    tag?: string;
+    todayIso?: string;
+  },
+): KnowledgeEntry[] {
+  const todayIso = opts.todayIso || tokyoTodayIso();
+  const needle = (opts.query || "").trim().toLowerCase();
+  const statusTab = opts.statusTab || "all";
+
+  return rows.filter((row) => {
+    const resolved = effectiveKnowledgeStatus(row, todayIso);
+    if (statusTab === "active" && resolved !== "active") return false;
+    if (statusTab === "draft" && resolved !== "draft") return false;
+    if (statusTab === "expired" && resolved !== "expired") return false;
+    if (statusTab === "needs_review" && !isReviewOverdue(row, todayIso)) return false;
+    if (opts.status && resolved !== opts.status) return false;
+    if (opts.origin && row.origin !== opts.origin) return false;
+    if (opts.audience && !(row.audience || []).includes(opts.audience)) return false;
+    if (opts.owner) {
+      const owner = (row.content_owner || "").trim();
+      if (owner.toLowerCase() !== opts.owner.toLowerCase()) return false;
+    }
+    if (opts.tag && !(row.tags || []).includes(opts.tag)) return false;
+    if (!needle) return true;
+    const haystack = [
+      row.primary_question,
+      row.answer,
+      row.category || "",
+      ...(row.similar_questions || []),
+      ...(row.tags || []),
+      row.source_note || "",
+      row.content_owner || "",
+      ...(row.audience || []),
+    ]
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(needle);
+  });
+}
+
+export function sortKnowledgeList(
+  rows: KnowledgeEntry[],
+  key: KnowledgeListSortKey,
+  dir: KnowledgeListSortDir,
+  todayIso = tokyoTodayIso(),
+): KnowledgeEntry[] {
+  const factor = dir === "asc" ? 1 : -1;
+  return [...rows].sort((a, b) => {
+    let cmp = 0;
+    switch (key) {
+      case "question":
+        cmp = a.primary_question.localeCompare(b.primary_question);
+        break;
+      case "tags":
+        cmp = (a.tags || []).join(",").localeCompare((b.tags || []).join(","));
+        break;
+      case "status":
+        cmp = statusSortRank(a, todayIso) - statusSortRank(b, todayIso);
+        if (cmp === 0) {
+          cmp = knowledgeListStatusLabel(a, todayIso).localeCompare(
+            knowledgeListStatusLabel(b, todayIso),
+          );
+        }
+        break;
+      case "review":
+        cmp = reviewSortValue(a, todayIso).localeCompare(reviewSortValue(b, todayIso));
+        break;
+      case "ingested": {
+        const ai = a.last_ingested_at || "";
+        const bi = b.last_ingested_at || "";
+        cmp = ai.localeCompare(bi);
+        break;
+      }
+      default:
+        cmp = 0;
+    }
+    if (cmp === 0) cmp = a.primary_question.localeCompare(b.primary_question);
+    return cmp * factor;
+  });
+}
+
+export function knowledgeListTabCounts(
+  rows: KnowledgeEntry[],
+  todayIso = tokyoTodayIso(),
+): Record<KnowledgeListStatusTab, number> {
+  const counts: Record<KnowledgeListStatusTab, number> = {
+    all: rows.length,
+    active: 0,
+    needs_review: 0,
+    draft: 0,
+    expired: 0,
+  };
+  for (const row of rows) {
+    const resolved = effectiveKnowledgeStatus(row, todayIso);
+    if (resolved === "active") counts.active += 1;
+    if (resolved === "draft") counts.draft += 1;
+    if (resolved === "expired") counts.expired += 1;
+    if (isReviewOverdue(row, todayIso)) counts.needs_review += 1;
+  }
+  return counts;
+}
+
+export function categoryPageSubtitle(categoryName: string): string {
+  if (categoryName === OTHER) {
+    return "Knowledge used by Tina that doesn't belong to another category.";
+  }
+  return `Knowledge Hub articles filed under ${categoryName}.`;
 }
