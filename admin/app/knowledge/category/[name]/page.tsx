@@ -76,8 +76,6 @@ export default async function KnowledgeCategoryPage({
         <KnowledgeList
           rows={rows}
           emptyLabel="No entries in this category match these filters."
-          apiUrl={process.env.NEXT_PUBLIC_TINA_API_URL || ""}
-          syncSecret={(process.env.ADMIN_SYNC_SECRET || "").trim()}
         />
       </div>
     </AppShell>
