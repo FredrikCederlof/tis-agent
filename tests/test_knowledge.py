@@ -504,6 +504,24 @@ def test_delete_removes_entry_and_linked_document() -> None:
     assert client.db["knowledge_entries"] == []
 
 
+def test_delete_removes_entry_without_document() -> None:
+    client = FakeClient()
+    client.db["knowledge_entries"].append(
+        {
+            "id": ENTRY_ID,
+            "document_id": None,
+            "status": "draft",
+        }
+    )
+
+    with patch("tis_agent.knowledge.make_supabase", return_value=client):
+        result = delete_knowledge_entry(ENTRY_ID, settings=SETTINGS)
+
+    assert result["status"] == "deleted"
+    assert result["document_id"] is None
+    assert client.db["knowledge_entries"] == []
+
+
 def test_delete_missing_entry_raises() -> None:
     client = FakeClient()
     with patch("tis_agent.knowledge.make_supabase", return_value=client):

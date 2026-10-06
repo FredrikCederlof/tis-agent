@@ -404,7 +404,7 @@ export function KnowledgeEditor({
   }
 
   async function onDelete() {
-    if (!entry || !configured) return;
+    if (!entry) return;
     if (
       !window.confirm(
         `Delete “${entry.primary_question}” permanently?\n\nTina will stop using this article. This cannot be undone.`,
@@ -415,13 +415,7 @@ export function KnowledgeEditor({
     setDeleting(true);
     setError(null);
     try {
-      const response = await fetch(
-        `${apiUrl.replace(/\/$/, "")}/admin/knowledge/${entry.id}`,
-        {
-          method: "DELETE",
-          headers: { Authorization: `Bearer ${syncSecret}` },
-        },
-      );
+      const response = await fetch(`/api/knowledge/${entry.id}`, { method: "DELETE" });
       const body = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(body.detail || `Delete failed (${response.status})`);
