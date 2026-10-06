@@ -3,17 +3,30 @@ import { describe, it } from "node:test";
 import {
   OTHER,
   OTHER_SLUG,
+  addChip,
   categoryLabel,
   categoryPageSubtitle,
+  categorySelectOptions,
   effectiveKnowledgeStatus,
   entriesInCategory,
   filterKnowledgeList,
+  formatEditorPerson,
   groupCategories,
   isReviewOverdue,
+  knowledgeEditorBackHref,
+  knowledgeEditorBackLabel,
   knowledgeListStatusLabel,
   knowledgeListTabCounts,
+  normalizeChipList,
+  parseAudienceGroups,
+  removeChip,
+  serializeAudienceGroups,
   showCategoryLanding,
   sortKnowledgeList,
+  toggleAudienceRole,
+  toggleGrade,
+  toggleProgramme,
+  truncateArticleId,
 } from "./knowledge-hub.ts";
 import type { KnowledgeEntry } from "./types.ts";
 
@@ -187,5 +200,70 @@ describe("knowledge list filters and sort", () => {
     assert.equal(counts.needs_review, 1);
     assert.equal(counts.draft, 1);
     assert.equal(counts.expired, 1);
+  });
+});
+
+describe("knowledge editor helpers", () => {
+  it("groups and serializes audience pills", () => {
+    const parsed = parseAudienceGroups(["Parents", "PYP", "Grade 3"]);
+    assert.deepEqual(parsed.roles, ["Parents"]);
+    assert.deepEqual(parsed.programmes, ["PYP"]);
+    assert.deepEqual(parsed.grades, ["Grade 3"]);
+    assert.deepEqual(serializeAudienceGroups(parsed), ["Parents", "PYP", "Grade 3"]);
+    assert.deepEqual(serializeAudienceGroups(parseAudienceGroups([])), ["All"]);
+
+    const allRoles = toggleAudienceRole(parsed, "All");
+    assert.deepEqual(allRoles.roles, ["All"]);
+    assert.deepEqual(toggleProgramme(parsed, "All").programmes, []);
+    assert.deepEqual(toggleGrade(parsed, "All grades").grades, []);
+  });
+
+  it("adds and removes chips with a max", () => {
+    assert.deepEqual(addChip(["a"], "a"), ["a"]);
+    assert.deepEqual(addChip(["a"], "b", 1), ["a"]);
+    assert.deepEqual(addChip(["a"], " B "), ["a", "B"]);
+    assert.deepEqual(removeChip(["a", "b"], 0), ["b"]);
+    assert.deepEqual(
+      normalizeChipList(["where to buy school clothes, where to buy clothes for sportsday"]),
+      ["where to buy school clothes", "where to buy clothes for sportsday"],
+    );
+  });
+
+  it("builds category back links and labels", () => {
+    const rows = [
+      entry("Health"),
+      entry("Health"),
+      entry("Health"),
+      entry("Health"),
+      entry("Uniforms"),
+    ];
+    assert.equal(knowledgeEditorBackHref("Health", rows), "/knowledge/category/Health");
+    assert.equal(knowledgeEditorBackHref("Uniforms", rows), "/knowledge/category/other");
+    assert.equal(knowledgeEditorBackHref(null, rows), "/knowledge/category/other");
+    assert.equal(
+      knowledgeEditorBackLabel("/knowledge/category/other"),
+      "Back to Other",
+    );
+    assert.equal(
+      knowledgeEditorBackLabel("/knowledge/category/Health"),
+      "Back to Health",
+    );
+    assert.equal(knowledgeEditorBackLabel("/inbox"), "Back to Needs attention");
+    assert.equal(knowledgeEditorBackLabel("/knowledge"), "Back to Knowledge Hub");
+  });
+
+  it("truncates ids, lists category options, and maps updater names", () => {
+    assert.equal(truncateArticleId("abcdefghijklmnop"), "abcdefgh…mnop");
+    assert.equal(truncateArticleId("short"), "short");
+    const options = categorySelectOptions(["Health", "Uniforms"], "");
+    assert.ok(options.includes(OTHER));
+    assert.ok(options.includes("Health"));
+    assert.equal(
+      formatEditorPerson("editor@example.com", {
+        "editor@example.com": "Fredrik Cederlöf",
+      }),
+      "Fredrik Cederlöf",
+    );
+    assert.equal(formatEditorPerson("nobody@example.com", {}), "nobody@example.com");
   });
 });
