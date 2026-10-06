@@ -1,36 +1,98 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  MoreHorizontal,
+  Search,
+  SlidersHorizontal,
+} from "lucide-react";
+import {
+  AUDIENCE_OPTIONS,
+  CONTENT_OWNERS,
   PAGE_SIZE,
   effectiveKnowledgeStatus,
+  filterKnowledgeList,
+  formatIngestedParts,
+  formatKnowledgeDate,
   isReviewOverdue,
+  knowledgeListStatusLabel,
+  knowledgeListTabCounts,
   pageCount,
   paginate,
+  sortKnowledgeList,
+  type KnowledgeListSortDir,
+  type KnowledgeListSortKey,
+  type KnowledgeListStatusTab,
 } from "@/lib/knowledge-hub";
 import type { KnowledgeEntry, KnowledgeOrigin, KnowledgeStatus } from "@/lib/types";
 
-function formatWhen(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  });
-}
-
-function statusBadgeClass(status: KnowledgeStatus): string {
-  switch (status) {
-    case "archived":
-      return "bg-rose-50 text-tis-danger";
-    case "draft":
-      return "bg-slate-100 text-slate-600";
-    case "expired":
-      return "bg-amber-50 text-amber-800";
+function statusDotClass(label: string): string {
+  switch (label) {
+    case "Review due":
+      return "bg-amber-500";
+    case "Expired":
+      return "bg-slate-400";
+    case "Draft":
+      return "bg-slate-400";
+    case "Archived":
+      return "bg-rose-400";
     default:
-      return "bg-emerald-50 text-tis-success";
+      return "bg-emerald-500";
   }
 }
+
+function reviewCell(row: KnowledgeEntry): { text: string; tone: "muted" | "warn" | "danger" } {
+  const resolved = effectiveKnowledgeStatus(row);
+  if (resolved === "expired" && row.valid_until) {
+    return {
+      text: `Expired ${formatKnowledgeDate(row.valid_until)}`,
+      tone: "danger",
+    };
+  }
+  if (isReviewOverdue(row) && row.review_due_date) {
+    return {
+      text: `Review ${formatKnowledgeDate(row.review_due_date)}`,
+      tone: "warn",
+    };
+  }
+  if (row.review_due_date) {
+    return {
+      text: `Review ${formatKnowledgeDate(row.review_due_date)}`,
+      tone: "muted",
+    };
+  }
+  if (row.valid_until) {
+    return {
+      text: `Until ${formatKnowledgeDate(row.valid_until)}`,
+      tone: "muted",
+    };
+  }
+  return { text: "—", tone: "muted" };
+}
+
+function SortIcon({
+  active,
+  dir,
+}: {
+  active: boolean;
+  dir: KnowledgeListSortDir;
+}) {
+  if (!active) return <ArrowUpDown className="h-3.5 w-3.5 opacity-40" aria-hidden />;
+  if (dir === "asc") return <ArrowUp className="h-3.5 w-3.5" aria-hidden />;
+  return <ArrowDown className="h-3.5 w-3.5" aria-hidden />;
+}
+
+const STATUS_TABS: { id: KnowledgeListStatusTab; label: string }[] = [
+  { id: "all", label: "All" },
+  { id: "active", label: "Active" },
+  { id: "needs_review", label: "Needs review" },
+  { id: "draft", label: "Draft" },
+  { id: "expired", label: "Expired" },
+];
 
 export function KnowledgeList({
   rows,
@@ -42,8 +104,17 @@ export function KnowledgeList({
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("");
   const [origin, setOrigin] = useState<"" | KnowledgeOrigin>("");
-  const [status, setStatus] = useState<"" | KnowledgeStatus>("active");
+  const [audience, setAudience] = useState("");
+  const [owner, setOwner] = useState("");
+  const [status, setStatus] = useState<"" | KnowledgeStatus>("");
+  const [statusTab, setStatusTab] = useState<KnowledgeListStatusTab>("all");
+  const [showMore, setShowMore] = useState(false);
+  const [sortKey, setSortKey] = useState<KnowledgeListSortKey>("question");
+  const [sortDir, setSortDir] = useState<KnowledgeListSortDir>("asc");
   const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<Set<string>>(() => new Set());
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   const tags = useMemo(() => {
     const found = new Set<string>();
@@ -55,88 +126,247 @@ export function KnowledgeList({
     return [...found].sort((a, b) => a.localeCompare(b));
   }, [rows]);
 
-  const filtered = useMemo(() => {
-    const needle = query.trim().toLowerCase();
-    return rows.filter((row) => {
-      const resolved = effectiveKnowledgeStatus(row);
-      if (origin && row.origin !== origin) return false;
-      if (status && resolved !== status) return false;
-      if (tag && !(row.tags || []).includes(tag)) return false;
-      if (!needle) return true;
-      const haystack = [
-        row.primary_question,
-        row.answer,
-        row.category || "",
-        ...(row.similar_questions || []),
-        ...(row.tags || []),
-        row.source_note || "",
-        row.content_owner || "",
-        ...(row.audience || []),
-      ]
-        .join(" ")
-        .toLowerCase();
-      return haystack.includes(needle);
-    });
-  }, [origin, query, rows, status, tag]);
+  const owners = useMemo(() => {
+    const found = new Set<string>(CONTENT_OWNERS);
+    for (const row of rows) {
+      if (row.content_owner?.trim()) found.add(row.content_owner.trim());
+    }
+    return [...found].sort((a, b) => a.localeCompare(b));
+  }, [rows]);
+
+  const tabCounts = useMemo(() => knowledgeListTabCounts(rows), [rows]);
+
+  const filtered = useMemo(
+    () =>
+      filterKnowledgeList(rows, {
+        query,
+        statusTab,
+        status,
+        origin,
+        audience,
+        owner,
+        tag,
+      }),
+    [audience, origin, owner, query, rows, status, statusTab, tag],
+  );
+
+  const sorted = useMemo(
+    () => sortKnowledgeList(filtered, sortKey, sortDir),
+    [filtered, sortDir, sortKey],
+  );
 
   useEffect(() => {
     setPage(1);
-  }, [query, tag, origin, status]);
+  }, [query, tag, origin, audience, owner, status, statusTab, sortKey, sortDir]);
 
-  const pages = pageCount(filtered.length);
+  useEffect(() => {
+    function onDocClick(event: MouseEvent) {
+      if (!menuRef.current) return;
+      if (!menuRef.current.contains(event.target as Node)) {
+        setMenuOpenId(null);
+      }
+    }
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, []);
+
+  const pages = pageCount(sorted.length);
   const safePage = Math.min(page, pages);
-  const visible = paginate(filtered, safePage);
+  const visible = paginate(sorted, safePage);
+  const allVisibleSelected =
+    visible.length > 0 && visible.every((row) => selected.has(row.id));
+
+  function toggleSort(key: KnowledgeListSortKey) {
+    if (sortKey === key) {
+      setSortDir((current) => (current === "asc" ? "desc" : "asc"));
+      return;
+    }
+    setSortKey(key);
+    setSortDir(key === "question" ? "asc" : "desc");
+  }
+
+  function toggleAllVisible() {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (allVisibleSelected) {
+        for (const row of visible) next.delete(row.id);
+      } else {
+        for (const row of visible) next.add(row.id);
+      }
+      return next;
+    });
+  }
+
+  function toggleOne(id: string) {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function SortHeader({
+    label,
+    column,
+    className = "",
+  }: {
+    label: string;
+    column: KnowledgeListSortKey;
+    className?: string;
+  }) {
+    const active = sortKey === column;
+    return (
+      <th className={`px-4 py-3 font-bold ${className}`}>
+        <button
+          type="button"
+          onClick={() => toggleSort(column)}
+          className={`inline-flex items-center gap-1.5 text-left transition hover:text-tis-navy ${
+            active ? "text-tis-navy" : "text-tis-muted"
+          }`}
+          aria-sort={active ? (sortDir === "asc" ? "ascending" : "descending") : "none"}
+        >
+          {label}
+          <SortIcon active={active} dir={sortDir} />
+        </button>
+      </th>
+    );
+  }
 
   return (
     <div className="space-y-4">
-      <div className="card grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <label className="block">
-          <span className="label">Search</span>
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Question, answer, tag…"
-          />
-        </label>
-        <label className="block">
-          <span className="label">Tag</span>
-          <select value={tag} onChange={(e) => setTag(e.target.value)}>
-            <option value="">All tags</option>
-            {tags.map((item) => (
-              <option key={item} value={item}>
-                {item}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block">
-          <span className="label">Origin</span>
-          <select
-            value={origin}
-            onChange={(e) => setOrigin(e.target.value as "" | KnowledgeOrigin)}
-          >
-            <option value="">All origins</option>
-            <option value="manual">Manual</option>
-            <option value="inbox">Inbox</option>
-          </select>
-        </label>
-        <label className="block">
-          <span className="label">Status</span>
-          <select
-            value={status}
-            onChange={(e) => setStatus(e.target.value as "" | KnowledgeStatus)}
-          >
-            <option value="active">Active</option>
-            <option value="draft">Draft</option>
-            <option value="expired">Expired</option>
-            <option value="archived">Archived</option>
-            <option value="">All</option>
-          </select>
-        </label>
+      <div className="flex flex-wrap gap-2">
+        {STATUS_TABS.map((tab) => {
+          const count = tabCounts[tab.id];
+          const active = statusTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => {
+                setStatusTab(tab.id);
+                setStatus("");
+              }}
+              className={`inline-flex items-center gap-2 rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
+                active
+                  ? "bg-tis-acid text-tis-ink shadow-sm"
+                  : "bg-white text-tis-navy ring-1 ring-black/[0.06] hover:bg-tis-mist"
+              }`}
+            >
+              {tab.id === "needs_review" && count > 0 && (
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" aria-hidden />
+              )}
+              {tab.label}{" "}
+              <span className={active ? "opacity-80" : "text-tis-muted"}>{count}</span>
+            </button>
+          );
+        })}
       </div>
 
-      {filtered.length === 0 ? (
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+        <label className="relative block min-w-0 flex-1">
+          <span className="sr-only">Search</span>
+          <Search
+            className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-tis-muted"
+            aria-hidden
+          />
+          <input
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search articles, questions, answers or tags..."
+            className="pl-10"
+          />
+        </label>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:flex lg:shrink-0">
+          <label className="block min-w-[8.5rem]">
+            <span className="sr-only">Status</span>
+            <select
+              value={status}
+              onChange={(e) => {
+                const next = e.target.value as "" | KnowledgeStatus;
+                setStatus(next);
+                if (next) setStatusTab("all");
+              }}
+              aria-label="Status"
+            >
+              <option value="">Status</option>
+              <option value="active">Active</option>
+              <option value="draft">Draft</option>
+              <option value="expired">Expired</option>
+              <option value="archived">Archived</option>
+            </select>
+          </label>
+          <label className="block min-w-[8.5rem]">
+            <span className="sr-only">Applies to</span>
+            <select
+              value={audience}
+              onChange={(e) => setAudience(e.target.value)}
+              aria-label="Applies to"
+            >
+              <option value="">Applies to</option>
+              {AUDIENCE_OPTIONS.map((item) => (
+                <option key={item} value={item}>
+                  {item === "All" ? "All parents" : item}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block min-w-[8.5rem]">
+            <span className="sr-only">Origin</span>
+            <select
+              value={origin}
+              onChange={(e) => setOrigin(e.target.value as "" | KnowledgeOrigin)}
+              aria-label="Origin"
+            >
+              <option value="">Origin</option>
+              <option value="manual">Manual</option>
+              <option value="inbox">Inbox</option>
+            </select>
+          </label>
+          <button
+            type="button"
+            className={`secondary inline-flex items-center justify-center gap-2 ${
+              showMore || tag || owner ? "ring-2 ring-tis-navy/15" : ""
+            }`}
+            aria-pressed={showMore}
+            onClick={() => setShowMore((current) => !current)}
+          >
+            <SlidersHorizontal className="h-4 w-4" aria-hidden />
+            More filters
+          </button>
+        </div>
+      </div>
+
+      {showMore && (
+        <div className="card grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="label">Owner</span>
+            <select value={owner} onChange={(e) => setOwner(e.target.value)}>
+              <option value="">All owners</option>
+              {owners.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block">
+            <span className="label">Tag</span>
+            <select value={tag} onChange={(e) => setTag(e.target.value)}>
+              <option value="">All tags</option>
+              {tags.map((item) => (
+                <option key={item} value={item}>
+                  {item}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+      )}
+
+      {sorted.length === 0 ? (
         <div className="card text-sm text-tis-muted">
           {rows.length === 0
             ? "No knowledge articles in this category yet."
@@ -144,73 +374,146 @@ export function KnowledgeList({
         </div>
       ) : (
         <>
-          <ul className="space-y-3">
-            {visible.map((row) => {
-              const resolved = effectiveKnowledgeStatus(row);
-              const overdue = isReviewOverdue(row);
-              return (
-                <li key={row.id}>
-                  <Link
-                    href={`/knowledge/${row.id}`}
-                    className="card block transition hover:border-tis-sky/40 hover:shadow-md"
-                  >
-                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                      <div className="min-w-0">
-                        <p className="font-semibold text-tis-navy">{row.primary_question}</p>
-                        <p className="mt-1 line-clamp-2 text-sm text-tis-muted">{row.answer}</p>
-                        <p className="mt-2 text-xs text-slate-500">
-                          Updated {formatWhen(row.updated_at)}
-                          {row.created_at !== row.updated_at
-                            ? ` · created ${formatWhen(row.created_at)}`
-                            : ""}
-                        </p>
-                      </div>
-                      <div className="flex shrink-0 flex-wrap gap-1.5">
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${
-                            row.origin === "inbox"
-                              ? "bg-amber-50 text-amber-700"
-                              : "bg-slate-100 text-slate-600"
-                          }`}
-                        >
-                          {row.origin === "inbox" ? "Inbox" : "Manual"}
-                        </span>
-                        <span
-                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold capitalize ${statusBadgeClass(
-                            resolved,
-                          )}`}
-                        >
-                          {resolved}
-                        </span>
-                        {overdue && (
-                          <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
-                            Review overdue
+          <div className="card overflow-hidden p-0">
+            <div className="overflow-x-auto">
+              <table className="min-w-full text-left text-sm">
+                <thead className="border-b border-black/[0.06] bg-tis-mist/40 text-[11px] uppercase tracking-wide text-tis-muted">
+                  <tr>
+                    <th className="w-10 px-4 py-3">
+                      <input
+                        type="checkbox"
+                        checked={allVisibleSelected}
+                        onChange={toggleAllVisible}
+                        aria-label="Select all on this page"
+                        className="h-4 w-4 rounded border-black/20"
+                      />
+                    </th>
+                    <SortHeader label="Question / Article" column="question" />
+                    <SortHeader label="Tags" column="tags" />
+                    <SortHeader label="Status" column="status" />
+                    <SortHeader label="Review / Expiration" column="review" />
+                    <SortHeader label="Last ingested" column="ingested" />
+                    <th className="w-12 px-4 py-3">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-black/[0.06]">
+                  {visible.map((row) => {
+                    const statusLabel = knowledgeListStatusLabel(row);
+                    const review = reviewCell(row);
+                    const ingested = formatIngestedParts(row.last_ingested_at);
+                    return (
+                      <tr key={row.id} className="hover:bg-tis-mist/30">
+                        <td className="px-4 py-3 align-top">
+                          <input
+                            type="checkbox"
+                            checked={selected.has(row.id)}
+                            onChange={() => toggleOne(row.id)}
+                            aria-label={`Select ${row.primary_question}`}
+                            className="mt-1 h-4 w-4 rounded border-black/20"
+                          />
+                        </td>
+                        <td className="max-w-[22rem] px-4 py-3 align-top">
+                          <Link href={`/knowledge/${row.id}`} className="block min-w-0">
+                            <p className="font-semibold text-tis-ink">{row.primary_question}</p>
+                            <p className="mt-0.5 line-clamp-1 text-sm text-tis-muted">
+                              {row.answer}
+                            </p>
+                          </Link>
+                        </td>
+                        <td className="px-4 py-3 align-top">
+                          <div className="flex max-w-[12rem] flex-wrap gap-1">
+                            {(row.tags || []).length === 0 ? (
+                              <span className="text-tis-muted">—</span>
+                            ) : (
+                              (row.tags || []).map((item) => (
+                                <span
+                                  key={item}
+                                  className="rounded-md bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600"
+                                >
+                                  {item}
+                                </span>
+                              ))
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap">
+                          <span className="inline-flex items-center gap-2 text-sm font-medium text-tis-ink">
+                            <span
+                              className={`h-2 w-2 rounded-full ${statusDotClass(statusLabel)}`}
+                              aria-hidden
+                            />
+                            {statusLabel}
                           </span>
-                        )}
-                      </div>
-                    </div>
-                    {(row.tags || []).length > 0 && (
-                      <div className="mt-3 flex flex-nowrap gap-1.5 overflow-x-auto">
-                        {(row.tags || []).map((item) => (
+                        </td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap">
                           <span
-                            key={item}
-                            className="shrink-0 rounded-full bg-tis-mist px-2.5 py-0.5 text-xs font-semibold text-tis-sky"
+                            className={
+                              review.tone === "danger"
+                                ? "text-sm font-medium text-tis-danger"
+                                : review.tone === "warn"
+                                  ? "text-sm font-medium text-amber-700"
+                                  : "text-sm text-tis-muted"
+                            }
                           >
-                            {item}
+                            {review.text}
                           </span>
-                        ))}
-                      </div>
-                    )}
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
+                        </td>
+                        <td className="px-4 py-3 align-top whitespace-nowrap text-sm text-tis-muted">
+                          {ingested ? (
+                            <span className="block leading-snug">
+                              {ingested.date}
+                              <br />
+                              {ingested.time}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
+                        <td className="relative px-4 py-3 align-top">
+                          <div
+                            ref={menuOpenId === row.id ? menuRef : undefined}
+                            className="relative"
+                          >
+                            <button
+                              type="button"
+                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-tis-muted transition hover:bg-tis-mist hover:text-tis-navy"
+                              aria-label={`Actions for ${row.primary_question}`}
+                              aria-expanded={menuOpenId === row.id}
+                              onClick={() =>
+                                setMenuOpenId((current) =>
+                                  current === row.id ? null : row.id,
+                                )
+                              }
+                            >
+                              <MoreHorizontal className="h-4 w-4" />
+                            </button>
+                            {menuOpenId === row.id && (
+                              <div className="absolute right-0 z-20 mt-1 min-w-[9rem] rounded-xl border border-black/[0.06] bg-white py-1 shadow-lg">
+                                <Link
+                                  href={`/knowledge/${row.id}`}
+                                  className="block px-3 py-2 text-sm font-medium text-tis-navy hover:bg-tis-mist"
+                                  onClick={() => setMenuOpenId(null)}
+                                >
+                                  Edit
+                                </Link>
+                              </div>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
           {pages > 1 && (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-tis-muted">
                 Showing {(safePage - 1) * PAGE_SIZE + 1}–
-                {Math.min(safePage * PAGE_SIZE, filtered.length)} of {filtered.length}
+                {Math.min(safePage * PAGE_SIZE, sorted.length)} of {sorted.length}
               </p>
               <div className="flex items-center gap-2">
                 <button
