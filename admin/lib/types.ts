@@ -39,7 +39,7 @@ export type UnansweredRow = {
 };
 
 export type KnowledgeOrigin = "manual" | "inbox";
-export type KnowledgeStatus = "active" | "archived";
+export type KnowledgeStatus = "draft" | "active" | "expired" | "archived";
 
 export type KnowledgeEntry = {
   id: string;
@@ -52,6 +52,13 @@ export type KnowledgeEntry = {
   origin: KnowledgeOrigin;
   origin_interaction_id: string | null;
   status: KnowledgeStatus;
+  valid_until: string | null;
+  review_due_date: string | null;
+  content_owner: string | null;
+  source_url: string | null;
+  audience: string[];
+  exclusion_notes: string | null;
+  last_ingested_at: string | null;
   document_id: string | null;
   created_at: string;
   updated_at: string;

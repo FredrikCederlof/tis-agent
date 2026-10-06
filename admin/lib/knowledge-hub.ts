@@ -1,4 +1,4 @@
-import type { KnowledgeEntry } from "@/lib/types";
+import type { KnowledgeEntry, KnowledgeStatus } from "@/lib/types";
 
 export const PAGE_SIZE = 20;
 /** Sparse named topics with this many or fewer articles roll into Other. */
@@ -10,8 +10,73 @@ export const UNCATEGORIZED = OTHER;
 export const UNCATEGORIZED_SLUG = OTHER_SLUG;
 export const CREATE_SUCCESS_PATH = "/knowledge?added=1";
 
+export const CONTENT_OWNERS = [
+  "TIS Office",
+  "Admissions",
+  "IT",
+  "PYP",
+  "MYP",
+  "DP",
+  "Other",
+] as const;
+
+export const AUDIENCE_OPTIONS = [
+  "All",
+  "Parents",
+  "Students",
+  "Teachers",
+  "PYP",
+  "MYP",
+  "DP",
+  "Kindergarten",
+  ...Array.from({ length: 12 }, (_, i) => `Grade ${i + 1}`),
+] as const;
+
 export function createSuccessPath(isNew: boolean): string {
   return isNew ? CREATE_SUCCESS_PATH : "";
+}
+
+function tokyoTodayIso(): string {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+}
+
+function dateOnly(value: string | null | undefined): string | null {
+  if (!value) return null;
+  return value.slice(0, 10);
+}
+
+/** Resolve Draft / Active / Expired / Archived including auto-expiry. */
+export function effectiveKnowledgeStatus(
+  row: Pick<KnowledgeEntry, "status" | "valid_until">,
+  todayIso = tokyoTodayIso(),
+): KnowledgeStatus {
+  const status = (row.status || "active") as KnowledgeStatus;
+  if (status === "archived" || status === "draft") return status;
+  const validUntil = dateOnly(row.valid_until);
+  if (validUntil && validUntil < todayIso) return "expired";
+  if (status === "expired") return "expired";
+  return "active";
+}
+
+export function isReviewOverdue(
+  row: Pick<KnowledgeEntry, "review_due_date" | "status" | "valid_until">,
+  todayIso = tokyoTodayIso(),
+): boolean {
+  const due = dateOnly(row.review_due_date);
+  if (!due) return false;
+  if (effectiveKnowledgeStatus(row, todayIso) === "archived") return false;
+  return due < todayIso;
+}
+
+export function formatIngestedAt(value: string | null | undefined): string {
+  if (!value) return "Not yet ingested";
+  return new Date(value).toLocaleString(undefined, {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 export function paginate<T>(rows: T[], page: number, pageSize = PAGE_SIZE): T[] {
@@ -59,7 +124,7 @@ export function categoryFromSlug(slug: string): string | null {
 function activeCounts(rows: KnowledgeEntry[]): Map<string, { count: number; display: string }> {
   const raw = new Map<string, { count: number; display: string }>();
   for (const row of rows) {
-    if ((row.status || "active") !== "active") continue;
+    if (effectiveKnowledgeStatus(row) !== "active") continue;
     const display = categoryLabel(row.category);
     const key = display.toLowerCase();
     const existing = raw.get(key);
@@ -114,7 +179,7 @@ export function entriesInCategory(
 ): KnowledgeEntry[] {
   const counts = activeCounts(rows);
   return rows.filter((row) => {
-    if ((row.status || "active") !== "active") return false;
+    if (effectiveKnowledgeStatus(row) !== "active") return false;
     const label = categoryLabel(row.category);
     const key = label.toLowerCase();
     const count = counts.get(key)?.count || 0;

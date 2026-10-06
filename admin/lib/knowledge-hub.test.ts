@@ -4,13 +4,18 @@ import {
   OTHER,
   OTHER_SLUG,
   categoryLabel,
+  effectiveKnowledgeStatus,
   entriesInCategory,
   groupCategories,
+  isReviewOverdue,
   showCategoryLanding,
 } from "./knowledge-hub.ts";
 import type { KnowledgeEntry } from "./types.ts";
 
-function entry(category: string | null, status: "active" | "archived" = "active"): KnowledgeEntry {
+function entry(
+  category: string | null,
+  status: KnowledgeEntry["status"] = "active",
+): KnowledgeEntry {
   return {
     id: crypto.randomUUID(),
     primary_question: "Q",
@@ -22,6 +27,13 @@ function entry(category: string | null, status: "active" | "archived" = "active"
     origin: "manual",
     origin_interaction_id: null,
     status,
+    valid_until: null,
+    review_due_date: null,
+    content_owner: null,
+    source_url: null,
+    audience: ["All"],
+    exclusion_notes: null,
+    last_ingested_at: null,
     document_id: null,
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-01T00:00:00Z",
@@ -56,5 +68,15 @@ describe("knowledge hub categories", () => {
     assert.equal(categoryLabel(""), OTHER);
     assert.equal(entriesInCategory(rows, null).length, 4);
     assert.equal(entriesInCategory(rows, "Health").length, 4);
+  });
+
+  it("resolves expired and review overdue without removing active counts for future dates", () => {
+    const expired = entry("Health");
+    expired.valid_until = "2020-01-01";
+    assert.equal(effectiveKnowledgeStatus(expired, "2026-10-06"), "expired");
+    const overdue = entry("Health");
+    overdue.review_due_date = "2026-01-01";
+    assert.equal(isReviewOverdue(overdue, "2026-10-06"), true);
+    assert.equal(effectiveKnowledgeStatus(overdue, "2026-10-06"), "active");
   });
 });
