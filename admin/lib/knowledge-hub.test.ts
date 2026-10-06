@@ -17,6 +17,7 @@ import {
   knowledgeEditorBackLabel,
   knowledgeListStatusLabel,
   knowledgeListTabCounts,
+  normalizeChipList,
   parseAudienceGroups,
   removeChip,
   serializeAudienceGroups,
@@ -222,6 +223,10 @@ describe("knowledge editor helpers", () => {
     assert.deepEqual(addChip(["a"], "b", 1), ["a"]);
     assert.deepEqual(addChip(["a"], " B "), ["a", "B"]);
     assert.deepEqual(removeChip(["a", "b"], 0), ["b"]);
+    assert.deepEqual(
+      normalizeChipList(["where to buy school clothes, where to buy clothes for sportsday"]),
+      ["where to buy school clothes", "where to buy clothes for sportsday"],
+    );
   });
 
   it("builds category back links and labels", () => {

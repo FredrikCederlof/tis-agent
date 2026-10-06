@@ -540,3 +540,18 @@ export function addChip(values: string[], next: string, max = Infinity): string[
 export function removeChip(values: string[], index: number): string[] {
   return values.filter((_, i) => i !== index);
 }
+
+/** Split comma-joined Hub values into individual chips. */
+export function normalizeChipList(values: string[] | null | undefined, max = Infinity): string[] {
+  const out: string[] = [];
+  for (const raw of values || []) {
+    for (const part of String(raw).split(",")) {
+      const text = part.trim();
+      if (!text) continue;
+      if (out.some((item) => item.toLowerCase() === text.toLowerCase())) continue;
+      if (out.length >= max) return out;
+      out.push(text);
+    }
+  }
+  return out;
+}

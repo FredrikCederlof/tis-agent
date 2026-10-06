@@ -29,6 +29,7 @@ import {
   formatIngestedAt,
   isReviewOverdue,
   knowledgeEditorBackLabel,
+  normalizeChipList,
   parseAudienceGroups,
   removeChip,
   serializeAudienceGroups,
@@ -217,12 +218,10 @@ export function KnowledgeEditor({
     entry?.primary_question || initialQuestion,
   );
   const [similarQuestions, setSimilarQuestions] = useState<string[]>(
-    (entry?.similar_questions || []).map((item) => item.trim()).filter(Boolean),
+    normalizeChipList(entry?.similar_questions, SIMILAR_QUESTION_MAX),
   );
   const [answer, setAnswer] = useState(entry?.answer || initialAnswer);
-  const [tagList, setTagList] = useState<string[]>(
-    (entry?.tags || []).map((item) => item.trim()).filter(Boolean),
-  );
+  const [tagList, setTagList] = useState<string[]>(normalizeChipList(entry?.tags, 20));
   const initialCategory = entry?.category?.trim() || OTHER;
   const [category, setCategory] = useState(initialCategory);
   const [customCategory, setCustomCategory] = useState("");
@@ -875,7 +874,7 @@ export function KnowledgeEditor({
         <p className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-tis-danger">{error}</p>
       )}
 
-      <div className="sticky bottom-0 z-20 mt-6 flex flex-wrap items-center gap-2 border-t border-black/[0.06] bg-[var(--tis-cream,#f7f6f3)]/95 py-3 backdrop-blur">
+      <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-black/[0.06] pt-4">
         <button type="submit" className="primary" disabled={busy}>
           {saving
             ? "Saving…"
