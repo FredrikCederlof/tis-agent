@@ -1,14 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
   MoreHorizontal,
+  Pencil,
   Search,
   SlidersHorizontal,
+  Trash2,
 } from "lucide-react";
 import {
   AUDIENCE_OPTIONS,
@@ -94,6 +98,110 @@ const STATUS_TABS: { id: KnowledgeListStatusTab; label: string }[] = [
   { id: "expired", label: "Expired" },
 ];
 
+function ArticleRowMenu({
+  row,
+  deleting,
+  onDelete,
+}: {
+  row: KnowledgeEntry;
+  deleting: boolean;
+  onDelete: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const rootRef = useRef<HTMLDivElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  function toggle() {
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      const width = 160;
+      const left = Math.max(8, Math.min(rect.right - width, window.innerWidth - width - 8));
+      const estimatedHeight = 96;
+      const top =
+        rect.bottom + estimatedHeight > window.innerHeight - 8
+          ? Math.max(8, rect.top - estimatedHeight - 4)
+          : rect.bottom + 4;
+      setPos({ top, left });
+    }
+    setOpen((current) => !current);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    function onDoc(event: MouseEvent) {
+      const target = event.target as Node;
+      if (rootRef.current?.contains(target) || menuRef.current?.contains(target)) return;
+      setOpen(false);
+    }
+    function onKey(event: KeyboardEvent) {
+      if (event.key === "Escape") setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    function onResize() {
+      setOpen(false);
+    }
+    window.addEventListener("resize", onResize);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+      window.removeEventListener("resize", onResize);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        ref={buttonRef}
+        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-tis-muted transition hover:bg-tis-mist hover:text-tis-navy"
+        aria-label={`Actions for ${row.primary_question}`}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={toggle}
+      >
+        <MoreHorizontal className="h-4 w-4" />
+      </button>
+      {open &&
+        createPortal(
+          <div
+            ref={menuRef}
+            role="menu"
+            className="fixed z-50 min-w-[10rem] rounded-xl border border-black/[0.06] bg-white py-1 shadow-lg"
+            style={{ top: pos.top, left: pos.left }}
+          >
+            <Link
+              href={`/knowledge/${row.id}`}
+              role="menuitem"
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-tis-navy hover:bg-tis-mist"
+              onClick={() => setOpen(false)}
+            >
+              <Pencil className="h-4 w-4" aria-hidden />
+              Edit
+            </Link>
+            <div className="my-1 border-t border-black/[0.06]" />
+            <button
+              type="button"
+              role="menuitem"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-tis-danger hover:bg-rose-50 disabled:opacity-50"
+              disabled={deleting}
+              onClick={() => {
+                setOpen(false);
+                onDelete();
+              }}
+            >
+              <Trash2 className="h-4 w-4" aria-hidden />
+              {deleting ? "Deleting…" : "Delete"}
+            </button>
+          </div>,
+          document.body,
+        )}
+    </div>
+  );
+}
+
 export function KnowledgeList({
   rows,
   emptyLabel = "No Knowledge Hub entries match these filters.",
@@ -101,6 +209,7 @@ export function KnowledgeList({
   rows: KnowledgeEntry[];
   emptyLabel?: string;
 }) {
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [tag, setTag] = useState("");
   const [origin, setOrigin] = useState<"" | KnowledgeOrigin>("");
@@ -113,8 +222,9 @@ export function KnowledgeList({
   const [sortDir, setSortDir] = useState<KnowledgeListSortDir>("asc");
   const [page, setPage] = useState(1);
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const menuRef = useRef<HTMLDivElement | null>(null);
+  const [removedIds, setRemovedIds] = useState<Set<string>>(() => new Set());
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const tags = useMemo(() => {
     const found = new Set<string>();
@@ -134,20 +244,26 @@ export function KnowledgeList({
     return [...found].sort((a, b) => a.localeCompare(b));
   }, [rows]);
 
-  const tabCounts = useMemo(() => knowledgeListTabCounts(rows), [rows]);
+  const tabCounts = useMemo(
+    () => knowledgeListTabCounts(rows.filter((row) => !removedIds.has(row.id))),
+    [removedIds, rows],
+  );
 
   const filtered = useMemo(
     () =>
-      filterKnowledgeList(rows, {
-        query,
-        statusTab,
-        status,
-        origin,
-        audience,
-        owner,
-        tag,
-      }),
-    [audience, origin, owner, query, rows, status, statusTab, tag],
+      filterKnowledgeList(
+        rows.filter((row) => !removedIds.has(row.id)),
+        {
+          query,
+          statusTab,
+          status,
+          origin,
+          audience,
+          owner,
+          tag,
+        },
+      ),
+    [audience, origin, owner, query, removedIds, rows, status, statusTab, tag],
   );
 
   const sorted = useMemo(
@@ -158,17 +274,6 @@ export function KnowledgeList({
   useEffect(() => {
     setPage(1);
   }, [query, tag, origin, audience, owner, status, statusTab, sortKey, sortDir]);
-
-  useEffect(() => {
-    function onDocClick(event: MouseEvent) {
-      if (!menuRef.current) return;
-      if (!menuRef.current.contains(event.target as Node)) {
-        setMenuOpenId(null);
-      }
-    }
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, []);
 
   const pages = pageCount(sorted.length);
   const safePage = Math.min(page, pages);
@@ -204,6 +309,31 @@ export function KnowledgeList({
       else next.add(id);
       return next;
     });
+  }
+
+  async function deleteArticle(row: KnowledgeEntry) {
+    if (
+      !window.confirm(
+        `Delete “${row.primary_question}” permanently?\n\nTina will stop using this article. This cannot be undone.`,
+      )
+    ) {
+      return;
+    }
+    setDeletingId(row.id);
+    setError(null);
+    try {
+      const response = await fetch(`/api/knowledge/${row.id}`, { method: "DELETE" });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(body.detail || `Delete failed (${response.status})`);
+      }
+      setRemovedIds((current) => new Set(current).add(row.id));
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Delete failed");
+    } finally {
+      setDeletingId(null);
+    }
   }
 
   function SortHeader({
@@ -366,9 +496,13 @@ export function KnowledgeList({
         </div>
       )}
 
+      {error && (
+        <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm text-tis-danger">{error}</p>
+      )}
+
       {sorted.length === 0 ? (
         <div className="card text-sm text-tis-muted">
-          {rows.length === 0
+          {rows.filter((row) => !removedIds.has(row.id)).length === 0
             ? "No knowledge articles in this category yet."
             : emptyLabel || "No matching search results."}
         </div>
@@ -471,36 +605,12 @@ export function KnowledgeList({
                             "—"
                           )}
                         </td>
-                        <td className="relative px-4 py-3 align-top">
-                          <div
-                            ref={menuOpenId === row.id ? menuRef : undefined}
-                            className="relative"
-                          >
-                            <button
-                              type="button"
-                              className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-tis-muted transition hover:bg-tis-mist hover:text-tis-navy"
-                              aria-label={`Actions for ${row.primary_question}`}
-                              aria-expanded={menuOpenId === row.id}
-                              onClick={() =>
-                                setMenuOpenId((current) =>
-                                  current === row.id ? null : row.id,
-                                )
-                              }
-                            >
-                              <MoreHorizontal className="h-4 w-4" />
-                            </button>
-                            {menuOpenId === row.id && (
-                              <div className="absolute right-0 z-20 mt-1 min-w-[9rem] rounded-xl border border-black/[0.06] bg-white py-1 shadow-lg">
-                                <Link
-                                  href={`/knowledge/${row.id}`}
-                                  className="block px-3 py-2 text-sm font-medium text-tis-navy hover:bg-tis-mist"
-                                  onClick={() => setMenuOpenId(null)}
-                                >
-                                  Edit
-                                </Link>
-                              </div>
-                            )}
-                          </div>
+                        <td className="px-4 py-3 align-top">
+                          <ArticleRowMenu
+                            row={row}
+                            deleting={deletingId === row.id}
+                            onDelete={() => void deleteArticle(row)}
+                          />
                         </td>
                       </tr>
                     );
