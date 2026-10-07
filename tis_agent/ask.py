@@ -49,6 +49,10 @@ logger = logging.getLogger("tis_agent.ask")
 EVENT_LOOKUP_SIMILARITY_FLOOR = 0.32
 # Expand to a second embedding query only when the first pass is weak.
 VECTOR_EXPAND_SIMILARITY = 0.45
+# Programme guide pinned ahead of calendar and bulletin. Above the grounding floor.
+BTB_GUIDE_SIMILARITY = 0.85
+_BTB_RE = re.compile(r"(?i)\b(?:beyond\s+the\s+bell|beyond\s+bell|btb)\b")
+BTB_GUIDE_TITLE_PREFIX = "TIS Beyond the Bell Guide"
 _CALENDAR_FAST_INTENTS = frozenset({"whats_on", "is_school_day", "list_no_school_days"})
 _EVENT_TITLE_RE = re.compile(r"^Event:\s+(.+)$", re.MULTILINE)
 _STARTS_TIME_RE = re.compile(
@@ -84,11 +88,34 @@ def _normalize_retrieval_query(question: str) -> str:
         extras = " school nurse medical staff health safety nurse@tokyois.com"
         if "school nurse" not in text.lower():
             text = f"{text}{extras}"
+    if is_beyond_the_bell_question(text):
+        extras = " TIS Beyond the Bell Guide cancellations bookings fees hours"
+        if "beyond the bell guide" not in text.lower():
+            text = f"{text}{extras}"
     return text
 
 
 def is_school_start_question(question: str) -> bool:
     return bool(_SCHOOL_START_RE.search(question or ""))
+
+
+def is_beyond_the_bell_question(question: str) -> bool:
+    """Programme questions that must be answered from the Beyond the Bell guide."""
+    return bool(_BTB_RE.search(question or ""))
+
+
+def pin_topic_guide(evidence: list[Evidence], guide: list[Evidence]) -> list[Evidence]:
+    """Place a topic document ahead of calendar and bulletin excerpts."""
+    if not guide:
+        return evidence
+    pinned_ids = {item.chunk_id for item in guide if item.chunk_id}
+    pinned_titles = {item.document_title for item in guide}
+    rest = [
+        item
+        for item in evidence
+        if item.chunk_id not in pinned_ids and item.document_title not in pinned_titles
+    ]
+    return [*guide, *rest]
 
 
 def _reply_language(question: str) -> str:
@@ -878,6 +905,63 @@ def format_empty_schedule_reply(language: str) -> str:
     )
 
 
+def _load_btb_guide_chunks(settings: Settings) -> list[Evidence]:
+    """Every chunk of the Beyond the Bell guide, in document order."""
+    try:
+        supabase = make_supabase(settings)
+        docs = (
+            supabase.table("documents")
+            .select("id, title, source_type")
+            .ilike("title", f"{BTB_GUIDE_TITLE_PREFIX}%")
+            .limit(5)
+            .execute()
+        )
+        rows = docs.data or []
+        if not rows:
+            return []
+        by_id = {row["id"]: row for row in rows}
+        chunks = (
+            supabase.table("chunks")
+            .select(
+                "id, document_id, content, section_title, page_start, page_end, "
+                "chunk_index, start_date, end_date, event_type"
+            )
+            .in_("document_id", list(by_id))
+            .order("chunk_index")
+            .limit(24)
+            .execute()
+        )
+    except Exception:
+        logger.exception("Could not load the Beyond the Bell guide")
+        return []
+
+    loaded: list[tuple[str, int, Evidence]] = []
+    for row in chunks.data or []:
+        doc = by_id.get(row.get("document_id")) or {}
+        enriched = dict(row)
+        enriched["document_title"] = doc.get("title")
+        enriched["source_type"] = doc.get("source_type")
+        enriched["similarity"] = BTB_GUIDE_SIMILARITY
+        loaded.append(
+            (
+                str(doc.get("title") or ""),
+                int(row.get("chunk_index") or 0),
+                _evidence_from_row(enriched, handbook_title=BTB_GUIDE_TITLE_PREFIX),
+            )
+        )
+    loaded.sort(key=lambda item: (item[0], item[1]))
+    return [item[2] for item in loaded]
+
+
+def _apply_topic_pins(settings: Settings, question: str, evidence: list[Evidence]) -> list[Evidence]:
+    if not is_beyond_the_bell_question(question):
+        return evidence
+    guide = _load_btb_guide_chunks(settings)
+    if guide:
+        logger.info("Pinned Beyond the Bell guide chunks=%d", len(guide))
+    return pin_topic_guide(evidence, guide)
+
+
 def retrieve(
     settings: Settings,
     question: str,
@@ -902,7 +986,10 @@ def retrieve(
             len(evidence),
             time.perf_counter() - started,
         )
-        return Retrieval(evidence=evidence, used_vector=True)
+        return Retrieval(
+            evidence=_apply_topic_pins(settings, question, evidence),
+            used_vector=True,
+        )
 
     # Common parent schedule questions: skip embeddings entirely.
     if use_calendar_fast_path(temporal):
@@ -932,7 +1019,7 @@ def retrieve(
             time.perf_counter() - started,
         )
         return Retrieval(
-            evidence=selected[: max(match_count, 12)],
+            evidence=_apply_topic_pins(settings, question, selected[: max(match_count, 12)]),
             date_lookup_ok=calendar_ok or date_ok,
             used_vector=False,
         )
@@ -970,7 +1057,7 @@ def retrieve(
             time.perf_counter() - started,
         )
         return Retrieval(
-            evidence=evidence,
+            evidence=_apply_topic_pins(settings, question, evidence),
             date_lookup_ok=calendar_ok or date_ok,
             used_vector=True,
         )
@@ -987,7 +1074,7 @@ def retrieve(
         time.perf_counter() - started,
     )
     return Retrieval(
-        evidence=selected[: max(match_count, 12)],
+        evidence=_apply_topic_pins(settings, question, selected[: max(match_count, 12)]),
         date_lookup_ok=calendar_ok or date_ok,
         used_vector=True,
     )
@@ -1182,6 +1269,17 @@ def answer_question(
         messages.extend(history[-6:])
 
     extra = grounding_instruction(temporal)
+    if is_beyond_the_bell_question(retrieval_question):
+        guide_rule = (
+            "This is a Beyond the Bell question. Answer programme rules "
+            "(cancellation, booking, fees, hours, eligibility) from the "
+            "TIS Beyond the Bell Guide excerpts first, including rules that "
+            "do not name the calendar date. Those guide excerpts count even "
+            "when another instruction says to use only excerpts that refer to "
+            "the date range. Use the parent calendar only to say whether that "
+            "date is a school day or a closure."
+        )
+        extra = f"{extra}\n\n{guide_rule}".strip() if extra else guide_rule
     extra_block = f"{extra}\n\n" if extra else ""
     parent_block = question
     if retrieval_question.strip() != question.strip():
