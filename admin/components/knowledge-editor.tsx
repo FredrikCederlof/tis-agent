@@ -450,16 +450,29 @@ export function KnowledgeEditor({
         void save(archived ? "active" : status);
       }}
     >
-      <div className="mb-6">
-        <Link
-          href={backHref}
-          className="inline-flex items-center gap-1.5 text-sm font-medium text-tis-muted hover:text-tis-navy"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          {knowledgeEditorBackLabel(backHref)}
-        </Link>
-        <h1 className="page-title mt-2">{title}</h1>
-        <p className="page-subtitle">{subtitle}</p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <Link
+            href={backHref}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-tis-muted hover:text-tis-navy"
+          >
+            <ArrowLeft className="h-4 w-4" aria-hidden />
+            {knowledgeEditorBackLabel(backHref)}
+          </Link>
+          <h1 className="page-title mt-2">{title}</h1>
+          <p className="page-subtitle">{subtitle}</p>
+        </div>
+        {entry && (
+          <button
+            type="button"
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-rose-200 bg-white px-3 py-2 text-sm font-semibold text-tis-danger shadow-sm transition hover:bg-rose-50 disabled:opacity-50"
+            disabled={busy}
+            onClick={() => void onDelete()}
+          >
+            <Trash2 className="h-4 w-4" aria-hidden />
+            {deleting ? "Deleting…" : "Delete"}
+          </button>
+        )}
       </div>
 
       {showInboxBanner && (

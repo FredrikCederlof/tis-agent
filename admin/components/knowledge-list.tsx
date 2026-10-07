@@ -9,8 +9,10 @@ import {
   ArrowUp,
   ArrowUpDown,
   MoreHorizontal,
+  Pencil,
   Search,
   SlidersHorizontal,
+  Trash2,
 } from "lucide-react";
 import {
   AUDIENCE_OPTIONS,
@@ -173,22 +175,24 @@ function ArticleRowMenu({
             <Link
               href={`/knowledge/${row.id}`}
               role="menuitem"
-              className="block px-3 py-2 text-sm font-medium text-tis-navy hover:bg-tis-mist"
+              className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-tis-navy hover:bg-tis-mist"
               onClick={() => setOpen(false)}
             >
+              <Pencil className="h-4 w-4" aria-hidden />
               Edit
             </Link>
             <div className="my-1 border-t border-black/[0.06]" />
             <button
               type="button"
               role="menuitem"
-              className="block w-full px-3 py-2 text-left text-sm font-medium text-tis-danger hover:bg-rose-50 disabled:opacity-50"
+              className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm font-medium text-tis-danger hover:bg-rose-50 disabled:opacity-50"
               disabled={deleting}
               onClick={() => {
                 setOpen(false);
                 onDelete();
               }}
             >
+              <Trash2 className="h-4 w-4" aria-hidden />
               {deleting ? "Deleting…" : "Delete"}
             </button>
           </div>,
