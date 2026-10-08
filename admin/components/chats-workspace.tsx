@@ -5,11 +5,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
-  AlertCircle,
   AlertTriangle,
   BookOpen,
   CalendarDays,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   ChevronUp,
@@ -28,6 +26,7 @@ import {
 } from "lucide-react";
 import { createClient } from "@/lib/supabase/client";
 import { AttentionBadge, AttentionStatusCard } from "@/components/attention-badge";
+import { MarkNeedsAttentionButton } from "@/components/mark-needs-attention";
 import { AdminEnglishText, useAdminEnglishMap } from "@/components/admin-english-text";
 import { LanguageBadge } from "@/components/language-badge";
 import { OutcomeBadge, OutcomeSummaryList } from "@/components/outcome-badge";
@@ -698,6 +697,8 @@ export function ChatThreadDetail({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [menuId, setMenuId] = useState<string | null>(null);
   const [flaggingId, setFlaggingId] = useState<string | null>(null);
+  const [addedSessionId, setAddedSessionId] = useState<string | null>(null);
+  const addedToAttention = addedSessionId === session.id;
 
   const timeline = useMemo(
     () => buildTimeline(interactions, adminReplies),
@@ -746,8 +747,9 @@ export function ChatThreadDetail({
     setMenuId(null);
     if (error) {
       window.alert(`Could not mark needs attention: ${error.message}`);
-      return;
+      return false;
     }
+    setAddedSessionId(session.id);
     // Fire-and-forget Web Push; failures must not block the inbox UI.
     void fetch("/api/push/notify", {
       method: "POST",
@@ -761,6 +763,7 @@ export function ChatThreadDetail({
       body: JSON.stringify({ interaction_id: interactionId }),
     }).catch(() => undefined);
     router.refresh();
+    return true;
   }
 
   async function onDelete() {
@@ -974,7 +977,8 @@ export function ChatThreadDetail({
           flagging={flaggingId != null}
           lime={lime}
           onClose={closeInfo}
-          onMarkNeedsAttention={(id) => void markNeedsAttention(id)}
+          addedToAttention={addedToAttention}
+          onMarkNeedsAttention={markNeedsAttention}
         />
       )}
     </div>
@@ -1184,6 +1188,7 @@ function InfoPanel({
   flagging,
   lime = false,
   onClose,
+  addedToAttention = false,
   onMarkNeedsAttention,
 }: {
   session: ChatSessionRow;
@@ -1195,7 +1200,8 @@ function InfoPanel({
   flagging: boolean;
   lime?: boolean;
   onClose: () => void;
-  onMarkNeedsAttention: (interactionId: string) => void;
+  addedToAttention?: boolean;
+  onMarkNeedsAttention: (interactionId: string) => Promise<boolean>;
 }) {
   const lastQuestion = interactions[interactions.length - 1];
   const outcomes = interactions.reduce<Record<string, number>>((acc, item) => {
@@ -1288,31 +1294,22 @@ function InfoPanel({
 
       <div className="mt-3 space-y-2.5">
         <AttentionStatusCard
-          needsAttention={session.needs_attention}
-          count={session.needs_attention_count}
+          needsAttention={session.needs_attention || addedToAttention}
+          count={
+            session.needs_attention
+              ? session.needs_attention_count
+              : addedToAttention
+                ? Math.max(1, session.needs_attention_count)
+                : 0
+          }
         />
         {lastQuestion ? (
           <>
-            <button
-              type="button"
-              className="primary w-full justify-center !text-[13px]"
-              disabled={flagging || session.needs_attention}
-              aria-disabled={flagging || session.needs_attention}
-              onClick={() => onMarkNeedsAttention(lastQuestion.id)}
-            >
-              <AlertCircle className="h-4 w-4" aria-hidden />
-              {flagging
-                ? "Marking…"
-                : session.needs_attention
-                  ? "Already needs attention"
-                  : "Mark as Needs attention"}
-            </button>
-            {session.needs_attention ? (
-              <p className="flex items-center justify-center gap-1 text-[11px] font-semibold text-emerald-800">
-                <CheckCircle2 className="h-3.5 w-3.5" aria-hidden />
-                Flagged for follow-up
-              </p>
-            ) : null}
+            <MarkNeedsAttentionButton
+              flagged={session.needs_attention || addedToAttention}
+              flagging={flagging}
+              onMark={() => onMarkNeedsAttention(lastQuestion.id)}
+            />
             <Link
               href="/inbox"
               className="flex items-center justify-center gap-1.5 text-[12px] font-semibold text-tis-blue no-underline hover:underline"
