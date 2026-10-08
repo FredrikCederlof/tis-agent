@@ -410,7 +410,7 @@ function CopyAnswerButton({ text }: { text: string }) {
   return (
     <button
       type="button"
-      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-white/25 bg-white/15 text-white transition hover:bg-white/25"
+      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-black/10 bg-white text-tis-navy transition hover:bg-tis-mist"
       aria-label={copied ? "Copied" : "Copy answer"}
       title={copied ? "Copied" : "Copy answer"}
       onClick={() => void onCopy()}
@@ -460,12 +460,12 @@ function SandboxBubble({
           <span className="text-[13px] font-bold text-tis-navy">Tina</span>
           {message.outcome ? <OutcomeBadge outcome={message.outcome} size="sm" /> : null}
         </div>
-        <div className="rounded-2xl rounded-tl-md bg-tis-navy px-3.5 py-2.5 text-sm text-white shadow-sm">
+        <div className="rounded-2xl rounded-tl-md bg-[#EFFAE7] px-3.5 py-2.5 text-sm text-tis-ink shadow-sm">
           <WaMessage text={body} />
           <div className="mt-1.5 flex flex-wrap items-center gap-2">
             {sources.titles.length > 0 ? (
               <div className="min-w-0 [&>div]:!mt-0">
-                <SourceChip titles={sources.titles} quote={sources.quote} />
+                <SourceChip titles={sources.titles} quote={sources.quote} onLight />
               </div>
             ) : null}
             <CopyAnswerButton text={message.content} />
