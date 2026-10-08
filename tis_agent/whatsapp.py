@@ -211,6 +211,29 @@ def _require_admin_sync_token(request: Request) -> None:
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
+def _require_trmnl_token(request: Request) -> None:
+    from tis_agent.trmnl_dashboard import trmnl_authorized
+
+    secret = os.environ.get("TRMNL_API_KEY", "").strip()
+    if not secret:
+        raise HTTPException(status_code=503, detail="TRMNL dashboard not configured")
+    if not trmnl_authorized(request.headers.get("Authorization"), secret):
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+
+@app.get("/trmnl/dashboard")
+def trmnl_dashboard(request: Request) -> dict[str, object]:
+    """Operational snapshot for the TRMNL display. Read-only."""
+    _require_trmnl_token(request)
+    from tis_agent.trmnl_dashboard import load_dashboard_from_env
+
+    try:
+        return load_dashboard_from_env()
+    except Exception:
+        logger.exception("TRMNL dashboard failed")
+        raise HTTPException(status_code=503, detail="Dashboard unavailable") from None
+
+
 @app.post("/admin/sync/web")
 async def admin_sync_web(request: Request) -> dict[str, object]:
     """Sync public web/calendar sources and login-gated portal sections into Supabase."""
