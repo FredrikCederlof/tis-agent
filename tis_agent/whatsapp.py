@@ -6,11 +6,13 @@ import json
 import logging
 import time
 from collections import OrderedDict
+from pathlib import Path
 from threading import Lock
 from typing import Any
 
 import httpx
 from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, Request, Response
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from tis_agent.analytics import (
@@ -219,6 +221,15 @@ def _require_trmnl_token(request: Request) -> None:
         raise HTTPException(status_code=503, detail="TRMNL dashboard not configured")
     if not trmnl_authorized(request.headers.get("Authorization"), secret):
         raise HTTPException(status_code=403, detail="Forbidden")
+
+
+_TINA_AVATAR = Path(__file__).resolve().parent / "static" / "tina-avatar.png"
+
+
+@app.get("/trmnl/tina.png")
+def trmnl_tina_avatar() -> FileResponse:
+    """Portrait used in the TRMNL header. No parent data."""
+    return FileResponse(_TINA_AVATAR, media_type="image/png")
 
 
 @app.get("/trmnl/dashboard")

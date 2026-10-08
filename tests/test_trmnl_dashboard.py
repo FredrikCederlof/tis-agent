@@ -5,14 +5,28 @@ from types import SimpleNamespace
 
 from tis_agent.trmnl_dashboard import (
     build_dashboard_payload,
+    coverage_percent,
+    format_time_saved,
     load_dashboard,
     sanitize_question,
+    tokyo_coverage_start,
     tokyo_day_start,
     trmnl_authorized,
 )
 from tis_agent.temporal import SCHOOL_TZ
 
 NOW = datetime(2026, 10, 8, 14, 0, tzinfo=SCHOOL_TZ)
+
+
+def test_coverage_matches_admin_success_rate():
+    assert tokyo_coverage_start(NOW).isoformat(timespec="seconds") == "2026-10-02T00:00:00+09:00"
+    assert coverage_percent(4, 1) == 80
+    assert coverage_percent(0, 0) == 0
+    assert format_time_saved(0) == "0m"
+    assert format_time_saved(20) == "20m"
+    assert format_time_saved(60) == "1h"
+    assert format_time_saved(80) == "1h 20m"
+    assert format_time_saved(14 * 60) == "14h"
 
 
 def test_tokyo_day_starts_at_local_midnight():
@@ -53,6 +67,8 @@ def test_empty_dashboard():
         "needs_attention": 0,
         "unanswered": 0,
         "new_today": 0,
+        "knowledge_coverage": 0,
+        "time_saved": "0m",
     }
     assert payload["latest_question"] is None
     assert payload["header_date"] == "Thu 8 Oct"
@@ -112,6 +128,9 @@ class _Query:
     def gte(self, *_args, **_kwargs):
         return self
 
+    def in_(self, *_args, **_kwargs):
+        return self
+
     def order(self, *_args, **_kwargs):
         return self
 
@@ -130,6 +149,10 @@ def test_load_dashboard_selects_no_identifiers():
             ([], 4),
             ([], 2),
             ([], 17),
+            ([], 4),
+            ([], 1),
+            ([], 16),
+            ([{"minutes_saved_per_question": 5}], None),
             (
                 [
                     {
@@ -147,6 +170,8 @@ def test_load_dashboard_selects_no_identifiers():
         "needs_attention": 4,
         "unanswered": 2,
         "new_today": 17,
+        "knowledge_coverage": 80,
+        "time_saved": "1h 20m",
     }
     assert payload["latest_question"]["meta"] == "Answered · 13:42"
     latest_call = client.calls[-1]
@@ -157,8 +182,10 @@ def test_load_dashboard_selects_no_identifiers():
     assert "wa_message_id" not in latest_call[1]
     assert client.calls[0][0] == "unanswered_interactions"
     assert client.calls[1][0] == "unanswered_interactions"
+    assert client.calls[6][0] == "agent_config"
+    assert client.calls[6][1] == "minutes_saved_per_question"
     assert "question_en" in latest_call[1]
-    assert all(call[2].get("count") == "exact" and call[2].get("head") is True for call in client.calls[:3])
+    assert all(call[2].get("count") == "exact" and call[2].get("head") is True for call in client.calls[:6])
 
 
 def test_trmnl_auth():
@@ -179,6 +206,10 @@ def test_route_requires_bearer_token():
 
     os.environ.pop("TRMNL_API_KEY", None)
     client = TestClient(app)
+    avatar = client.get("/trmnl/tina.png")
+    assert avatar.status_code == 200
+    assert avatar.headers["content-type"].startswith("image/png")
+
     missing = client.get("/trmnl/dashboard")
     assert missing.status_code == 503
 
