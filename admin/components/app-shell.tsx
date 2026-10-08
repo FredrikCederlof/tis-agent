@@ -169,6 +169,21 @@ function AppShellInner({
   }, [chatsUnreadCount, pathname]);
 
   useEffect(() => {
+    function onAdded() {
+      setLiveUnanswered((current) => (current ?? unansweredCount) + 1);
+    }
+    function onReverted() {
+      setLiveUnanswered((current) => Math.max(0, (current ?? unansweredCount) - 1));
+    }
+    window.addEventListener("tina-needs-attention-added", onAdded);
+    window.addEventListener("tina-needs-attention-reverted", onReverted);
+    return () => {
+      window.removeEventListener("tina-needs-attention-added", onAdded);
+      window.removeEventListener("tina-needs-attention-reverted", onReverted);
+    };
+  }, [unansweredCount]);
+
+  useEffect(() => {
     const supabase = createClient();
     function poll() {
       void supabase
@@ -323,6 +338,7 @@ function AppShellInner({
                   <Link
                     key={link.href}
                     href={link.href}
+                    data-nav-inbox={link.badge === "inbox" ? "" : undefined}
                     onClick={() => setOpen(false)}
                     title={iconsOnly ? link.label : undefined}
                     aria-label={iconsOnly ? link.label : undefined}

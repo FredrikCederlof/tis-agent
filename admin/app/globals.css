@@ -205,6 +205,53 @@ body {
   animation-delay: 0.3s;
 }
 
+/* Chip that travels from Mark as Needs attention into the sidebar inbox. */
+.attention-fly {
+  animation: attention-to-inbox 220ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
+}
+
+@keyframes attention-to-inbox {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.28);
+    opacity: 0;
+  }
+}
+
+.attention-added {
+  animation: attention-added 160ms ease;
+}
+
+@keyframes attention-added {
+  0% {
+    transform: scale(0.96);
+    opacity: 0.55;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.attention-land {
+  animation: attention-land 220ms ease;
+}
+
+@keyframes attention-land {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;
