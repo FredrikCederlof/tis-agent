@@ -29,17 +29,11 @@ export function MarkNeedsAttentionButton({
 
   useEffect(() => {
     if (!fly) return;
-    const timer = window.setTimeout(() => setFly(null), 720);
+    const timer = window.setTimeout(() => setFly(null), 240);
     return () => window.clearTimeout(timer);
   }, [fly]);
 
-  async function onClick() {
-    const rect = buttonRef.current?.getBoundingClientRect();
-    const ok = await onMark();
-    if (!ok) return;
-    setJustAdded(true);
-    window.dispatchEvent(new CustomEvent("tina-needs-attention-added"));
-    if (!rect) return;
+  function launchFly(rect: DOMRect) {
     if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const inbox = document.querySelector<HTMLElement>("[data-nav-inbox]");
     const target = inbox?.getBoundingClientRect();
@@ -47,7 +41,7 @@ export function MarkNeedsAttentionButton({
     inbox.classList.remove("attention-land");
     void inbox.offsetWidth;
     inbox.classList.add("attention-land");
-    window.setTimeout(() => inbox.classList.remove("attention-land"), 720);
+    window.setTimeout(() => inbox.classList.remove("attention-land"), 240);
     setFly({
       left: rect.left + rect.width / 2,
       top: rect.top + rect.height / 2,
@@ -56,9 +50,22 @@ export function MarkNeedsAttentionButton({
     });
   }
 
+  function onClick() {
+    const rect = buttonRef.current?.getBoundingClientRect();
+    setJustAdded(true);
+    window.dispatchEvent(new CustomEvent("tina-needs-attention-added"));
+    if (rect) launchFly(rect);
+    void onMark().then((ok) => {
+      if (ok) return;
+      setJustAdded(false);
+      setFly(null);
+      window.dispatchEvent(new CustomEvent("tina-needs-attention-reverted"));
+    });
+  }
+
   return (
     <>
-      {flagged ? (
+      {flagged || justAdded ? (
         <div
           className={`flex w-full items-center justify-center gap-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-[13px] font-semibold text-amber-950 ${
             justAdded ? "attention-added" : ""
@@ -72,13 +79,13 @@ export function MarkNeedsAttentionButton({
         <button
           ref={buttonRef}
           type="button"
-          className={`primary w-full justify-center !text-[13px] ${flagging ? "animate-pulse" : ""}`}
+          className="primary w-full justify-center !text-[13px]"
           disabled={flagging}
           aria-disabled={flagging}
-          onClick={() => void onClick()}
+          onClick={onClick}
         >
           <AlertCircle className="h-4 w-4" aria-hidden />
-          {flagging ? "Adding…" : "Mark as Needs attention"}
+          Mark as Needs attention
         </button>
       )}
       {fly

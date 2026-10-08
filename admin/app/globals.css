@@ -207,7 +207,7 @@ body {
 
 /* Chip that travels from Mark as Needs attention into the sidebar inbox. */
 .attention-fly {
-  animation: attention-to-inbox 680ms cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+  animation: attention-to-inbox 220ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards;
 }
 
 @keyframes attention-to-inbox {
@@ -222,7 +222,7 @@ body {
 }
 
 .attention-added {
-  animation: attention-added 280ms ease;
+  animation: attention-added 160ms ease;
 }
 
 @keyframes attention-added {
@@ -237,7 +237,7 @@ body {
 }
 
 .attention-land {
-  animation: attention-land 680ms ease;
+  animation: attention-land 220ms ease;
 }
 
 @keyframes attention-land {

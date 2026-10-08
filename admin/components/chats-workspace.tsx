@@ -732,6 +732,7 @@ export function ChatThreadDetail({
   }
 
   async function markNeedsAttention(interactionId: string) {
+    setAddedSessionId(session.id);
     setFlaggingId(interactionId);
     const supabase = createClient();
     const { error } = await supabase
@@ -746,10 +747,10 @@ export function ChatThreadDetail({
     setFlaggingId(null);
     setMenuId(null);
     if (error) {
+      setAddedSessionId((current) => (current === session.id ? null : current));
       window.alert(`Could not mark needs attention: ${error.message}`);
       return false;
     }
-    setAddedSessionId(session.id);
     // Fire-and-forget Web Push; failures must not block the inbox UI.
     void fetch("/api/push/notify", {
       method: "POST",

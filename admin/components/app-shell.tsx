@@ -172,8 +172,15 @@ function AppShellInner({
     function onAdded() {
       setLiveUnanswered((current) => (current ?? unansweredCount) + 1);
     }
+    function onReverted() {
+      setLiveUnanswered((current) => Math.max(0, (current ?? unansweredCount) - 1));
+    }
     window.addEventListener("tina-needs-attention-added", onAdded);
-    return () => window.removeEventListener("tina-needs-attention-added", onAdded);
+    window.addEventListener("tina-needs-attention-reverted", onReverted);
+    return () => {
+      window.removeEventListener("tina-needs-attention-added", onAdded);
+      window.removeEventListener("tina-needs-attention-reverted", onReverted);
+    };
   }, [unansweredCount]);
 
   useEffect(() => {
