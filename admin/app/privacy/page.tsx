@@ -6,15 +6,6 @@ const NOTICE_VERSION = "2026-10-09";
 const CONTACT_NAME = "Fredrik Sterner Cederlöf";
 const CONTACT_EMAIL = "fredrik@insightworks.se";
 
-const NAV = [
-  { href: "#notice", label: "Privacy Notice & Consent" },
-  { href: "#retention", label: "Data Retention Policy" },
-  { href: "#access", label: "Access Control & Audit Logs" },
-  { href: "#requests", label: "Data Requests & Deletion" },
-  { href: "#about", label: "About" },
-  { href: "#knowledge", label: "Knowledge" },
-];
-
 export default async function PrivacyNoticePage() {
   const supabase = await createClient();
   const { data } = await supabase
@@ -25,17 +16,8 @@ export default async function PrivacyNoticePage() {
   const days = data?.retention_days ?? 90;
 
   return (
-    <div className="flex min-h-full bg-[#e6e6e6] text-stone-900">
-      <header className="sticky top-0 z-10 h-screen w-56 shrink-0 overflow-y-auto bg-black sm:w-64">
-        <nav aria-label="Privacy" className="flex flex-col items-start gap-3 px-5 py-8 text-sm">
-          {NAV.map((item) => (
-            <a key={item.href} href={item.href} className="text-left text-white underline-offset-4 hover:underline">
-              {item.label}
-            </a>
-          ))}
-        </nav>
-      </header>
-      <main className="min-w-0 flex-1 px-6 py-12 sm:px-10">
+    <div className="min-h-full bg-[#e6e6e6] text-stone-900">
+      <main className="mx-auto max-w-2xl px-6 py-12">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
           Privacy notice · {NOTICE_VERSION}
         </p>
