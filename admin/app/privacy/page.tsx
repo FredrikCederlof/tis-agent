@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 
-export const NOTICE_VERSION = "2026-10-09";
+const NOTICE_VERSION = "2026-10-09";
 
 const PROVIDERS = [
   "Meta (WhatsApp) carries the phone number and the message.",
