@@ -59,10 +59,10 @@ def public_notice_html(settings: Settings | None = None) -> str:
     except Exception:
         logger.exception("Could not load privacy notice settings")
 
+    contact_email = contact or "fredrik@insightworks.se"
     request_line = (
-        f"To ask for a copy, a correction, or earlier deletion, email {_html_escape(contact)}."
-        if contact
-        else "To ask for a copy, a correction, or earlier deletion, contact the parent who operates Tina."
+        "To ask for a copy, a correction, or deletion, contact Fredrik Sterner Cederlöf at "
+        f'<a href="mailto:{_html_escape(contact_email)}">{_html_escape(contact_email)}</a>.'
     )
     return f"""<!doctype html>
 <html lang="en">
@@ -81,27 +81,33 @@ def public_notice_html(settings: Settings | None = None) -> str:
 </head>
 <body>
   <nav>
+    <a href="#notice">Privacy Notice &amp; Consent</a>
+    <a href="#retention">Data Retention Policy</a>
+    <a href="#access">Access Control &amp; Audit Logs</a>
+    <a href="#requests">Data Requests &amp; Deletion</a>
     <a href="#about">About</a>
-    <a href="#stored">What is stored</a>
-    <a href="#not-stored">What we don't store</a>
-    <a href="#safety">Safety</a>
-    <a href="#built">How it is built</a>
     <a href="#knowledge">Knowledge</a>
   </nav>
   <main>
     <p>Privacy notice · {NOTICE_VERSION}</p>
     <h1>How Tina handles information</h1>
+    <h2 id="notice">Privacy Notice &amp; Consent</h2>
+    <p>This page is the privacy notice for Tina. Questions go to Fredrik Sterner Cederlöf at <a href="mailto:fredrik@insightworks.se">fredrik@insightworks.se</a>.</p>
+    <p>Using Tina is optional. You start by sending a WhatsApp message. The first reply to a new number includes a link to this notice. There is no separate checkbox. If you do not want Tina to keep the conversation, stop messaging, or ask for deletion.</p>
+    <p>When you message Tina, Tina stores your phone number, your message, Tina’s reply, the language, the time, and the titles of documents used in the answer.</p>
+    <h2 id="retention">Data Retention Policy</h2>
+    <p>Conversation records are kept for {days} days. An administrator can set that period to 30, 90, 180, or 365 days. The default is 90 days. When the period ends, those conversation rows are deleted. School documents and knowledge articles stay. This does not remove the chat on your phone, Meta’s copy, or rows still inside a backup window.</p>
+    <h2 id="access">Access Control &amp; Audit Logs</h2>
+    <p>Tina Admin is invitation-only. Conversation records are not public. Active administrators can read them. Staff invitations and removed access are written to an administrator audit log. Deletion of old conversations, and deletion of one phone number, are written to a privacy log with the time, who ran it, and how many rows were removed. That log keeps the last four digits of a phone number, not the full number.</p>
+    <h2 id="requests">Data Requests &amp; Deletion</h2>
+    <p>{request_line}</p>
+    <p>An administrator can export the stored WhatsApp rows for one number, or delete those rows from Tina’s database. That deletion does not remove the chat on your phone or Meta’s copy.</p>
     <h2 id="about">About this project</h2>
     <p>Tina is an independent assistant a parent at Tokyo International School set up so other parents can find everyday school information more easily. It is a non-commercial project: there is no fee, no advertising, and information is not sold.</p>
     <p>Tina is not affiliated with, endorsed by, or operated by Tokyo International School. The school has not commissioned this assistant.</p>
     <p>Answers are generated and can be wrong. For official information, contact Tokyo International School directly.</p>
-    <h2 id="stored">What is stored</h2>
-    <p>When you message Tina on WhatsApp, Tina stores your phone number, your message, Tina’s reply, the language, the time, and the titles of documents used in the answer.</p>
-    <p>Conversation records are deleted {days} days after the message. That does not remove the chat on your phone, Meta’s copy, or rows still inside a backup window. School documents and knowledge articles are kept.</p>
     <h2 id="not-stored">What we don't store</h2>
     <p>Tina does not keep student records: no grades, report cards, medical files, or a named child’s school account. Knowledge is general school information. Child names are removed from weekly mail before it is stored. Your phone number is not sent to the model that writes the reply.</p>
-    <h2 id="safety">How we limit access</h2>
-    <p>Only invited staff can open Tina Admin. Conversation records are not readable by the public. WhatsApp checks Meta’s signature. Restricted documents are not sent to the model. An admin can export or delete the stored rows for one phone number. This page is not a certification.</p>
     <h2 id="built">How it is built</h2>
     <ul>
       <li>Meta (WhatsApp) carries the phone number and the message.</li>
@@ -114,8 +120,6 @@ def public_notice_html(settings: Settings | None = None) -> str:
     <p>Each company handles its own slice under that company’s terms.</p>
     <h2 id="knowledge">Knowledge</h2>
     <p>Knowledge is general school information, not a file about a student. Google Drive holds the source documents. Supabase holds the copy used to search and answer. Tina Admin holds knowledge articles staff write, which are added to the same search store.</p>
-    <h2>Your request</h2>
-    <p>{request_line}</p>
   </main>
 </body>
 </html>

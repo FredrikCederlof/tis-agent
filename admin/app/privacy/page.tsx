@@ -3,12 +3,15 @@ import { createClient } from "@/lib/supabase/server";
 
 const NOTICE_VERSION = "2026-10-09";
 
+const CONTACT_NAME = "Fredrik Sterner Cederlöf";
+const CONTACT_EMAIL = "fredrik@insightworks.se";
+
 const NAV = [
+  { href: "#notice", label: "Privacy Notice & Consent" },
+  { href: "#retention", label: "Data Retention Policy" },
+  { href: "#access", label: "Access Control & Audit Logs" },
+  { href: "#requests", label: "Data Requests & Deletion" },
   { href: "#about", label: "About" },
-  { href: "#stored", label: "What is stored" },
-  { href: "#not-stored", label: "What we don't store" },
-  { href: "#safety", label: "Safety" },
-  { href: "#built", label: "How it is built" },
   { href: "#knowledge", label: "Knowledge" },
 ];
 
@@ -16,11 +19,10 @@ export default async function PrivacyNoticePage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("privacy_notice_public")
-    .select("retention_days, privacy_contact_email")
+    .select("retention_days")
     .maybeSingle();
 
   const days = data?.retention_days ?? 90;
-  const contact = (data?.privacy_contact_email || "").trim();
 
   return (
     <div className="min-h-full bg-[#e6e6e6] text-stone-900">
@@ -42,7 +44,79 @@ export default async function PrivacyNoticePage() {
         </p>
         <h1 className="mt-2 font-display text-3xl font-bold text-stone-950">How Tina handles information</h1>
 
-        <section id="about" className="mt-8 scroll-mt-16 space-y-4 text-sm leading-relaxed">
+        <section id="notice" className="mt-8 scroll-mt-16 space-y-4 text-sm leading-relaxed">
+          <h2 className="text-lg font-bold text-stone-950">Privacy Notice &amp; Consent</h2>
+          <p>This page is the privacy notice for Tina. Questions go to {CONTACT_NAME} at {CONTACT_EMAIL}.</p>
+          <p>
+            Using Tina is optional. You start by sending a WhatsApp message. The first reply to a new
+            number includes a link to this notice. There is no separate checkbox. If you do not want
+            Tina to keep the conversation, stop messaging, or ask for deletion using the contact
+            below.
+          </p>
+          <p>
+            When you message Tina, Tina stores your phone number, your message, Tina’s reply, the
+            language, the time, and the titles of documents used in the answer. A short copy of the
+            question is also kept so a retried WhatsApp delivery is not answered twice.
+          </p>
+          <p>
+            Please do not send information about other children. Tina has no child accounts. This
+            page describes how the system works. It is not a legal opinion and not a certification.
+          </p>
+        </section>
+
+        <section id="retention" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
+          <h2 className="text-lg font-bold text-stone-950">Data Retention Policy</h2>
+          <p>
+            Conversation records are kept for {days} days. An administrator can set that period to
+            30, 90, 180, or 365 days. The default is 90 days.
+          </p>
+          <p>
+            When the period ends, a scheduled job deletes the conversation rows and the
+            duplicate-delivery copies. School documents, knowledge articles, and the file store stay.
+          </p>
+          <p>
+            Deleting them here does not remove the chat on your phone, Meta’s copy, or rows still
+            inside Supabase’s backup window.
+          </p>
+        </section>
+
+        <section id="access" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
+          <h2 className="text-lg font-bold text-stone-950">Access Control &amp; Audit Logs</h2>
+          <p>
+            Tina Admin is invitation-only. An active administrator sends the invitation. A person
+            without one cannot open the admin site.
+          </p>
+          <p>
+            Conversation records are not public. Active administrators can read them. The WhatsApp
+            service writes them with its own key. WhatsApp checks Meta’s signature before a message
+            is accepted. Documents marked restricted are stored and are not sent to the model.
+          </p>
+          <p>
+            Staff invitations, revoked invitations, and removed access are written to an
+            administrator audit log. Scheduled deletion of old conversations, and deletion of one
+            phone number, are written to a privacy log with the time, who ran it, and how many rows
+            were removed. That privacy log keeps the last four digits of a phone number, not the
+            full number. Opening a conversation in the inbox is not written as its own event.
+          </p>
+        </section>
+
+        <section id="requests" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
+          <h2 className="text-lg font-bold text-stone-950">Data Requests &amp; Deletion</h2>
+          <p>
+            To ask for a copy, a correction, or deletion, contact {CONTACT_NAME} at{" "}
+            <a className="font-semibold text-stone-950 underline" href={`mailto:${CONTACT_EMAIL}`}>
+              {CONTACT_EMAIL}
+            </a>
+            .
+          </p>
+          <p>
+            An administrator can export the stored WhatsApp rows for one number, or delete those
+            rows from Tina’s database. That deletion does not remove the chat on your phone or
+            Meta’s copy.
+          </p>
+        </section>
+
+        <section id="about" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
           <h2 className="text-lg font-bold text-stone-950">About this project</h2>
           <p>
             Tina is an independent assistant a parent at Tokyo International School set up so other
@@ -60,25 +134,6 @@ export default async function PrivacyNoticePage() {
           <p>Please avoid sharing sensitive personal information about students, families, or staff.</p>
         </section>
 
-        <section id="stored" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
-          <h2 className="text-lg font-bold text-stone-950">What is stored</h2>
-          <p>
-            When you message Tina on WhatsApp, Tina stores your phone number, your message, Tina’s
-            reply, the language, the time, and the titles of documents used in the answer. A short
-            copy of the question is also kept so a retried WhatsApp delivery is not answered twice.
-          </p>
-          <p>
-            Staff who are invited into Tina Admin have an email and a name stored so they can sign
-            in. Parents do not get accounts.
-          </p>
-          <h2 className="pt-2 text-lg font-bold text-stone-950">How long</h2>
-          <p>
-            Conversation records in Tina’s database are deleted {days} days after the message.
-            Deleting them here does not remove the chat on your phone, Meta’s copy, or rows still
-            inside Supabase’s backup window. School documents and knowledge articles are kept.
-          </p>
-        </section>
-
         <section id="not-stored" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
           <h2 className="text-lg font-bold text-stone-950">What we don&apos;t store</h2>
           <p>
@@ -91,23 +146,6 @@ export default async function PrivacyNoticePage() {
             has no child accounts. Do not send information about other children.
           </p>
           <p>Your phone number is not sent to the model that writes the reply.</p>
-        </section>
-
-        <section id="safety" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
-          <h2 className="text-lg font-bold text-stone-950">How we limit access</h2>
-          <p>
-            These are the controls in the system today. They are not a certification, and this page
-            is not a legal opinion.
-          </p>
-          <ul className="list-disc space-y-2 pl-5">
-            <li>Only invited staff can open Tina Admin. A new account needs an invitation from an active admin.</li>
-            <li>Conversation records are not readable by the public. An active admin can read them. The WhatsApp service writes them with its own key.</li>
-            <li>WhatsApp checks Meta’s signature before a message is accepted.</li>
-            <li>Documents marked restricted are stored, but they are not sent to the model.</li>
-            <li>Phone numbers and question text are not written into the application log line.</li>
-            <li>An admin can export or delete the stored rows for one phone number.</li>
-            <li>Conversation rows older than the retention period are deleted on a schedule. Documents stay.</li>
-          </ul>
         </section>
 
         <section id="built" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
@@ -140,15 +178,6 @@ export default async function PrivacyNoticePage() {
           </ul>
           <p>
             A document can be marked restricted. It remains in storage and is left out of answers.
-          </p>
-        </section>
-
-        <section id="request" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
-          <h2 className="text-lg font-bold text-stone-950">Your request</h2>
-          <p>
-            {contact
-              ? `To ask for a copy, a correction, or earlier deletion, email ${contact}.`
-              : "To ask for a copy, a correction, or earlier deletion, contact the parent who operates Tina."}
           </p>
         </section>
 
