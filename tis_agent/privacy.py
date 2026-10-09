@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -37,14 +38,99 @@ def _html_escape(value: str) -> str:
     )
 
 
+_PAGE_TAGS = {"p", "h2", "h3", "ul", "ol", "li", "a", "strong", "em", "b", "i", "br", "blockquote"}
+
+
+def sanitize_page_html(html: str) -> str:
+    """Keep the tags the admin editor produces. Drop scripts and unexpected markup."""
+    cleaned = re.sub(r"(?is)<!--.*?-->", "", html)
+    cleaned = re.sub(r"(?is)<script.*?>.*?</script>", "", cleaned)
+    cleaned = re.sub(r"(?is)<style.*?>.*?</style>", "", cleaned)
+
+    def repl(match: re.Match[str]) -> str:
+        name = match.group(1).lower()
+        if name not in _PAGE_TAGS:
+            return ""
+        if match.group(0).startswith("</"):
+            return "" if name == "br" else f"</{name}>"
+        if name == "br":
+            return "<br>"
+        if name == "a":
+            href_match = re.search(
+                r"""href\s*=\s*(?:"([^"]*)"|'([^']*)')""",
+                match.group(2),
+                re.I,
+            )
+            href = ((href_match.group(1) or href_match.group(2) or "") if href_match else "").strip()
+            if href.lower().startswith(("http://", "https://", "mailto:", "/")) and "javascript:" not in href.lower():
+                return f'<a href="{_html_escape(href)}">'
+            return "<a>"
+        return f"<{name}>"
+
+    return re.sub(r"</?([a-zA-Z0-9]+)([^>]*)>", repl, cleaned)
+
+
+def _apply_page_tokens(html: str, days: int, email: str) -> str:
+    return html.replace("{retention_days}", str(days)).replace(
+        "{privacy_contact_email}", _html_escape(email)
+    )
+
+
+def _published_page(settings: Settings, slug: str) -> dict[str, Any] | None:
+    try:
+        row = (
+            make_supabase(settings)
+            .table("content_pages")
+            .select("title,body_html")
+            .eq("slug", slug)
+            .eq("published", True)
+            .limit(1)
+            .execute()
+        )
+    except Exception:
+        logger.exception("Could not load public page %s", slug)
+        return None
+    data = (row.data or [None])[0]
+    if not data or not str(data.get("body_html") or "").strip():
+        return None
+    return data
+
+
+def _render_stored_page(title: str, body_html: str, days: int, email: str) -> str:
+    safe_title = _html_escape(title or "How Tina handles information")
+    body = _apply_page_tokens(sanitize_page_html(body_html), days, email)
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{safe_title}</title>
+  <style>
+    body {{ margin: 0; background: #e6e6e6; color: #1c1917; font-family: Georgia, serif; line-height: 1.5; }}
+    main {{ max-width: 40rem; margin: 0 auto; padding: 2.5rem 1.5rem 3rem; }}
+    h1 {{ font-size: 1.6rem; }}
+    h2 {{ scroll-margin-top: 1.5rem; }}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>{safe_title}</h1>
+    {body}
+  </main>
+</body>
+</html>
+"""
+
+
 def public_notice_html(settings: Settings | None = None) -> str:
     """Public notice for parents. Defaults if the config row cannot be read."""
     days = 90
     contact = ""
+    loaded_settings: Settings | None = settings
     try:
-        settings = settings or get_settings()
+        loaded_settings = settings or get_settings()
         row = (
-            make_supabase(settings)
+            make_supabase(loaded_settings)
             .table("agent_config")
             .select("retention_days, privacy_contact_email")
             .eq("id", 1)
@@ -59,7 +145,18 @@ def public_notice_html(settings: Settings | None = None) -> str:
     except Exception:
         logger.exception("Could not load privacy notice settings")
 
-    contact_email = _html_escape(contact or "fredrik@insightworks.se")
+    contact_email = contact or "fredrik@insightworks.se"
+    if loaded_settings is not None:
+        page = _published_page(loaded_settings, "privacy")
+        if page:
+            return _render_stored_page(
+                str(page.get("title") or ""),
+                str(page.get("body_html") or ""),
+                days,
+                contact_email,
+            )
+
+    escaped_email = _html_escape(contact_email)
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -83,7 +180,7 @@ def public_notice_html(settings: Settings | None = None) -> str:
     <p>Answers are generated and can be wrong. For official information, contact Tokyo International School directly.</p>
     <p>This page describes how Tina works. It is not a legal opinion, and it is not a statement that Tina meets a particular law.</p>
     <h2>Privacy notice</h2>
-    <p>Questions about this notice go to Fredrik Sterner Cederlöf at <a href="mailto:{contact_email}">{contact_email}</a>.</p>
+    <p>Questions about this notice go to Fredrik Sterner Cederlöf at <a href="mailto:{escaped_email}">{escaped_email}</a>.</p>
     <p>Using Tina is optional. You start by sending a WhatsApp message. The first reply to a new number includes a link to this notice. That first message is received and answered before the link is shown. If you do not want Tina to keep the conversation, stop messaging, or ask for deletion.</p>
     <p>When you message Tina, Tina stores your phone number, your message, Tina’s reply, the language, the time, and the titles of documents used in the answer. A short copy of the question is also kept so a retried WhatsApp delivery is not answered twice.</p>
     <h2>How we use your information</h2>
@@ -105,7 +202,7 @@ def public_notice_html(settings: Settings | None = None) -> str:
     <h2>Who can see conversations</h2>
     <p>Tina Admin is only for people an administrator has invited. Conversation records are not public. Invited staff can read them in order to handle questions Tina could not answer. Some documents are marked so they stay in storage and are left out of answers.</p>
     <h2>Your request</h2>
-    <p>You can ask for a copy, a correction, or deletion of the information stored for your WhatsApp number. Contact Fredrik Sterner Cederlöf at <a href="mailto:{contact_email}">{contact_email}</a>. We may need to confirm that you control that phone number before completing the request. Deleting the rows in Tina’s database does not delete the chat on your phone, copies held by other providers, or temporary backups.</p>
+    <p>You can ask for a copy, a correction, or deletion of the information stored for your WhatsApp number. Contact Fredrik Sterner Cederlöf at <a href="mailto:{escaped_email}">{escaped_email}</a>. We may need to confirm that you control that phone number before completing the request. Deleting the rows in Tina’s database does not delete the chat on your phone, copies held by other providers, or temporary backups.</p>
     <h2>Where information is handled</h2>
     <p>Some of this happens outside Japan.</p>
     <ul>

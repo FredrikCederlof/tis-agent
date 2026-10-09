@@ -26,6 +26,8 @@ describe("middleware auth bypass for push notify", () => {
 
   it("treats the privacy notice as public", () => {
     assert.equal(isPublicPath("/privacy"), true);
+    assert.equal(isPublicPath("/pages/school-week"), true);
     assert.equal(isPublicPath("/settings/privacy"), false);
+    assert.equal(isPublicPath("/content"), false);
   });
 });

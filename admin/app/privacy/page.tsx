@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PublicArticle } from "@/components/public-article";
 import { createClient } from "@/lib/supabase/server";
 
 const NOTICE_VERSION = "2026-10-09";
@@ -8,12 +9,23 @@ const CONTACT_EMAIL = "fredrik@insightworks.se";
 
 export default async function PrivacyNoticePage() {
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("privacy_notice_public")
-    .select("retention_days")
-    .maybeSingle();
+  const [{ data }, pageResult] = await Promise.all([
+    supabase.from("privacy_notice_public").select("retention_days, privacy_contact_email").maybeSingle(),
+    supabase.from("content_pages").select("title, body_html").eq("slug", "privacy").maybeSingle(),
+  ]);
 
   const days = data?.retention_days ?? 90;
+  const email = data?.privacy_contact_email || CONTACT_EMAIL;
+  if (!pageResult.error && pageResult.data?.body_html) {
+    return (
+      <PublicArticle
+        title={pageResult.data.title}
+        html={pageResult.data.body_html}
+        days={days}
+        email={email}
+      />
+    );
+  }
 
   return (
     <div className="min-h-full bg-[#e6e6e6] text-stone-900">
