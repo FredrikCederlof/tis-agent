@@ -59,11 +59,7 @@ def public_notice_html(settings: Settings | None = None) -> str:
     except Exception:
         logger.exception("Could not load privacy notice settings")
 
-    contact_email = contact or "fredrik@insightworks.se"
-    request_line = (
-        "To ask for a copy, a correction, or deletion, contact Fredrik Sterner Cederlöf at "
-        f'<a href="mailto:{_html_escape(contact_email)}">{_html_escape(contact_email)}</a>.'
-    )
+    contact_email = _html_escape(contact or "fredrik@insightworks.se")
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -81,35 +77,49 @@ def public_notice_html(settings: Settings | None = None) -> str:
   <main>
     <p>Privacy notice · {NOTICE_VERSION}</p>
     <h1>How Tina handles information</h1>
-    <h2 id="notice">Privacy Notice &amp; Consent</h2>
-    <p>This page is the privacy notice for Tina. Questions go to Fredrik Sterner Cederlöf at <a href="mailto:fredrik@insightworks.se">fredrik@insightworks.se</a>.</p>
-    <p>Using Tina is optional. You start by sending a WhatsApp message. The first reply to a new number includes a link to this notice. There is no separate checkbox. If you do not want Tina to keep the conversation, stop messaging, or ask for deletion.</p>
-    <p>When you message Tina, Tina stores your phone number, your message, Tina’s reply, the language, the time, and the titles of documents used in the answer.</p>
-    <h2 id="retention">Data Retention Policy</h2>
-    <p>Conversation records are kept for {days} days. An administrator can set that period to 30, 90, 180, or 365 days. The default is 90 days. When the period ends, those conversation rows are deleted. School documents and knowledge articles stay. This does not remove the chat on your phone, Meta’s copy, or rows still inside a backup window.</p>
-    <h2 id="access">Access Control &amp; Audit Logs</h2>
-    <p>Tina Admin is invitation-only. Conversation records are not public. Active administrators can read them. Staff invitations and removed access are written to an administrator audit log. Deletion of old conversations, and deletion of one phone number, are written to a privacy log with the time, who ran it, and how many rows were removed. That log keeps the last four digits of a phone number, not the full number.</p>
-    <h2 id="requests">Data Requests &amp; Deletion</h2>
-    <p>{request_line}</p>
-    <p>An administrator can export the stored WhatsApp rows for one number, or delete those rows from Tina’s database. That deletion does not remove the chat on your phone or Meta’s copy.</p>
-    <h2 id="about">About this project</h2>
+    <h2>About this project</h2>
     <p>Tina is an independent assistant a parent at Tokyo International School set up so other parents can find everyday school information more easily. It is a non-commercial project: there is no fee, no advertising, and information is not sold.</p>
     <p>Tina is not affiliated with, endorsed by, or operated by Tokyo International School. The school has not commissioned this assistant.</p>
     <p>Answers are generated and can be wrong. For official information, contact Tokyo International School directly.</p>
-    <h2 id="not-stored">What we don't store</h2>
-    <p>Tina does not keep student records: no grades, report cards, medical files, or a named child’s school account. Knowledge is general school information. Child names are removed from weekly mail before it is stored. Your phone number is not sent to the model that writes the reply.</p>
-    <h2 id="built">How it is built</h2>
+    <p>This page describes how Tina works. It is not a legal opinion, and it is not a statement that Tina meets a particular law.</p>
+    <h2>Privacy notice</h2>
+    <p>Questions about this notice go to Fredrik Sterner Cederlöf at <a href="mailto:{contact_email}">{contact_email}</a>.</p>
+    <p>Using Tina is optional. You start by sending a WhatsApp message. The first reply to a new number includes a link to this notice. That first message is received and answered before the link is shown. If you do not want Tina to keep the conversation, stop messaging, or ask for deletion.</p>
+    <p>When you message Tina, Tina stores your phone number, your message, Tina’s reply, the language, the time, and the titles of documents used in the answer. A short copy of the question is also kept so a retried WhatsApp delivery is not answered twice.</p>
+    <h2>How we use your information</h2>
+    <ul>
+      <li>Receive a WhatsApp question and reply to it.</li>
+      <li>Keep recent messages in the same chat so a follow-up can be understood.</li>
+      <li>Ignore a duplicate delivery of the same message.</li>
+      <li>Let an invited administrator review a question Tina could not answer.</li>
+      <li>Let an administrator save a reviewed, general article into the knowledge base.</li>
+      <li>Notify staff of a question. In that notification the phone number is masked.</li>
+      <li>Respond to a request for a copy, a correction, or deletion, and look into a technical problem.</li>
+    </ul>
+    <p>Information is not sold and is not used for advertising. Improving Tina means a person writes a general article. The raw chat is not kept for that purpose beyond the retention period below.</p>
+    <h2>Children</h2>
+    <p>Tina does not keep student profiles, grades, medical records, or a named child’s school account. The material used to answer is general school information.</p>
+    <p>A message you send can still name a child or include other personal details. That message is stored as you sent it. Please do not share information about children or other people unless you need to. Weekly school mail is cleaned before it is added, and child names are removed from that mail.</p>
+    <h2>Data retention</h2>
+    <p>Conversation records are kept for {days} days, then deleted from Tina’s active database. School documents and knowledge articles stay. The chat on your phone, copies held by WhatsApp or other providers, and temporary backups can remain for a different period.</p>
+    <h2>Who can see conversations</h2>
+    <p>Tina Admin is only for people an administrator has invited. Conversation records are not public. Invited staff can read them in order to handle questions Tina could not answer. Some documents are marked so they stay in storage and are left out of answers.</p>
+    <h2>Your request</h2>
+    <p>You can ask for a copy, a correction, or deletion of the information stored for your WhatsApp number. Contact Fredrik Sterner Cederlöf at <a href="mailto:{contact_email}">{contact_email}</a>. We may need to confirm that you control that phone number before completing the request. Deleting the rows in Tina’s database does not delete the chat on your phone, copies held by other providers, or temporary backups.</p>
+    <h2>Where information is handled</h2>
+    <p>Some of this happens outside Japan.</p>
     <ul>
       <li>Meta (WhatsApp) carries the phone number and the message.</li>
-      <li>Railway, in Amsterdam, runs the webhook.</li>
-      <li>OpenAI writes the reply from the question and short excerpts. The phone number is not part of that request.</li>
+      <li>A service in Singapore receives the message and sends the reply.</li>
+      <li>OpenAI writes the reply from the question, recent messages in the same chat, and short excerpts from school documents. The phone number is not included.</li>
       <li>Supabase, in Tokyo, stores the conversation and the searchable knowledge base.</li>
-      <li>Vercel hosts the admin site.</li>
-      <li>Google Drive is where documents are placed before they are indexed.</li>
+      <li>Vercel hosts this website.</li>
+      <li>Google Drive holds the source documents that are chosen for indexing.</li>
+      <li>Slack can show staff the text of a question. The phone number in that notice is masked.</li>
     </ul>
-    <p>Each company handles its own slice under that company’s terms.</p>
-    <h2 id="knowledge">Knowledge</h2>
-    <p>Knowledge is general school information, not a file about a student. Google Drive holds the source documents. Supabase holds the copy used to search and answer. Tina Admin holds knowledge articles staff write, which are added to the same search store.</p>
+    <p>Each company handles its own part under that company’s terms. This page does not describe a completed legal arrangement for transfers outside Japan.</p>
+    <h2>Knowledge</h2>
+    <p>Answers come from general school information, not from a file about a student. Google Drive holds the source documents. Supabase holds the copy used to search and answer. Tina Admin holds knowledge articles a person writes and saves. An article can start from a question Tina could not answer. The person reviews it and is expected to keep it general before it is saved. A saved article stays after the conversation itself is deleted.</p>
   </main>
 </body>
 </html>
