@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import { Inter } from "next/font/google";
 import { Suspense, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -55,6 +56,7 @@ function LoginForm() {
         email,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
+          shouldCreateUser: false,
         },
       });
       setLoading(false);
@@ -250,6 +252,10 @@ function LoginForm() {
       </main>
       <footer className="page-footer">
         <span>Nabo · School information, thoughtfully connected.</span>
+        <span>
+          Tina is an independent parent assistant, not operated by Tokyo International School.{" "}
+          <Link href="/privacy">Privacy notice</Link>
+        </span>
         <span>Staff sign-in</span>
       </footer>
     </div>

@@ -25,6 +25,7 @@ from tis_agent.analytics import (
 )
 from tis_agent.ask import AnswerResult, _reply_language, answer_question
 from tis_agent.config import get_settings
+from tis_agent.privacy import first_contact_line
 from tis_agent.whatsapp_config import WhatsAppSettings, get_whatsapp_settings
 
 import os
@@ -413,6 +414,53 @@ async def admin_slack_reminders(request: Request) -> dict[str, object]:
     return run_attention_reminders(dry_run=dry_run)
 
 
+@app.post("/admin/privacy/purge")
+async def admin_privacy_purge(request: Request) -> dict[str, object]:
+    """Delete conversation rows older than the configured retention."""
+    _require_admin_sync_token(request)
+    from tis_agent.privacy import purge_expired
+
+    body: dict[str, Any] = {}
+    if request.headers.get("content-type", "").startswith("application/json"):
+        body = await request.json()
+    actor = str(body.get("actor") or "admin").strip()[:200] or "admin"
+    try:
+        return purge_expired(actor=actor)
+    except Exception:
+        logger.exception("Privacy purge failed")
+        raise HTTPException(status_code=500, detail="Purge failed") from None
+
+
+@app.post("/admin/privacy/subject")
+async def admin_privacy_subject(request: Request) -> dict[str, object]:
+    """Export or delete one parent's stored WhatsApp rows."""
+    _require_admin_sync_token(request)
+    from tis_agent.privacy import delete_subject, export_subject
+
+    body = await request.json()
+    phone = str(body.get("phone") or "").strip()
+    action = str(body.get("action") or "").strip()
+    actor = str(body.get("actor") or "admin").strip()[:200] or "admin"
+    if not phone:
+        raise HTTPException(status_code=400, detail="Phone number is required")
+    try:
+        if action == "export":
+            return export_subject(phone)
+        if action == "delete":
+            return delete_subject(phone, actor=actor)
+    except Exception:
+        logger.exception("Privacy subject request failed")
+        raise HTTPException(status_code=500, detail="Request failed") from None
+    raise HTTPException(status_code=400, detail="Action must be export or delete")
+
+
+@app.get("/privacy")
+def privacy_notice() -> Response:
+    from tis_agent.privacy import public_notice_html
+
+    return Response(content=public_notice_html(), media_type="text/html; charset=utf-8")
+
+
 @app.get("/webhook")
 def verify_webhook(
     hub_mode: str | None = Query(None, alias="hub.mode"),
@@ -438,16 +486,19 @@ def _reply_to_inbound(
     ):
         return
 
-    logger.info("Inbound from %s: %s", sender, text[:80])
+    logger.info("Inbound WhatsApp message %s", wa_message_id or "unknown")
     send_typing_indicator(settings, message_id=wa_message_id)
     app_settings = get_settings()
     history: list[dict[str, str]] = []
+    show_notice = False
     try:
         prior_session = peek_session_id(app_settings, sender)
+        show_notice = prior_session is None
         if prior_session:
             history = load_session_history(app_settings, prior_session, limit=5)
     except Exception:
-        logger.exception("Failed to load chat history for %s", sender)
+        logger.exception("Failed to load chat history")
+        show_notice = False
 
     started = time.perf_counter()
     try:
@@ -465,17 +516,22 @@ def _reply_to_inbound(
             top_similarity=None,
         )
     logger.info(
-        "Answered %s outcome=%s evidence=%d elapsed=%.2fs",
-        sender,
+        "Answered outcome=%s evidence=%d elapsed=%.2fs",
         result.outcome,
         result.evidence_count,
         time.perf_counter() - started,
     )
 
+    reply = result.reply
+    if show_notice:
+        notice = first_contact_line(os.environ.get("PRIVACY_NOTICE_URL", ""))
+        if notice:
+            reply = f"{reply}\n\n{notice}"
+
     try:
-        send_text(settings, sender, result.reply)
+        send_text(settings, sender, reply)
     except Exception:
-        logger.exception("Failed to send WhatsApp reply to %s", sender)
+        logger.exception("Failed to send WhatsApp reply")
         return
 
     try:
@@ -486,7 +542,7 @@ def _reply_to_inbound(
             session_id=session_id,
             wa_from=sender,
             question=text,
-            reply=result.reply,
+            reply=reply,
             language=result.language,
             outcome=result.outcome,
             evidence_count=result.evidence_count,
@@ -501,16 +557,16 @@ def _reply_to_inbound(
             notify_slack_interaction(
                 wa_from=sender,
                 question=text,
-                reply=result.reply,
+                reply=reply,
                 outcome=result.outcome,
                 language=result.language,
                 session_id=session_id,
                 wa_message_id=wa_message_id,
             )
         except Exception:
-            logger.exception("Slack notify hook failed for %s", sender)
+            logger.exception("Slack notify hook failed")
     except Exception:
-        logger.exception("Failed to log interaction for %s", sender)
+        logger.exception("Failed to log interaction")
 
 
 @app.post("/webhook")

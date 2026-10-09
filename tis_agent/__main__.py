@@ -18,6 +18,7 @@ def main() -> None:
             "  python -m tis_agent eval --list\n"
             "  python -m tis_agent chat\n"
             "  python -m tis_agent whatsapp\n"
+            "  python -m tis_agent privacy purge [--dry-run]\n"
             "  python -m tis_agent remind-attention [--dry-run]"
         )
         raise SystemExit(0)
@@ -60,6 +61,15 @@ def main() -> None:
             print(f"\nTina: {result.reply}\n")
             history.append({"role": "user", "content": question})
             history.append({"role": "assistant", "content": result.reply})
+        return
+    if command == "privacy":
+        from tis_agent.privacy import purge_expired
+
+        if len(sys.argv) < 3 or sys.argv[2] != "purge":
+            print("Usage: python -m tis_agent privacy purge [--dry-run]")
+            raise SystemExit(2)
+        dry_run = "--dry-run" in sys.argv[3:]
+        print(purge_expired(dry_run=dry_run, actor="cli"))
         return
     if command == "whatsapp":
         from tis_agent.whatsapp import main as whatsapp_main

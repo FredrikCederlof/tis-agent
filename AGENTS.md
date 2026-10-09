@@ -38,6 +38,16 @@ Drive sync is a Railway cron service, separate from the WhatsApp service. It wal
 
 
 
+## Conversation retention
+
+A separate Railway cron deletes WhatsApp conversation rows older than the retention period in Admin → Privacy (30, 90, 180, or 365 days; default 90). Documents, chunks, and the `tis-ass` bucket stay.
+
+- **Start command:** `python -m tis_agent privacy purge`
+- **Cron schedule (UTC):** `30 19 * * *` — 04:30 Asia/Tokyo
+- **Secrets:** `SUPABASE_URL`, `SUPABASE_SECRET_KEY`
+
+Set `PRIVACY_NOTICE_URL` on the WhatsApp service to the public notice (`https://tis-agent-production.up.railway.app/privacy`) so the first reply to a new number includes it.
+
 ## Testing
 
 Do not open the browser, run browser-based tests, or take screenshots unless explicitly requested by the user.

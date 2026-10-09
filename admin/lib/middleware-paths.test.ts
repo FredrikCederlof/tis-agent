@@ -23,4 +23,9 @@ describe("middleware auth bypass for push notify", () => {
     assert.equal(isPublicPath("/onboard"), true);
     assert.equal(isPublicPath("/api/onboard"), true);
   });
+
+  it("treats the privacy notice as public", () => {
+    assert.equal(isPublicPath("/privacy"), true);
+    assert.equal(isPublicPath("/settings/privacy"), false);
+  });
 });

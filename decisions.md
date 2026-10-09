@@ -4,7 +4,7 @@ Short record of product intent. Change these only with a reason.
 
 ## Product
 
-- **Name:** Tina, a TIS school-information assistant delivered through WhatsApp.
+- **Name:** Tina, an independent parent information assistant on WhatsApp. Not operated by, affiliated with, or endorsed by Tokyo International School.
 - **Problem:** Parents cannot quickly find official school information that already exists.
 - **User:** Any TIS parent, Kindergarten through Grade 12. Not a family-specific assistant.
 - **Outcome:** A parent asks in natural language and gets a short, trustworthy answer from TIS source material.

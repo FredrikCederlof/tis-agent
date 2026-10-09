@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Settings,
   Settings2,
+  Shield,
   Users,
   X,
 } from "lucide-react";
@@ -63,6 +64,7 @@ const sections: { label: string; links: NavLink[] }[] = [
       { href: "/sandbox", label: "Sandbox", icon: FlaskConical },
       { href: "/users", label: "Users", icon: Users, adminOnly: true },
       { href: "/config", label: "Config", icon: Settings2, adminOnly: true },
+      { href: "/settings/privacy", label: "Privacy", icon: Shield, adminOnly: true },
     ],
   },
 ];

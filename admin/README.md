@@ -13,6 +13,8 @@ Web admin for Tina — edit prompts, answer policy, review gaps, view analytics.
 | `/knowledge` | Knowledge Hub — curated Q&A ingested into the RAG store |
 | `/inbox` | Needs attention — auto gaps and manually flagged questions |
 | `/account` | Personal account settings — name, email, photo, password, roles |
+| `/privacy` | Public privacy notice (no sign-in) |
+| `/settings/privacy` | Retention, contact email, export/delete, document access class |
 
 ## Setup
 
