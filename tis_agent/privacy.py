@@ -72,14 +72,16 @@ def public_notice_html(settings: Settings | None = None) -> str:
   <title>How Tina handles information</title>
   <style>
     body {{ margin: 0; background: #e6e6e6; color: #1c1917; font-family: Georgia, serif; line-height: 1.5; }}
-    nav {{ position: sticky; top: 0; background: #000; padding: 0.75rem 1rem; }}
-    nav a {{ color: #fff; margin-right: 1rem; font-family: system-ui, sans-serif; font-size: 0.9rem; }}
-    main {{ max-width: 40rem; margin: 0 auto; padding: 2rem 1rem 3rem; }}
+    .layout {{ display: flex; min-height: 100vh; align-items: flex-start; }}
+    nav {{ position: sticky; top: 0; width: 14rem; flex: none; height: 100vh; overflow: auto; background: #000; padding: 2rem 1.25rem; }}
+    nav a {{ display: block; color: #fff; margin: 0 0 0.85rem; font-family: system-ui, sans-serif; font-size: 0.9rem; text-align: left; }}
+    main {{ flex: 1; min-width: 0; max-width: 42rem; padding: 2.5rem 2rem 3rem; }}
     h1 {{ font-size: 1.6rem; }}
-    h2 {{ scroll-margin-top: 3rem; }}
+    h2 {{ scroll-margin-top: 1.5rem; }}
   </style>
 </head>
 <body>
+  <div class="layout">
   <nav>
     <a href="#notice">Privacy Notice &amp; Consent</a>
     <a href="#retention">Data Retention Policy</a>
@@ -121,6 +123,7 @@ def public_notice_html(settings: Settings | None = None) -> str:
     <h2 id="knowledge">Knowledge</h2>
     <p>Knowledge is general school information, not a file about a student. Google Drive holds the source documents. Supabase holds the copy used to search and answer. Tina Admin holds knowledge articles staff write, which are added to the same search store.</p>
   </main>
+  </div>
 </body>
 </html>
 """

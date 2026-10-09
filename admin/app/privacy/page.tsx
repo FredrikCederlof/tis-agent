@@ -25,26 +25,23 @@ export default async function PrivacyNoticePage() {
   const days = data?.retention_days ?? 90;
 
   return (
-    <div className="min-h-full bg-[#e6e6e6] text-stone-900">
-      <header className="sticky top-0 z-10 bg-black">
-        <nav
-          aria-label="Privacy"
-          className="mx-auto flex max-w-3xl flex-wrap gap-x-5 gap-y-2 px-4 py-3 text-sm"
-        >
+    <div className="flex min-h-full bg-[#e6e6e6] text-stone-900">
+      <header className="sticky top-0 z-10 h-screen w-56 shrink-0 overflow-y-auto bg-black sm:w-64">
+        <nav aria-label="Privacy" className="flex flex-col items-start gap-3 px-5 py-8 text-sm">
           {NAV.map((item) => (
-            <a key={item.href} href={item.href} className="text-white underline-offset-4 hover:underline">
+            <a key={item.href} href={item.href} className="text-left text-white underline-offset-4 hover:underline">
               {item.label}
             </a>
           ))}
         </nav>
       </header>
-      <main className="mx-auto max-w-3xl px-4 py-12">
+      <main className="min-w-0 flex-1 px-6 py-12 sm:px-10">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
           Privacy notice · {NOTICE_VERSION}
         </p>
         <h1 className="mt-2 font-display text-3xl font-bold text-stone-950">How Tina handles information</h1>
 
-        <section id="notice" className="mt-8 scroll-mt-16 space-y-4 text-sm leading-relaxed">
+        <section id="notice" className="mt-8 scroll-mt-8 space-y-4 text-sm leading-relaxed">
           <h2 className="text-lg font-bold text-stone-950">Privacy Notice &amp; Consent</h2>
           <p>This page is the privacy notice for Tina. Questions go to {CONTACT_NAME} at {CONTACT_EMAIL}.</p>
           <p>
@@ -64,7 +61,7 @@ export default async function PrivacyNoticePage() {
           </p>
         </section>
 
-        <section id="retention" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
+        <section id="retention" className="mt-10 scroll-mt-8 space-y-4 text-sm leading-relaxed">
           <h2 className="text-lg font-bold text-stone-950">Data Retention Policy</h2>
           <p>
             Conversation records are kept for {days} days. An administrator can set that period to
@@ -80,7 +77,7 @@ export default async function PrivacyNoticePage() {
           </p>
         </section>
 
-        <section id="access" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
+        <section id="access" className="mt-10 scroll-mt-8 space-y-4 text-sm leading-relaxed">
           <h2 className="text-lg font-bold text-stone-950">Access Control &amp; Audit Logs</h2>
           <p>
             Tina Admin is invitation-only. An active administrator sends the invitation. A person
@@ -100,7 +97,7 @@ export default async function PrivacyNoticePage() {
           </p>
         </section>
 
-        <section id="requests" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
+        <section id="requests" className="mt-10 scroll-mt-8 space-y-4 text-sm leading-relaxed">
           <h2 className="text-lg font-bold text-stone-950">Data Requests &amp; Deletion</h2>
           <p>
             To ask for a copy, a correction, or deletion, contact {CONTACT_NAME} at{" "}
@@ -116,7 +113,7 @@ export default async function PrivacyNoticePage() {
           </p>
         </section>
 
-        <section id="about" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
+        <section id="about" className="mt-10 scroll-mt-8 space-y-4 text-sm leading-relaxed">
           <h2 className="text-lg font-bold text-stone-950">About this project</h2>
           <p>
             Tina is an independent assistant a parent at Tokyo International School set up so other
@@ -134,7 +131,7 @@ export default async function PrivacyNoticePage() {
           <p>Please avoid sharing sensitive personal information about students, families, or staff.</p>
         </section>
 
-        <section id="not-stored" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
+        <section id="not-stored" className="mt-10 scroll-mt-8 space-y-4 text-sm leading-relaxed">
           <h2 className="text-lg font-bold text-stone-950">What we don&apos;t store</h2>
           <p>
             Tina does not keep student records. There are no grades, report cards, medical files, or
@@ -148,7 +145,7 @@ export default async function PrivacyNoticePage() {
           <p>Your phone number is not sent to the model that writes the reply.</p>
         </section>
 
-        <section id="built" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
+        <section id="built" className="mt-10 scroll-mt-8 space-y-4 text-sm leading-relaxed">
           <h2 className="text-lg font-bold text-stone-950">How it is built</h2>
           <p>Parents use WhatsApp. The rest of the chain is a small set of tools, each with one job.</p>
           <ul className="list-disc space-y-2 pl-5">
@@ -165,7 +162,7 @@ export default async function PrivacyNoticePage() {
           </p>
         </section>
 
-        <section id="knowledge" className="mt-10 scroll-mt-16 space-y-4 text-sm leading-relaxed">
+        <section id="knowledge" className="mt-10 scroll-mt-8 space-y-4 text-sm leading-relaxed">
           <h2 className="text-lg font-bold text-stone-950">Knowledge</h2>
           <p>
             Knowledge is general school information. It is not a file about a student. The same
