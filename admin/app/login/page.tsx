@@ -249,13 +249,12 @@ function LoginForm() {
             ↗
           </span>
         </div>
+        <p className="privacy-cue">
+          <Link href="/privacy">Privacy notice</Link>
+        </p>
       </main>
       <footer className="page-footer">
         <span>Nabo · School information, thoughtfully connected.</span>
-        <span>
-          Tina is an independent parent assistant, not operated by Tokyo International School.{" "}
-          <Link href="/privacy">Privacy notice</Link>
-        </span>
         <span>Staff sign-in</span>
       </footer>
     </div>

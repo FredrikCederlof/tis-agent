@@ -112,7 +112,7 @@
 .nabu-login .layout {
   display: grid;
   grid-template-columns: minmax(0, 460px) minmax(0, 430px);
-  grid-template-rows: 1fr auto;
+  grid-template-rows: 1fr auto auto;
   gap: 16px;
   max-width: 906px;
   margin: 38px auto 42px;
@@ -463,6 +463,24 @@
   color: #b6f34d;
 }
 
+.nabu-login .privacy-cue {
+  grid-column: 1;
+  grid-row: 3;
+  margin: 2px 8px 0;
+  text-align: center;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.nabu-login .privacy-cue a {
+  color: #fff;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.75),
+    0 0 10px rgba(0, 0, 0, 0.45);
+}
+
 .nabu-login .page-footer {
   display: flex;
   justify-content: space-between;
@@ -554,8 +572,14 @@
 
   .nabu-login .login-panel {
     grid-column: 1;
-    grid-row: 1 / 3;
+    grid-row: 1;
     padding: 25px;
+  }
+
+  .nabu-login .privacy-cue {
+    grid-column: 1;
+    grid-row: 2;
+    margin-top: 0;
   }
 
   .nabu-login .intro {
@@ -568,7 +592,7 @@
 
   .nabu-login .school-panel {
     grid-column: 1;
-    grid-row: auto;
+    grid-row: 3;
     min-height: 0;
     padding: 24px;
   }

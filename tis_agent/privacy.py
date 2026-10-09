@@ -71,36 +71,52 @@ def public_notice_html(settings: Settings | None = None) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>How Tina handles information</title>
   <style>
-    body {{ font-family: Georgia, serif; max-width: 40rem; margin: 2rem auto; padding: 0 1rem; line-height: 1.5; color: #1c1917; }}
+    body {{ margin: 0; background: #e6e6e6; color: #1c1917; font-family: Georgia, serif; line-height: 1.5; }}
+    nav {{ position: sticky; top: 0; background: #000; padding: 0.75rem 1rem; }}
+    nav a {{ color: #fff; margin-right: 1rem; font-family: system-ui, sans-serif; font-size: 0.9rem; }}
+    main {{ max-width: 40rem; margin: 0 auto; padding: 2rem 1rem 3rem; }}
     h1 {{ font-size: 1.6rem; }}
-    p, li {{ font-size: 1rem; }}
+    h2 {{ scroll-margin-top: 3rem; }}
   </style>
 </head>
 <body>
-  <p>Privacy notice · {NOTICE_VERSION}</p>
-  <h1>How Tina handles information</h1>
-  <p>Tina is an independent AI-powered information assistant created by a parent to help families navigate everyday school life.</p>
-  <p>Tina is not affiliated with, endorsed by, or operated by Tokyo International School.</p>
-  <p>AI-generated responses may contain inaccuracies. For official information, please contact TIS directly.</p>
-  <p>Please avoid sharing sensitive personal information about students, families, or staff.</p>
-  <h2>What is stored</h2>
-  <p>When you message Tina on WhatsApp, Tina stores your phone number, your message, Tina’s reply, the language, the time, and the titles of documents used in the answer.</p>
-  <h2>Why</h2>
-  <p>To answer the question, and to review questions Tina could not answer from the documents.</p>
-  <h2>Who else handles it</h2>
-  <ul>
-    <li>Meta (WhatsApp) carries the phone number and the message.</li>
-    <li>Railway hosts the webhook in Amsterdam and may keep application logs.</li>
-    <li>OpenAI receives the question and short document excerpts. The phone number is not sent to the model.</li>
-    <li>Supabase, in Tokyo, stores the conversation and the knowledge base.</li>
-    <li>Vercel hosts the admin site.</li>
-    <li>Google Drive is a source of documents the operator chooses to index.</li>
-  </ul>
-  <h2>How long</h2>
-  <p>Conversation records in Tina’s database are deleted {days} days after the message. Deleting them here does not remove the chat on your phone, Meta’s copy, or rows still inside Supabase’s backup window.</p>
-  <h2>Your request</h2>
-  <p>{request_line}</p>
-  <p>Tina has no child accounts. Do not send information about other children.</p>
+  <nav>
+    <a href="#about">About</a>
+    <a href="#stored">What is stored</a>
+    <a href="#not-stored">What we don't store</a>
+    <a href="#safety">Safety</a>
+    <a href="#built">How it is built</a>
+    <a href="#knowledge">Knowledge</a>
+  </nav>
+  <main>
+    <p>Privacy notice · {NOTICE_VERSION}</p>
+    <h1>How Tina handles information</h1>
+    <h2 id="about">About this project</h2>
+    <p>Tina is an independent assistant a parent at Tokyo International School set up so other parents can find everyday school information more easily. It is a non-commercial project: there is no fee, no advertising, and information is not sold.</p>
+    <p>Tina is not affiliated with, endorsed by, or operated by Tokyo International School. The school has not commissioned this assistant.</p>
+    <p>Answers are generated and can be wrong. For official information, contact Tokyo International School directly.</p>
+    <h2 id="stored">What is stored</h2>
+    <p>When you message Tina on WhatsApp, Tina stores your phone number, your message, Tina’s reply, the language, the time, and the titles of documents used in the answer.</p>
+    <p>Conversation records are deleted {days} days after the message. That does not remove the chat on your phone, Meta’s copy, or rows still inside a backup window. School documents and knowledge articles are kept.</p>
+    <h2 id="not-stored">What we don't store</h2>
+    <p>Tina does not keep student records: no grades, report cards, medical files, or a named child’s school account. Knowledge is general school information. Child names are removed from weekly mail before it is stored. Your phone number is not sent to the model that writes the reply.</p>
+    <h2 id="safety">How we limit access</h2>
+    <p>Only invited staff can open Tina Admin. Conversation records are not readable by the public. WhatsApp checks Meta’s signature. Restricted documents are not sent to the model. An admin can export or delete the stored rows for one phone number. This page is not a certification.</p>
+    <h2 id="built">How it is built</h2>
+    <ul>
+      <li>Meta (WhatsApp) carries the phone number and the message.</li>
+      <li>Railway, in Amsterdam, runs the webhook.</li>
+      <li>OpenAI writes the reply from the question and short excerpts. The phone number is not part of that request.</li>
+      <li>Supabase, in Tokyo, stores the conversation and the searchable knowledge base.</li>
+      <li>Vercel hosts the admin site.</li>
+      <li>Google Drive is where documents are placed before they are indexed.</li>
+    </ul>
+    <p>Each company handles its own slice under that company’s terms.</p>
+    <h2 id="knowledge">Knowledge</h2>
+    <p>Knowledge is general school information, not a file about a student. Google Drive holds the source documents. Supabase holds the copy used to search and answer. Tina Admin holds knowledge articles staff write, which are added to the same search store.</p>
+    <h2>Your request</h2>
+    <p>{request_line}</p>
+  </main>
 </body>
 </html>
 """
