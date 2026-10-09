@@ -16,7 +16,7 @@ Web admin for Tina — edit prompts, answer policy, review gaps, view analytics.
 | `/privacy` | Public privacy notice (no sign-in). Uses the Pages article when one is published. |
 | `/pages/[slug]` | Other published pages (no sign-in) |
 | `/content` | Pages editor for administrators |
-| `/settings/privacy` | Retention, contact email, export/delete, document access class |
+| `/settings/privacy` | Privacy overview, retention, export/delete, and document access class |
 
 ## Setup
 
