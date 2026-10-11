@@ -177,3 +177,68 @@ def test_is_school_day_monday_pd_is_a_long_weekend():
     assert "professional development day" in reply
     assert "long weekend" in reply
     assert reply.count("😊") == 1
+
+
+def test_school_break_on_date_is_school_day_intent():
+    temporal = parse_temporal(
+        "Do we have a school break on March 7?",
+        today=date(2026, 2, 20),
+    )
+    assert temporal.schedule_intent == "is_school_day"
+    assert temporal.date_range is not None
+    assert temporal.date_range.start == date(2026, 3, 7)
+    assert temporal.date_range.end == date(2026, 3, 7)
+
+
+def test_is_there_school_break_on_date_prefers_single_day():
+    temporal = parse_temporal(
+        "Is there a school break on 7 March?",
+        today=date(2026, 2, 20),
+    )
+    assert temporal.schedule_intent == "is_school_day"
+    assert temporal.date_range is not None
+    assert temporal.date_range.start == date(2026, 3, 7)
+
+
+def test_normal_school_day_mentions_nearby_break():
+    # 9 March 2026 is a Monday — empty calendar day should still name the next break.
+    temporal = parse_temporal(
+        "Do we have a school break on March 9?",
+        today=date(2026, 2, 20),
+    )
+    assert temporal.date_range is not None
+    assert temporal.date_range.start == date(2026, 3, 9)
+    evidence = [
+        Evidence(
+            content="Event: Spring Break\nStudents in session: no",
+            section_title="Spring Break",
+            page_start=1,
+            page_end=1,
+            document_title="TIS Parent Calendar",
+            similarity=0.99,
+            source_type="calendar",
+            start_date=date(2026, 3, 23),
+            end_date=date(2026, 3, 27),
+            event_type=DAY_KIND_HOLIDAY,
+        )
+    ]
+    reply = format_is_school_day_reply(evidence, temporal, "en")
+    assert "Yes —" in reply
+    assert "normal school day" in reply
+    assert "Nearest break on the calendar: Spring Break" in reply
+    assert "March 23 to March 27, 2026" in reply
+
+
+def test_expand_school_day_fetch_range_pads_single_day():
+    from tis_agent.ask import _expand_school_day_fetch_range
+
+    temporal = parse_temporal(
+        "Is it school on March 9?",
+        today=date(2026, 2, 20),
+    )
+    expanded = _expand_school_day_fetch_range(temporal)
+    assert temporal.date_range is not None
+    assert expanded.date_range is not None
+    assert expanded.date_range.start == date(2026, 2, 16)
+    assert expanded.date_range.end == date(2026, 3, 30)
+    assert expanded.schedule_intent == "is_school_day"

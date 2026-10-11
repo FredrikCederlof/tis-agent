@@ -399,11 +399,16 @@ _IS_SCHOOL_DAY_RE = re.compile(
     r"(?i)\b(?:"
     r"is\s+it\s+school|"
     r"is\s+school\s+(?:on|tomorrow|today)|"
-    r"do\s+(?:we|kids|children|students)\s+have\s+school|"
-    r"are\s+(?:kids|children|students)\s+(?:off|in\s+school)|"
-    r"school\s+day\b|"
-    r"är\s+det\s+skola|"
-    r"har\s+(?:vi|barnen)\s+skola"
+    r"do\s+(?:we|kids|children|students)\s+have\s+(?:school|a\s+school\s+break|school\s+break)|"
+    r"do\s+(?:we|kids|children|students)\s+have\s+(?:a\s+)?(?:break|holiday|vacation|lov)\b|"
+    r"is\s+(?:there\s+)?(?:a\s+)?(?:school\s+)?(?:break|holiday|vacation|lov)\b|"
+    r"are\s+(?:kids|children|students)\s+(?:off|in\s+school|on\s+(?:break|holiday|vacation))|"
+    r"school\s+(?:day|break|holiday|vacation)\b|"
+    r"spring\s+break|winter\s+break|summer\s+break|autumn\s+break|fall\s+break|"
+    r"är\s+det\s+(?:skola|lov)|"
+    r"har\s+(?:vi|barnen)\s+(?:skola|lov)|"
+    r"är\s+det\s+lov|"
+    r"skollov|lovdag"
     r")\b"
 )
 
@@ -417,8 +422,11 @@ _LIST_NO_SCHOOL_RE = re.compile(
     r"days?\s+off\s+from\s+school|"
     r"off\s+from\s+school|"
     r"no\s+school\b|"
+    r"school\s+breaks?|"
+    r"school\s+holidays?|"
     r"skolfria|"
     r"lovdagar|"
+    r"skolov|"
     r"ingen\s+skola"
     r")\b"
 )
@@ -455,10 +463,12 @@ def is_empty_schedule_question(question: str) -> bool:
 
 
 def detect_schedule_intent(question: str) -> ScheduleIntent:
-    if is_list_no_school_days_question(question):
-        return "list_no_school_days"
+    # Prefer single-day school/break questions over list intents when a concrete
+    # day is named ("school break on March 7" should not become a month list).
     if is_school_day_question(question):
         return "is_school_day"
+    if is_list_no_school_days_question(question):
+        return "list_no_school_days"
     if is_whats_on_question(question):
         return "whats_on"
     return "none"

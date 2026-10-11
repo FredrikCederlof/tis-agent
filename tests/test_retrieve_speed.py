@@ -22,6 +22,15 @@ def test_is_school_day_uses_calendar_fast_path():
     assert use_calendar_fast_path(temporal)
 
 
+def test_school_break_on_date_uses_calendar_fast_path():
+    temporal = parse_temporal(
+        "Do we have a school break on March 7?",
+        today=date(2026, 2, 20),
+    )
+    assert temporal.schedule_intent == "is_school_day"
+    assert use_calendar_fast_path(temporal)
+
+
 def test_list_no_school_days_uses_calendar_fast_path():
     temporal = parse_temporal("Student free days in September", today=date(2026, 8, 30))
     assert use_calendar_fast_path(temporal)
