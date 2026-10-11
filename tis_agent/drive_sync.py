@@ -66,6 +66,9 @@ class DriveClient(Protocol):
     def export_text(self, file_id: str) -> bytes:
         """Export a Google Doc as UTF-8 plain text."""
 
+    def get_metadata(self, file_id: str) -> DriveItem:
+        """Fetch name / mime / modifiedTime for one file id."""
+
 
 @dataclass
 class DriveSyncSummary:
@@ -378,6 +381,23 @@ class GoogleDriveClient:
             if not page_token:
                 break
         return items
+
+    def get_metadata(self, file_id: str) -> DriveItem:
+        response = self._request(
+            "GET",
+            f"{DRIVE_API}/files/{file_id}",
+            params={
+                "fields": "id, name, mimeType, modifiedTime",
+                "supportsAllDrives": "true",
+            },
+        )
+        raw = response.json()
+        return DriveItem(
+            id=str(raw["id"]),
+            name=str(raw.get("name") or raw["id"]),
+            mime_type=str(raw.get("mimeType") or ""),
+            modified_time=str(raw.get("modifiedTime") or ""),
+        )
 
     def download(self, file_id: str) -> bytes:
         response = self._request(
