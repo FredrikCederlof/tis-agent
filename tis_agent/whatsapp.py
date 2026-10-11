@@ -25,7 +25,7 @@ from tis_agent.analytics import (
 )
 from tis_agent.ask import AnswerResult, _reply_language, answer_question
 from tis_agent.config import get_settings
-from tis_agent.privacy import first_contact_line
+from tis_agent.privacy import first_contact_line, has_prior_session
 from tis_agent.whatsapp_config import WhatsAppSettings, get_whatsapp_settings
 
 import os
@@ -492,8 +492,9 @@ def _reply_to_inbound(
     history: list[dict[str, str]] = []
     show_notice = False
     try:
+        # Privacy notice once per WhatsApp number (not every new 10-minute session).
+        show_notice = not has_prior_session(app_settings, sender)
         prior_session = peek_session_id(app_settings, sender)
-        show_notice = prior_session is None
         if prior_session:
             history = load_session_history(app_settings, prior_session, limit=5)
     except Exception:

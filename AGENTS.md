@@ -46,7 +46,7 @@ A separate Railway cron deletes WhatsApp conversation rows older than the retent
 - **Cron schedule (UTC):** `30 19 * * *` — 04:30 Asia/Tokyo
 - **Secrets:** `SUPABASE_URL`, `SUPABASE_SECRET_KEY`
 
-Set `PRIVACY_NOTICE_URL` on the WhatsApp service to the public notice (`https://tis-agent-production.up.railway.app/privacy`) so the first reply to a new number includes it.
+Set `PRIVACY_NOTICE_URL` on the WhatsApp service to the public notice (`https://tis-agent-production.up.railway.app/privacy`) so the first reply to a new WhatsApp number includes it (once per number, not every session).
 
 ## Testing
 

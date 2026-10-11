@@ -39,7 +39,7 @@ Whether each provider is an entrusted party or a separate controller is for coun
 - Tina Admin is invitation-only. An active admin sends the invitation. There is no public signup path that succeeds without one.
 - Conversation rows are readable by an active admin. Anonymous access to the session view was closed on 9 October 2026.
 - A parent’s rows can be exported or deleted from Privacy in Tina Admin.
-- The first stored reply for a phone number includes a link to the privacy notice when `PRIVACY_NOTICE_URL` is set on the WhatsApp service.
+- The first reply to a WhatsApp number includes a link to the privacy notice when `PRIVACY_NOTICE_URL` is set on the WhatsApp service. Later sessions for the same number do not repeat it.
 
 ## Open questions
 

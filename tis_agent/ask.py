@@ -5,7 +5,7 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 
 from tis_agent.agent_config import (
     load_agent_config,
@@ -285,6 +285,25 @@ def use_calendar_fast_path(temporal: TemporalQuery) -> bool:
     return (
         temporal.kind == "date_anchored"
         and temporal.schedule_intent in _CALENDAR_FAST_INTENTS
+    )
+
+
+def _expand_school_day_fetch_range(temporal: TemporalQuery) -> TemporalQuery:
+    """Widen calendar fetch ±21 days so nearby breaks can be mentioned."""
+    rng = temporal.date_range
+    if (
+        temporal.schedule_intent != "is_school_day"
+        or rng is None
+        or rng.start != rng.end
+    ):
+        return temporal
+    pad = timedelta(days=21)
+    return TemporalQuery(
+        kind=temporal.kind,
+        original=temporal.original,
+        date_range=DateRange(rng.start - pad, rng.end + pad),
+        label=temporal.label,
+        schedule_intent=temporal.schedule_intent,
     )
 
 
@@ -605,6 +624,41 @@ def select_dated_evidence(
         for item in overlapping
         if item.source_type == "calendar" and not is_rotation_day(item)
     ]
+    # For school-day / break questions, also keep nearby student-off calendar rows
+    # (fetched via an expanded window) so replies can name the next break.
+    if temporal.schedule_intent == "is_school_day" and temporal.date_range is not None:
+        ask_day = temporal.date_range.start
+        pad = timedelta(days=21)
+        nearby_window = DateRange(ask_day - pad, ask_day + pad)
+        seen_cal = {
+            (item.section_title or "")
+            + "|"
+            + (item.start_date.isoformat() if item.start_date else "")
+            for item in calendar_special
+        }
+        for item in merged:
+            if item.source_type != "calendar" or is_rotation_day(item):
+                continue
+            if not item.start_date:
+                continue
+            if not nearby_window.overlaps(item.start_date, item.end_date or item.start_date):
+                continue
+            impact = impact_from_evidence_text(
+                section_title=item.section_title,
+                content=item.content,
+                event_type=item.event_type,
+            )
+            if impact.students_in_session is not False:
+                continue
+            key = (
+                (item.section_title or "")
+                + "|"
+                + (item.start_date.isoformat() if item.start_date else "")
+            )
+            if key in seen_cal:
+                continue
+            seen_cal.add(key)
+            calendar_special.append(item)
     names = _event_name_keys(calendar_special)
     supporting: list[Evidence] = []
     seen: set[str] = set()
@@ -809,27 +863,70 @@ def format_is_school_day_reply(
             f"No school on {label} — it's {reason}.{note}\n\n{source}"
         )
 
+    nearby = _nearby_off_note(evidence, day, language)
+
     if special_items:
         extras = ", ".join(_event_label(item) for item in special_items[:4])
         if language == "sv":
             return (
                 f"Ja — skola som vanligt {label}. "
-                f"Kalendern har också: {extras}.\n\n{source}"
+                f"Kalendern har också: {extras}.{nearby}\n\n{source}"
             )
         return (
             f"Yes — school as usual on {label}. "
-            f"The calendar also has: {extras}.\n\n{source}"
+            f"The calendar also has: {extras}.{nearby}\n\n{source}"
         )
 
     if language == "sv":
         return (
             f"Ja — {label} är en vanlig skoldag. "
-            f"Inget lov eller elevfri dag markerat.\n\n{source}"
+            f"Inget lov eller elevfri dag markerat den dagen.{nearby}\n\n{source}"
         )
     return (
         f"Yes — {label} is a normal school day. "
-        f"Nothing marked as a holiday or student-free day.\n\n{source}"
+        f"Nothing marked as a holiday or student-free day that day.{nearby}\n\n{source}"
     )
+
+
+def _nearby_off_note(
+    evidence: list[Evidence],
+    day: date,
+    language: str,
+) -> str:
+    """Mention the next student-off period near the asked day, if any."""
+    pad = timedelta(days=21)
+    window = DateRange(day - pad, day + pad)
+    nearby = []
+    for item in _calendar_items_for_range(evidence, window):
+        if item.start_date == day:
+            continue
+        impact = impact_from_evidence_text(
+            section_title=item.section_title,
+            content=item.content,
+            event_type=item.event_type,
+        )
+        if impact.students_in_session is not False:
+            continue
+        start = item.start_date or day
+        end = item.end_date or start
+        if end < day:
+            continue  # prefer upcoming breaks after the asked day
+        name = _event_label(item)
+        if start == end:
+            span = f"{start.strftime('%B')} {start.day}, {start.year}"
+        else:
+            span = (
+                f"{start.strftime('%B')} {start.day} to "
+                f"{end.strftime('%B')} {end.day}, {end.year}"
+            )
+        nearby.append((start, name, span))
+    if not nearby:
+        return ""
+    nearby.sort(key=lambda row: row[0])
+    _start, name, span = nearby[0]
+    if language == "sv":
+        return f" Närmaste lov/elevfria period i kalendern: {name} ({span})."
+    return f" Nearest break on the calendar: {name} ({span})."
 
 
 def format_no_school_days_reply(
@@ -993,9 +1090,10 @@ def retrieve(
 
     # Common parent schedule questions: skip embeddings entirely.
     if use_calendar_fast_path(temporal):
+        fetch_temporal = _expand_school_day_fetch_range(temporal)
         with ThreadPoolExecutor(max_workers=2) as pool:
-            fut_cal = pool.submit(_calendar_retrieve, settings, temporal)
-            fut_date = pool.submit(_date_retrieve, settings, temporal)
+            fut_cal = pool.submit(_calendar_retrieve, settings, fetch_temporal)
+            fut_date = pool.submit(_date_retrieve, settings, fetch_temporal)
             calendar_hits, calendar_ok = fut_cal.result()
             date_hits, date_ok = fut_date.result()
         merged = _attach_source_types(
