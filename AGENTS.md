@@ -110,14 +110,15 @@ Run `sync web` twice a week so TIS Times, calendar, and public pages stay fresh.
 
 Alternative: run `python -m tis_agent sync web` after `sync drive` on Wednesday and Saturday.
 
-## Sunday school-mail bulletin (standalone Cloud Agent)
+## Nightly school-mail bulletin (standalone Cloud Agent)
 
-A **dedicated** Sunday Cursor Cloud Agent on this repo reads school Gmail and ingests a sanitized bulletin into the same RAG store. It is not the family Sunday email product, not a follow-on to that job, and not raw Gmail in the vector store.
+A **dedicated** Cursor Cloud Agent on this repo reads school Gmail and ingests a sanitized bulletin into the same RAG store. It is not the family Sunday email product, not a follow-on to that job, and not raw Gmail in the vector store.
 
-**Automation name:** TIS school mail bulletin  
+**Automation name:** TIS School Updates  
+**Automation URL:** https://cursor.com/automations/208c7296-a2b7-11f1-b532-320a589b8025  
 **Repo / branch:** GitHub `FredrikCederlof/tis-agent` / `main` (Automations must use GitHub, not Origin)  
-**Schedule:** Sunday **19:30 JST** (`30 10 * * 0` UTC)  
-**Tools:** Gmail + this repo checkout  
+**Schedule:** **every night** ~**05:00 JST** (`0 20 * * *` UTC)  
+**Tools:** Gmail + Google Drive + this repo checkout  
 **Inbox:** the connected parent Gmail. Search **school senders only**. Never search child names.
 
 Do **not** wait for any other agent. Do **not** open other repos. Do **not** send WhatsApp, email parents, or write a family briefing.
@@ -126,7 +127,7 @@ Do **not** wait for any other agent. Do **not** open other repos. Do **not** sen
 python -m tis_agent sync bulletin /tmp/tis-bulletin-raw.md
 ```
 
-`--dry-run` prints the sanitized markdown without uploading.
+`--dry-run` prints the sanitized markdown without uploading. Unchanged bulletin content hashes skip re-embedding.
 
 ### Procedure every run
 
@@ -152,14 +153,16 @@ from:seesaw newer_than:14d
 
 The sanitizer strips Eldor / Malte / Vega-Lo / Vega, **keeps** Kindergarten / Grade 3 / Grade 6 class notices plus PYP/MYP/DP/whole-school items, **drops** personal teacher emails about one child and other single-grade mail (e.g. Grade 10 only), and dedupes triple Toddle sends. Document title: `TIS Weekly Bulletin YYYY-MM-DD` with `source_type: bulletin`.
 
-Only one Sunday bulletin automation should exist. After **TIS school mail bulletin** is saved, disable or delete the older **TIS Sunday weekly bulletin** job.
+Only one school-mail bulletin automation should exist (**TIS School Updates**). Disable or delete any older Sunday-only bulletin jobs.
 
 ### Cursor Automation prompt (paste into a new automation)
 
 ```
-Ingest a sanitized weekly TIS school bulletin into Tina’s knowledge base.
+Ingest a sanitized TIS school bulletin into Tina’s knowledge base (nightly).
 
 This job is standalone. Use Gmail on the connected account. Search school senders only. Do not search child names. Do not send WhatsApp, do not email anyone, and do not write a family briefing.
+
+Schedule: every night ~05:00 JST (cron 0 20 * * * UTC).
 
 Procedure:
 1. Install deps if needed: python3 -m venv .venv && .venv/bin/pip install -r requirements.txt

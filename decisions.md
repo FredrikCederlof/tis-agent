@@ -10,14 +10,15 @@ Short record of product intent. Change these only with a reason.
 - **Outcome:** A parent asks in natural language and gets a short, trustworthy answer from TIS source material.
 - **Interface:** WhatsApp is the only parent-facing interface. No parent web app.
 - **Staff Sandbox (Admin):** Admins and members can try Tina inside Tina Admin (`/sandbox`) without WhatsApp. History is private per signed-in user, grouped by month. Sandbox Q&A uses the same RAG path as WhatsApp but does **not** create `chat_sessions` / `interactions`, Needs attention rows, or parent analytics. SQL: `sql/023_sandbox.sql`.
-- **This project is not** the family Sunday email briefing (`TIS-Summary`). That product stays separate and is never a dependency. Tina’s weekly bulletin is a **dedicated Sunday Cloud Agent** that searches school Gmail (tokyois / Toddle / OpenApply / ManageBac / SchoolsBuddy / Seesaw) and ingests a sanitized bulletin. Never raw Gmail. Never the family HTML.
+- **This project is not** the family Sunday email briefing (`TIS-Summary`). That product stays separate and is never a dependency. Tina’s school bulletin is a **dedicated nightly Cloud Agent** (**TIS School Updates**, ~05:00 JST) that searches school Gmail (tokyois / Toddle / OpenApply / ManageBac / SchoolsBuddy / Seesaw) and ingests a sanitized bulletin. Never raw Gmail. Never the family HTML.
+
 
 ## Knowledge
 
 - Shared knowledge base for parents. No child names in RAG.
 - Sources are generic school documents: handbook, policies, calendar, bus information, **sanitized weekly bulletin**, and similar.
-- Ingest formats: PDFs, Google Docs, public web/calendar pages, and a Sunday bulletin from a **standalone** school-Gmail Cloud Agent after name stripping. Not raw Gmail. Not the family weekly briefing HTML. Not a piggyback on any other agent.
-- The weekly bulletin **strips** the names Eldor, Malte, and Vega-Lo / Vega, then **keeps** Kindergarten, Grade 3, and Grade 6 class notices plus school-wide / PYP / MYP / DP facts. It **drops** personal teacher emails directed at one child (and parent Gmail/iCloud threads). Other single-grade mail (e.g. Grade 10 only) is dropped.
+- Ingest formats: PDFs, Google Docs, public web/calendar pages, and a **nightly** bulletin from a **standalone** school-Gmail Cloud Agent after name stripping. Not raw Gmail. Not the family weekly briefing HTML. Not a piggyback on any other agent.
+- The bulletin **strips** the names Eldor, Malte, and Vega-Lo / Vega, then **keeps** Kindergarten, Grade 3, and Grade 6 class notices plus school-wide / PYP / MYP / DP facts. It **drops** personal teacher emails directed at one child (and parent Gmail/iCloud threads). Other single-grade mail (e.g. Grade 10 only) is dropped.
 - Documents are uploaded to Supabase, then embedded for RAG.
 - **Knowledge Hub:** Curated parent Q&A (manual or from the unanswered inbox) is one `knowledge_entries` row and one RAG document (`source_type=knowledge`). Not a second retriever or fixed-answer router. Tina still writes WhatsApp replies from retrieved evidence. SQL: `sql/010_knowledge_hub.sql`.
 - **Knowledge Hub lifecycle (INS-23):** Articles carry status (`draft` / `active` / `expired` / `archived`), optional `valid_until` / `review_due_date`, content owner, source URL, audience scope, and AI exclusion guidance. Only Active (and not past `valid_until`) entries are ingested and retrieved. Admin-only field edits skip re-embedding via content hash; `last_ingested_at` updates only on successful ingest. SQL: `sql/026_knowledge_lifecycle.sql`.
