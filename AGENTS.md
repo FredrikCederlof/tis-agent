@@ -117,7 +117,7 @@ A **dedicated** Sunday Cursor Cloud Agent on this repo reads school Gmail and in
 **Automation name:** TIS school mail bulletin  
 **Repo / branch:** GitHub `FredrikCederlof/tis-agent` / `main` (Automations must use GitHub, not Origin)  
 **Schedule:** Sunday **19:30 JST** (`30 10 * * 0` UTC)  
-**Tools:** Gmail + this repo checkout  
+**Tools:** Gmail + Google Drive + this repo checkout  
 **Inbox:** the connected parent Gmail. Search **school senders only**. Never search child names.
 
 Do **not** wait for any other agent. Do **not** open other repos. Do **not** send WhatsApp, email parents, or write a family briefing.
@@ -126,13 +126,15 @@ Do **not** wait for any other agent. Do **not** open other repos. Do **not** sen
 python -m tis_agent sync bulletin /tmp/tis-bulletin-raw.md
 ```
 
-`--dry-run` prints the sanitized markdown without uploading.
+`--dry-run` prints the sanitized markdown without uploading. By default, `sync bulletin` also downloads **Google Drive / Docs links** inside the kept markdown and ingests those PDFs/Docs (packing lists, parent letters). Use `--no-follow-links` to skip that step.
+
+School mail often links to a Drive PDF instead of pasting the content. The bulletin alone only stores the URL — linked files must be ingested too, or Tina cannot answer from them. The service-account Drive cron only sees the knowledge folder; linked school files are usually outside it, so the Sunday job (parent Drive access) is the right place to pull them.
 
 ### Procedure every run
 
 1. Checkout GitHub `FredrikCederlof/tis-agent` on `main`.
 2. Install deps if needed: `python3 -m venv .venv && .venv/bin/pip install -r requirements.txt`
-3. Load secrets: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`.
+3. Load secrets: `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`. Optional for link follow via API: `GOOGLE_SERVICE_ACCOUNT_JSON` (only works when the SA can read the linked file).
 4. Search Gmail for the last 14 days from school senders only (include trash if school mail was deleted):
 
 ```
@@ -146,9 +148,10 @@ from:seesaw newer_than:14d
 
 5. Open matching threads as plain text. Skip personal Gmail/iCloud/Yahoo/Outlook senders and marketing-only mail.
 6. Write `/tmp/tis-bulletin-raw.md` using `=== MESSAGE ===` separators with `From` / `Date` / `Subject` headers and the plain-text body.
-7. Run `.venv/bin/python -m tis_agent sync bulletin /tmp/tis-bulletin-raw.md` (optional `--dry-run` first to inspect).
-8. Confirm the JSON summary has `"status": "synced"` or `"skipped"`. If `"empty"`, report that and stop. Confirm child names are absent from any printed markdown (Eldor, Malte, Vega-Lo, Vega).
-9. Print a short summary: threads opened, kept vs dropped blocks, ingest status.
+7. Run `.venv/bin/python -m tis_agent sync bulletin /tmp/tis-bulletin-raw.md` (optional `--dry-run` first to inspect). Check `linked_files` in the JSON (`discovered` / `synced` / `failed`).
+8. If `linked_files` reports Drive auth errors or failed downloads (school files often need the parent account, not the service account): for each Drive file id in the dry-run / bulletin markdown, use **Google Drive** to download the PDF/Doc to `/tmp/tis-sync/`, then run `python -m tis_agent sync file ... --drive-id <id> --mime-type ... --modified <ISO>`.
+9. Confirm the JSON summary has `"status": "synced"` or `"skipped"`. If `"empty"`, report that and stop. Confirm child names are absent from any printed markdown (Eldor, Malte, Vega-Lo, Vega).
+10. Print a short summary: threads opened, kept vs dropped blocks, bulletin ingest status, and linked files synced/failed.
 
 The sanitizer strips Eldor / Malte / Vega-Lo / Vega, **keeps** Kindergarten / Grade 3 / Grade 6 class notices plus PYP/MYP/DP/whole-school items, **drops** personal teacher emails about one child and other single-grade mail (e.g. Grade 10 only), and dedupes triple Toddle sends. Document title: `TIS Weekly Bulletin YYYY-MM-DD` with `source_type: bulletin`.
 
@@ -174,11 +177,12 @@ Procedure:
 4. Open matching threads as plain text. Skip personal Gmail/iCloud/Yahoo/Outlook senders.
 5. Write /tmp/tis-bulletin-raw.md using === MESSAGE === separators with From / Date / Subject headers and the plain-text body.
 6. Run: .venv/bin/python -m tis_agent sync bulletin /tmp/tis-bulletin-raw.md
-7. Confirm JSON "status" is "synced" or "skipped". If "empty", report and stop.
-8. Confirm child names are absent from printed markdown (Eldor, Malte, Vega-Lo, Vega). Personal teacher notes about one child must not appear.
-9. Print threads opened, kept vs dropped blocks, and ingest status.
+7. Confirm JSON "status" is "synced" or "skipped". If "empty", report and stop. Inspect linked_files.
+8. If linked Drive PDFs/Docs failed to download (common without SA access), download each via Google Drive to /tmp/tis-sync/ and run sync file with --drive-id.
+9. Confirm child names are absent from printed markdown (Eldor, Malte, Vega-Lo, Vega). Personal teacher notes about one child must not appear.
+10. Print threads opened, kept vs dropped blocks, bulletin ingest status, and linked files synced/failed.
 
-Document title is TIS Weekly Bulletin YYYY-MM-DD (Asia/Tokyo date of the run) with source type bulletin.
+Document title is TIS Weekly Bulletin YYYY-MM-DD (Asia/Tokyo date of the run) with source type bulletin. Linked packing lists and parent letters must be ingested, not left as bare URLs.
 ```
 
 ## Idempotency
