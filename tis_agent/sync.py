@@ -83,6 +83,7 @@ class BulletinSyncResult:
     document_id: str | None = None
     storage_path: str | None = None
     markdown: str | None = None
+    linked_files: dict | None = None
 
 
 def sync_bulletin_from_text(
@@ -92,8 +93,12 @@ def sync_bulletin_from_text(
     title: str | None = None,
     dry_run: bool = False,
     upload_storage: bool = True,
+    follow_links: bool = True,
 ) -> BulletinSyncResult:
     from tis_agent.bulletin import sanitize_bulletin
+    from tis_agent.bulletin_links import extract_drive_links, sync_linked_drive_files
+    from tis_agent.drive_auth import DriveAuthError
+    from tis_agent.drive_sync import DriveSyncError
 
     week = tokyo_today().isoformat()
     resolved_title = title or f"TIS Weekly Bulletin {week}"
@@ -108,6 +113,7 @@ def sync_bulletin_from_text(
         )
 
     if dry_run:
+        links = extract_drive_links(sanitized.markdown)
         return BulletinSyncResult(
             title=resolved_title,
             status="dry_run",
@@ -115,6 +121,10 @@ def sync_bulletin_from_text(
             dropped_blocks=sanitized.dropped_blocks,
             child_mentions_removed=sanitized.child_mentions_removed,
             markdown=sanitized.markdown,
+            linked_files={
+                "discovered": len(links),
+                "file_ids": [link.file_id for link in links],
+            },
         )
 
     settings = settings or get_settings()
@@ -131,6 +141,23 @@ def sync_bulletin_from_text(
         storage_path=storage_path,
         source_type="bulletin",
     )
+
+    linked_payload: dict | None = None
+    if follow_links:
+        try:
+            linked = sync_linked_drive_files(settings, sanitized.markdown)
+            linked_payload = linked.as_dict()
+        except (DriveAuthError, DriveSyncError) as exc:
+            # Bulletin still succeeds; Cloud Agent can download links with user Drive.
+            linked_payload = {
+                "discovered": len(extract_drive_links(sanitized.markdown)),
+                "synced": 0,
+                "skipped": 0,
+                "failed": 0,
+                "error": str(exc),
+                "results": [],
+            }
+
     return BulletinSyncResult(
         title=ingested.title,
         status="skipped" if ingested.skipped else "synced",
@@ -140,6 +167,7 @@ def sync_bulletin_from_text(
         chunks=ingested.chunks,
         document_id=ingested.document_id,
         storage_path=ingested.storage_path,
+        linked_files=linked_payload,
     )
 
 
@@ -224,6 +252,11 @@ def main(argv: list[str] | None = None) -> None:
         "--dry-run",
         action="store_true",
         help="Sanitize and print markdown; do not upload or embed.",
+    )
+    bulletin_cmd.add_argument(
+        "--no-follow-links",
+        action="store_true",
+        help="Do not download Google Drive/Docs links found in the bulletin.",
     )
 
     sub.add_parser("local-handbook", help="Re-sync the local handbook PDF (legacy).")
@@ -314,6 +347,7 @@ def main(argv: list[str] | None = None) -> None:
             settings=settings,
             title=args.title,
             dry_run=dry_run,
+            follow_links=not bool(args.no_follow_links),
         )
         payload = asdict(result)
         print(json.dumps(payload, indent=2))

@@ -37,9 +37,19 @@ class FakeDrive:
         self.blobs = blobs or {}
         self.downloads: list[str] = []
         self.exports: list[str] = []
+        self._by_id = {
+            item.id: item
+            for children in folders.values()
+            for item in children
+        }
 
     def list_children(self, folder_id: str) -> list[DriveItem]:
         return list(self.folders.get(folder_id, []))
+
+    def get_metadata(self, file_id: str) -> DriveItem:
+        if file_id not in self._by_id:
+            raise RuntimeError(f"missing metadata {file_id}")
+        return self._by_id[file_id]
 
     def download(self, file_id: str) -> bytes:
         self.downloads.append(file_id)
