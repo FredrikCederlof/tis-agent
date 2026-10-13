@@ -128,7 +128,7 @@ def public_notice_html(settings: Settings | None = None) -> str:
     contact = ""
     loaded_settings: Settings | None = settings
     try:
-        loaded_settings = settings or get_settings()
+        loaded_settings = settings or get_settings(require_openai=False)
         row = (
             make_supabase(loaded_settings)
             .table("agent_config")
@@ -289,7 +289,7 @@ def _record_event(
 
 
 def load_retention_days(settings: Settings | None = None) -> int:
-    settings = settings or get_settings()
+    settings = settings or get_settings(require_openai=False)
     row = (
         make_supabase(settings)
         .table("agent_config")
@@ -311,7 +311,8 @@ def purge_expired(
     settings: Settings | None = None,
 ) -> dict[str, Any]:
     """Delete conversation rows older than the configured retention. Documents stay."""
-    settings = settings or get_settings()
+    # Cron service only needs Supabase; do not require OPENAI_API_KEY.
+    settings = settings or get_settings(require_openai=False)
     sb = make_supabase(settings)
     days = load_retention_days(settings)
     cutoff = _cutoff(days)
@@ -368,7 +369,7 @@ def _rows_for_phone(sb: Any, table: str, variants: list[str]) -> list[dict[str, 
 
 
 def export_subject(phone: str, *, settings: Settings | None = None) -> dict[str, Any]:
-    settings = settings or get_settings()
+    settings = settings or get_settings(require_openai=False)
     sb = make_supabase(settings)
     variants = phone_variants(phone)
     return {
@@ -384,7 +385,7 @@ def delete_subject(
     actor: str,
     settings: Settings | None = None,
 ) -> dict[str, Any]:
-    settings = settings or get_settings()
+    settings = settings or get_settings(require_openai=False)
     sb = make_supabase(settings)
     variants = phone_variants(phone)
     sessions = _rows_for_phone(sb, "chat_sessions", variants)

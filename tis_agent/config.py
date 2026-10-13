@@ -23,24 +23,27 @@ class Settings:
     storage_bucket: str = "tis-ass"
 
 
-def get_settings() -> Settings:
+def get_settings(*, require_openai: bool = True) -> Settings:
+    """Load env settings.
+
+    Privacy purge / retention cron only talks to Supabase, so pass
+    ``require_openai=False`` there. Ask, sync, and WhatsApp still need OpenAI.
+    """
     supabase_url = os.getenv("SUPABASE_URL", "").strip()
     supabase_secret_key = os.getenv("SUPABASE_SECRET_KEY", "").strip()
     openai_api_key = os.getenv("OPENAI_API_KEY", "").strip()
 
-    missing = [
-        name
-        for name, value in [
-            ("SUPABASE_URL", supabase_url),
-            ("SUPABASE_SECRET_KEY", supabase_secret_key),
-            ("OPENAI_API_KEY", openai_api_key),
-        ]
-        if not value
+    required = [
+        ("SUPABASE_URL", supabase_url),
+        ("SUPABASE_SECRET_KEY", supabase_secret_key),
     ]
+    if require_openai:
+        required.append(("OPENAI_API_KEY", openai_api_key))
+    missing = [name for name, value in required if not value]
     if missing:
         raise SystemExit(f"Missing required env vars: {', '.join(missing)}")
 
-    if not openai_api_key.startswith("sk-"):
+    if require_openai and not openai_api_key.startswith("sk-"):
         raise SystemExit(
             "OPENAI_API_KEY does not look valid. "
             "Create a key at https://platform.openai.com/api-keys "

@@ -63,13 +63,25 @@ def main() -> None:
             history.append({"role": "assistant", "content": result.reply})
         return
     if command == "privacy":
+        import json
+        import os
+
         from tis_agent.privacy import purge_expired
 
         if len(sys.argv) < 3 or sys.argv[2] != "purge":
             print("Usage: python -m tis_agent privacy purge [--dry-run]")
             raise SystemExit(2)
         dry_run = "--dry-run" in sys.argv[3:]
-        print(purge_expired(dry_run=dry_run, actor="cli"))
+        # Railway cron sets RAILWAY_*; keep actor distinct from local CLI runs.
+        actor = "cron" if os.environ.get("RAILWAY_ENVIRONMENT") else "cli"
+        try:
+            result = purge_expired(dry_run=dry_run, actor=actor)
+        except SystemExit:
+            raise
+        except Exception as exc:
+            print(json.dumps({"status": "error", "error": str(exc)}))
+            raise SystemExit(1) from exc
+        print(json.dumps(result, default=str))
         return
     if command == "whatsapp":
         from tis_agent.whatsapp import main as whatsapp_main
