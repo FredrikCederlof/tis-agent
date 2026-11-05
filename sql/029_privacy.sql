@@ -30,7 +30,6 @@ where title in (
   'Influenza Confinement Policy - Linked to Toddle',
   'Night Emergency for children',
   'Over the Counter Medicine in Japan - Linked to Toddle',
-  'Staff List School',
   'How to Access_Download Previous Report Cards - Linked to Toddle',
   'TIS School Fees Agreement - Linked to Toddle'
 );
