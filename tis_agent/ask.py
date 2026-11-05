@@ -30,6 +30,15 @@ from tis_agent.conversation import (
 )
 from tis_agent.day_kind import impact_from_evidence_text
 from tis_agent.reply_format import format_whatsapp_reply, strip_empty_source_line
+from tis_agent.staff_list import (
+    STAFF_ANSWER_RULE,
+    STAFF_LIST_SIMILARITY,
+    STAFF_LIST_TITLE,
+    format_staff_excerpt,
+    is_staff_lookup_question,
+    parse_staff_records,
+    select_staff_records,
+)
 from tis_agent.ical_text import chunks_from_formatted_calendar
 from tis_agent.temporal import (
     DateRange,
@@ -1050,7 +1059,65 @@ def _load_btb_guide_chunks(settings: Settings) -> list[Evidence]:
     return [item[2] for item in loaded]
 
 
+def _load_staff_list_text(settings: Settings) -> str | None:
+    """Read Staff List School directly so a role question gets the matching rows."""
+    supabase = make_supabase(settings)
+    docs = (
+        supabase.table("documents")
+        .select("id")
+        .ilike("title", STAFF_LIST_TITLE)
+        .limit(1)
+        .execute()
+    )
+    rows = docs.data or []
+    if not rows:
+        return None
+    chunks = (
+        supabase.table("chunks")
+        .select("content, chunk_index")
+        .eq("document_id", rows[0]["id"])
+        .order("chunk_index")
+        .limit(40)
+        .execute()
+    )
+    text = "\n".join(row.get("content") or "" for row in (chunks.data or [])).strip()
+    return text or None
+
+
+def _pin_staff_list(
+    settings: Settings, question: str, evidence: list[Evidence]
+) -> list[Evidence]:
+    try:
+        directory = _load_staff_list_text(settings)
+    except Exception:
+        logger.exception("Could not load Staff List School")
+        return evidence
+    if directory is None:
+        return evidence
+    picked, too_broad = select_staff_records(parse_staff_records(directory), question)
+    excerpt = Evidence(
+        content=format_staff_excerpt(picked, too_broad=too_broad),
+        section_title=STAFF_LIST_TITLE,
+        page_start=1,
+        page_end=1,
+        document_title=STAFF_LIST_TITLE,
+        similarity=STAFF_LIST_SIMILARITY,
+        source_type="document",
+        chunk_id="staff-list-match",
+    )
+    rest = [
+        item
+        for item in evidence
+        if "annual report" not in (item.document_title or "").lower()
+        and item.document_title != STAFF_LIST_TITLE
+    ]
+    logger.info("Pinned Staff List School rows=%d too_broad=%s", len(picked), too_broad)
+    return pin_topic_guide(rest, [excerpt])
+
+
 def _apply_topic_pins(settings: Settings, question: str, evidence: list[Evidence]) -> list[Evidence]:
+    if is_staff_lookup_question(question):
+        evidence = _pin_staff_list(settings, question, evidence)
     if not is_beyond_the_bell_question(question):
         return evidence
     guide = _load_btb_guide_chunks(settings)
@@ -1367,6 +1434,8 @@ def answer_question(
         messages.extend(history[-6:])
 
     extra = grounding_instruction(temporal)
+    if is_staff_lookup_question(retrieval_question):
+        extra = f"{extra}\n\n{STAFF_ANSWER_RULE}".strip() if extra else STAFF_ANSWER_RULE
     if is_beyond_the_bell_question(retrieval_question):
         guide_rule = (
             "This is a Beyond the Bell question. Answer programme rules "

@@ -169,7 +169,7 @@ Indexed set by `source_type`: bulletin 30, pdf 19, knowledge 14, document 11, we
 Titles that are sensitive topics, indexed with everything else:
 
 - Health: Asthma Action Plan, Authorization for Medications, Communicable Disease Protocols, Influenza Confinement Policy, Night Emergency for children, Over the Counter Medicine in Japan
-- People and records: Staff List School, How to Access/Download Previous Report Cards
+- People and records: How to Access/Download Previous Report Cards. Staff List School stays `parents_only` so parents can reach teachers.
 - Login-gated source: TIS Times (Parent Portal)
 - Money: TIS School Fees Agreement
 
@@ -177,7 +177,7 @@ These titles do not prove that a file contains a named student’s health record
 
 Bulletin name-string check for three child names: 0 hits. **Confirmed** for those strings only.
 
-**Fix:** Before other parents use Tina, mark or remove staff lists, health forms, fee agreements, and anything student-specific. Phase 3 adds `access_class` and keeps `restricted` out of `match_chunks`. Phase 2, if you want it sooner, is simply to stop syncing and delete the sensitive documents. That decision is yours; this audit did not delete anything.
+**Fix:** Before other parents use Tina, mark or remove health forms, fee agreements, report-card downloads, and anything student-specific. Staff List School stays `parents_only`: reaching a teacher is a normal parent question. Phase 3 adds `access_class` and keeps `restricted` out of `match_chunks`. Phase 2, if you want it sooner, is simply to stop syncing and delete the sensitive documents. That decision is yours; this audit did not delete anything.
 
 ### H4 — Parents are not told what Tina does with their messages
 
