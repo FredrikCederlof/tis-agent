@@ -1108,8 +1108,10 @@ def _pin_staff_list(
     rest = [
         item
         for item in evidence
-        if "annual report" not in (item.document_title or "").lower()
-        and item.document_title != STAFF_LIST_TITLE
+        if item.document_title != STAFF_LIST_TITLE
+        and "annual report" not in (item.document_title or "").lower()
+        and "weekly" not in (item.document_title or "").lower()
+        and item.source_type != "bulletin"
     ]
     logger.info("Pinned Staff List School rows=%d too_broad=%s", len(picked), too_broad)
     return pin_topic_guide(rest, [excerpt])

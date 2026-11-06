@@ -6,6 +6,7 @@ import re
 from dataclasses import dataclass
 
 from tis_agent.agent_config import DEFAULT_GREETING_MESSAGE
+from tis_agent.staff_list import is_name_correction, is_staff_lookup_question
 
 _GREETING_RE = re.compile(
     r"(?is)^\s*(?:hi|hii+|hello|hey|yo|good\s+(?:morning|afternoon|evening)|"
@@ -75,7 +76,7 @@ def last_substantive_question(history: list[ConversationTurn] | list[dict[str, s
             continue
         if is_greeting_or_thanks(q) or is_confirmation_challenge(q) or is_calendar_portal_nudge(q):
             continue
-        if is_contact_followup(q):
+        if is_contact_followup(q) or is_name_correction(q):
             continue
         return q
     return None
@@ -110,6 +111,16 @@ def rewrite_followup(
         return (
             f"Regarding the previous question ({prior}): {text}\n"
             "Answer from the TIS Parent Calendar when dates or school days are involved."
+        )
+
+    if prior and is_staff_lookup_question(prior) and (
+        is_name_correction(text) or is_staff_lookup_question(text)
+    ):
+        return (
+            f"{prior}\n\n"
+            f"Parent correction: {text}\n"
+            "Look up the name and email in Staff List School only. "
+            "Do not use a weekly update."
         )
 
     if prior and is_contact_followup(text):
