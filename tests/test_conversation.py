@@ -57,6 +57,20 @@ def test_rewrite_contact_followup_after_health_office():
     assert "contact" in rewritten.lower()
 
 
+def test_rewrite_name_correction_stays_on_the_staff_list():
+    history = [
+        ConversationTurn(
+            question="Kan jag få matteläraren i MYPs mailadress, han heter Scott",
+            reply="Scott Smith, scottsm@tokyois.com",
+        )
+    ]
+    rewritten = rewrite_followup("Its Scott d'Aquin", history)
+    assert "matteläraren" in rewritten
+    assert "Scott d'Aquin" in rewritten
+    assert "Staff List School" in rewritten
+    assert "weekly" in rewritten.lower()
+
+
 def test_rewrite_contact_followup_without_prior_unchanged():
     assert rewrite_followup("Do you got their contacts?", None) == "Do you got their contacts?"
 

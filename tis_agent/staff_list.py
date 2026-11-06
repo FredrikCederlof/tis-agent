@@ -15,9 +15,10 @@ STAFF_LIST_SIMILARITY = 0.9
 
 STAFF_ANSWER_RULE = (
     "This is a staff-directory question. Answer the name, role, and email "
-    "only from the Staff List School excerpt. Do not use an annual report "
-    "or any other document for who holds a role. "
+    "only from the Staff List School excerpt. Do not use an annual report, "
+    "a weekly update, or a 'Sent by' line for an email address. "
     "Lower School is PYP. Upper School grades 6–10 are MYP. Grades 11–12 are DP. "
+    "If several people share a first name, use the subject and programme to pick the row. "
     "If the excerpt says no directory row matched, say the staff list does not name that role."
 )
 
@@ -38,10 +39,18 @@ _STAFF_LOOKUP_RE = re.compile(
     r"\b(?:e-?mail|phone|extension)\s+(?:for|of|address)\b|"
     r"\b(?:phe|physical education)\b|"
     r"\b(?:myp|middle years?)\b.{0,48}\bteacher\b|"
-    r"\bteacher\b.{0,48}\b(?:myp|pyp|dp|middle years?)\b"
+    r"\bteacher\b.{0,48}\b(?:myp|pyp|dp|middle years?)\b|"
+    r"\b(?:lärare|larare)\b"
     r")"
 )
-_MYP_RE = re.compile(r"(?i)\b(?:myp|middle\s+years?|middle\s+school)\b")
+_EMAIL_ASK_RE = re.compile(
+    r"(?i)(?:e-?mails?|mailadress|mejladress|mejl|e-?post)"
+)
+_STAFF_LIST_MENTION_RE = re.compile(r"(?i)\bstaf+f?\s+list\b")
+_NAME_CORRECTION_RE = re.compile(
+    r"(?i)^\s*(?:it'?s|its|actually|han heter|hon heter|namnet är|the name is)\s+"
+)
+_MYP_RE = re.compile(r"(?i)\b(?:myp(?:s)?|middle\s+years?|middle\s+school)\b")
 _PYP_RE = re.compile(r"(?i)\b(?:pyp|lower\s+school|early\s+years|kindergarten)\b")
 _DP_RE = re.compile(r"(?i)\b(?:\bdp\b|diploma)\b")
 _PHE_RE = re.compile(r"(?i)\b(?:phe|physical\s+education)\b")
@@ -90,7 +99,24 @@ _STOPWORDS = frozenset(
         "have",
         "list",
         "staff",
+        "its",
+        "it's",
+        "actually",
+        "heter",
+        "han",
+        "hon",
+        "hans",
+        "hennes",
     }
+)
+
+_SUBJECT_ALIASES: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"(?i)matte|matematik"), "math"),
+    (re.compile(r"(?i)naturvetenskap|\bscience\b"), "science"),
+    (re.compile(r"(?i)engelska|\benglish\b"), "english"),
+    (re.compile(r"(?i)\bmusik\b|\bmusic\b"), "music"),
+    (re.compile(r"(?i)japanska|\bjapanese\b"), "japanese"),
+    (re.compile(r"(?i)\bidrott\b|\bphe\b|physical education"), "phe"),
 )
 
 _SUBJECT_RE = re.compile(
@@ -123,11 +149,24 @@ class StaffRecord:
 
 
 def is_staff_lookup_question(question: str) -> bool:
-    """True when the parent is asking who holds a role, or for their contact."""
+    """True when the parent is asking who holds a role, or for their email."""
     text = question or ""
     if _PTC_RE.search(text) or _GENERIC_SCHOOL_CONTACT_RE.search(text):
         return False
+    if _EMAIL_ASK_RE.search(text) or _STAFF_LIST_MENTION_RE.search(text):
+        return True
     return bool(_STAFF_LOOKUP_RE.search(text))
+
+
+def is_name_correction(text: str) -> bool:
+    """True for a short follow-up that only supplies the right person's name."""
+    raw = (text or "").strip()
+    if not raw or "?" in raw or len(raw) > 80 or not _NAME_CORRECTION_RE.match(raw):
+        return False
+    body = _NAME_CORRECTION_RE.sub("", raw).strip()
+    if not body or _STAFF_LIST_MENTION_RE.search(body):
+        return False
+    return 1 <= len(body.split()) <= 4
 
 
 def parse_staff_records(text: str) -> list[StaffRecord]:
@@ -150,7 +189,7 @@ def parse_staff_records(text: str) -> list[StaffRecord]:
         department = re.sub(r"^\d+\s+", "", department).strip(" -")
         if not _plausible_name(name) or "@" in title:
             continue
-        record = StaffRecord(department, name, title, email)
+        record = StaffRecord(department, _normalize_apostrophe(name), title, email)
         key = email.lower()
         current = by_email.get(key)
         if current is None or len(record.department) > len(current.department):
@@ -163,15 +202,22 @@ def select_staff_records(records: list[StaffRecord], question: str) -> tuple[lis
     if not records:
         return [], False
 
-    name_hits = [row for row in records if _name_match(row, question)]
-    if name_hits:
-        pool = name_hits
-    else:
-        subject_hits = [row for row in records if _subject_match(row, question)]
-        if subject_hits:
-            pool = subject_hits
+    name_hits = _best_name_hits(records, question)
+    subject_hits = [row for row in records if _subject_match(row, question)]
+    if name_hits and subject_hits:
+        both = [row for row in name_hits if row in subject_hits]
+        if both:
+            pool = both
+        elif any(_name_score(row, question) >= 3 for row in name_hits):
+            pool = name_hits
         else:
-            pool = [row for row in records if _title_word_match(row, question)]
+            pool = subject_hits
+    elif name_hits:
+        pool = name_hits
+    elif subject_hits:
+        pool = subject_hits
+    else:
+        pool = [row for row in records if _title_word_match(row, question)]
 
     programme = _asked_programme(question)
     if programme:
@@ -201,7 +247,7 @@ def format_staff_excerpt(records: list[StaffRecord], *, too_broad: bool) -> str:
     if not records:
         lines.append(
             "No directory row matched this question. "
-            "Do not substitute an annual report."
+            "Do not substitute a weekly update or an annual report."
         )
         return "\n".join(lines)
     for row in records:
@@ -212,7 +258,24 @@ def format_staff_excerpt(records: list[StaffRecord], *, too_broad: bool) -> str:
 def _plausible_name(name: str) -> bool:
     if not name or len(name) > 60 or "@" in name or any(ch.isdigit() for ch in name):
         return False
-    return bool(re.match(r"^[A-Z][A-Za-z .'-]+$", name))
+    return bool(re.match(r"^[A-Z][A-Za-z .'’`-]+$", name))
+
+
+def _normalize_apostrophe(text: str) -> str:
+    return text.replace("’", "'").replace("`", "'")
+
+
+def _asked_subject(question: str) -> str | None:
+    if _PHE_RE.search(question or ""):
+        return "phe"
+    for pattern, name in _SUBJECT_ALIASES:
+        if pattern.search(question or ""):
+            return name
+    match = _SUBJECT_RE.search(question or "")
+    if not match:
+        return None
+    word = match.group(0).lower()
+    return "phe" if word == "physical education" else word
 
 
 def _asked_programme(question: str) -> str | None:
@@ -226,29 +289,45 @@ def _asked_programme(question: str) -> str | None:
 
 
 def _subject_match(row: StaffRecord, question: str) -> bool:
-    if _PHE_RE.search(question or ""):
-        return bool(_PHE_RE.search(row.title))
-    match = _SUBJECT_RE.search(question or "")
-    if not match:
+    subject = _asked_subject(question)
+    if not subject:
         return False
-    word = match.group(0).lower()
-    if word == "physical education":
-        word = "phe"
-    return word in row.title.lower()
+    if subject == "phe":
+        return bool(_PHE_RE.search(row.title))
+    if subject in {"art", "pe"}:
+        return bool(re.search(rf"(?i)\b{subject}\b", row.title))
+    return subject in row.title.lower()
+
+
+def _name_score(row: StaffRecord, question: str) -> int:
+    tokens = [_normalize_apostrophe(token) for token in _query_tokens(question)]
+    parts = [
+        _normalize_apostrophe(part).lower()
+        for part in re.split(r"\s+", row.name)
+        if part
+    ]
+    score = 0
+    for token in tokens:
+        for index, part in enumerate(parts):
+            matched = token == part or (
+                len(token) >= 6 and len(part) >= 6 and token[:6] == part[:6]
+            )
+            if not matched:
+                continue
+            score += 3 if index == len(parts) - 1 and len(parts) > 1 else 1
+    return score
+
+
+def _best_name_hits(records: list[StaffRecord], question: str) -> list[StaffRecord]:
+    scored = [(row, _name_score(row, question)) for row in records]
+    best = max((score for _row, score in scored), default=0)
+    if best <= 0:
+        return []
+    return [row for row, score in scored if score == best]
 
 
 def _name_match(row: StaffRecord, question: str) -> bool:
-    tokens = _query_tokens(question)
-    if not tokens:
-        return False
-    name_parts = [part.lower() for part in re.split(r"\s+", row.name) if part]
-    for token in tokens:
-        for part in name_parts:
-            if token == part:
-                return True
-            if len(token) >= 6 and len(part) >= 6 and token[:6] == part[:6]:
-                return True
-    return False
+    return _name_score(row, question) > 0
 
 
 def _title_word_match(row: StaffRecord, question: str) -> bool:

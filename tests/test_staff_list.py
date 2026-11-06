@@ -16,6 +16,8 @@ Upper School Teachers,Myk Villanuveva,G7A HR US PHE Teacher,mykvi@tokyois.com,,
 ,Staff List - Upper School Teachers.pdf,2
 Upper School Teachers,Mayuka Pei,G7B HR US I&S Teacher,mayukape@tokyois.com,,,Staff List - Upper School Teachers.pdf,2
 Lower School Teachers,Malgosia Lundin,LS PHE Teacher,malgosialu@tokyois.com,,,Staff List - Lower School Teachers.pdf,6
+Upper School Teachers,Scott Smith,G9A HR Science Teacher,scottsm@tokyois.com,,,Staff List - Upper School Teachers.pdf,3
+Upper School Teachers,Scott d'Aquin,MYP Math Teacher,scottda@tokyois.com,,,Staff List - Upper School Teachers.pdf,4
 Leadership,Daniel Reynolds,Head of School,danielre@tokyois.com,,,Staff List - Leadership.pdf,1
 Leadership,Kristen Pollard,DP Coordinator / G11 HR / DP English,kristenpo@tokyois.com,,,Staff List - Leadership.pdf,2
 """
@@ -67,6 +69,45 @@ def test_excerpt_names_the_directory_and_not_the_annual_report():
     assert "Myk Villanuveva" in text
     assert "Malgosia" not in text
     assert "Annual Report" not in text
+
+
+def test_swedish_math_email_picks_the_math_scott_not_the_science_scott():
+    records = parse_staff_records(DIRECTORY)
+    question = "Kan jag få matteläraren i MYPs mailadress, han heter Scott"
+    assert is_staff_lookup_question(question)
+    picked, too_broad = select_staff_records(records, question)
+    assert too_broad is False
+    assert [row.name for row in picked] == ["Scott d'Aquin"]
+    assert picked[0].email == "scottda@tokyois.com"
+
+
+def test_name_correction_prefers_the_surname():
+    records = parse_staff_records(DIRECTORY)
+    picked, _too_broad = select_staff_records(records, "Its Scott d'Aquin")
+    assert [row.name for row in picked] == ["Scott d'Aquin"]
+
+
+def test_pin_drops_weekly_updates_for_an_email_question(monkeypatch):
+    monkeypatch.setattr(
+        "tis_agent.ask._load_staff_list_text",
+        lambda _settings: DIRECTORY,
+    )
+    bulletin = Evidence(
+        content="Sent by Scott d'Aquin",
+        section_title=None,
+        page_start=1,
+        page_end=1,
+        document_title="TIS Weekly Updates 2026-10-18",
+        similarity=0.8,
+        source_type="bulletin",
+        chunk_id="week-1",
+    )
+    question = "Kan jag få matteläraren i MYPs mailadress, han heter Scott"
+    pinned = _pin_staff_list(None, question, [bulletin])
+    assert pinned[0].document_title == "Staff List School"
+    assert "scottda@tokyois.com" in pinned[0].content
+    assert "scottsm@tokyois.com" not in pinned[0].content
+    assert all(item.source_type != "bulletin" for item in pinned)
 
 
 def test_pin_puts_staff_list_first_and_drops_the_annual_report(monkeypatch):
