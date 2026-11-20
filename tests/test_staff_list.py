@@ -1,6 +1,6 @@
 """Staff role questions resolve against Staff List School, not the annual report."""
 
-from tis_agent.ask import Evidence, _pin_staff_list
+from tis_agent.ask import Evidence, _apply_topic_pins, _pin_staff_list
 from tis_agent.staff_list import (
     format_staff_excerpt,
     is_staff_lookup_question,
@@ -37,6 +37,25 @@ def test_conferences_and_the_school_switchboard_are_not_staff_lookups():
     )
     assert not is_staff_lookup_question("What is the phone number to TIS?")
     assert not is_staff_lookup_question("How do I contact the school?")
+
+
+def test_policy_schedule_and_message_questions_are_not_staff_lookups():
+    assert not is_staff_lookup_question("Who is allowed to pick up my child?")
+    assert not is_staff_lookup_question("What did the email say about the sports day?")
+    assert not is_staff_lookup_question("Is PHE cancelled tomorrow?")
+    assert not is_staff_lookup_question(
+        "I got an email about the ski trip. What time does it start?"
+    )
+    assert not is_staff_lookup_question("What is the name of the absence form?")
+    assert not is_staff_lookup_question("What did yesterday's email say about uniforms?")
+    assert not is_staff_lookup_question("Did you read the emails?")
+
+
+def test_person_and_address_questions_stay_staff_lookups():
+    assert is_staff_lookup_question("Who is the PYP PHE teacher?")
+    assert is_staff_lookup_question("Who is Daniel Reynolds?")
+    assert is_staff_lookup_question("What's the nurse's email?")
+    assert is_staff_lookup_question("Can I get Scott's email?")
 
 
 def test_myp_phe_is_the_upper_school_row_only():
@@ -81,6 +100,16 @@ def test_swedish_math_email_picks_the_math_scott_not_the_science_scott():
     assert picked[0].email == "scottda@tokyois.com"
 
 
+def test_matter_does_not_select_the_math_teacher():
+    records = parse_staff_records(DIRECTORY)
+    picked, too_broad = select_staff_records(
+        records,
+        "email for Scott about this matter",
+    )
+    assert too_broad is False
+    assert {row.name for row in picked} == {"Scott d'Aquin", "Scott Smith"}
+
+
 def test_name_correction_prefers_the_surname():
     records = parse_staff_records(DIRECTORY)
     picked, _too_broad = select_staff_records(records, "Its Scott d'Aquin")
@@ -108,6 +137,21 @@ def test_pin_drops_weekly_updates_for_an_email_question(monkeypatch):
     assert "scottda@tokyois.com" in pinned[0].content
     assert "scottsm@tokyois.com" not in pinned[0].content
     assert all(item.source_type != "bulletin" for item in pinned)
+
+
+def test_event_email_question_keeps_the_bulletin():
+    bulletin = Evidence(
+        content="Sports day is Friday. Bring a hat.",
+        section_title=None,
+        page_start=1,
+        page_end=1,
+        document_title="TIS Weekly Updates 2026-10-18",
+        similarity=0.8,
+        source_type="bulletin",
+        chunk_id="week-sports",
+    )
+    question = "What did the email say about the sports day?"
+    assert _apply_topic_pins(None, question, [bulletin]) == [bulletin]
 
 
 def test_pin_puts_staff_list_first_and_drops_the_annual_report(monkeypatch):

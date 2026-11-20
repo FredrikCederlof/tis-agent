@@ -31,20 +31,42 @@ _GENERIC_SCHOOL_CONTACT_RE = re.compile(
     r"(?:school|tis) (?:phone|switchboard|contacts?)"
     r")\b"
 )
+# Role words only. A bare "who is" or "PHE" is a policy or schedule question.
+_ROLE_WORD = (
+    r"teachers?|läraren?|lararen?|nurses?|coordinators?|principal|"
+    r"head(?:\s+of(?:\s+school)?)?|coaches?|librarians?|counsel(?:l?or)?s?|admissions"
+)
 _STAFF_LOOKUP_RE = re.compile(
     r"(?i)(?:"
-    r"\bwho(?:'s| is| teaches)\b|"
-    r"\bname of\b|"
+    r"\bwho\s+teaches\b|"
+    rf"\bwho(?:'s| is)\s+(?:the\s+|our\s+|my\s+)?(?:[\w'’.-]+\s+){{0,5}}(?:{_ROLE_WORD})\b|"
+    rf"\bname of\b(?:\s+\w+){{0,6}}\s+(?:{_ROLE_WORD})\b|"
     r"\bcontacts?\s+(?:to|for)\b|"
-    r"\b(?:e-?mail|phone|extension)\s+(?:for|of|address)\b|"
-    r"\b(?:phe|physical education)\b|"
-    r"\b(?:myp|middle years?)\b.{0,48}\bteacher\b|"
-    r"\bteacher\b.{0,48}\b(?:myp|pyp|dp|middle years?)\b|"
-    r"\b(?:lärare|larare)\b"
+    r"\b(?:e-?mail|phone|extension)\s+(?:for|of|address|adress)\b|"
+    r"\b(?:myp|middle years?)\b.{0,48}\bteachers?\b|"
+    r"\bteachers?\b.{0,48}\b(?:myp|pyp|dp|middle years?)\b|"
+    r"\b(?:läraren?|lararen?)\b"
     r")"
 )
-_EMAIL_ASK_RE = re.compile(
-    r"(?i)(?:e-?mails?|mailadress|mejladress|mejl|e-?post)"
+# Asking for an address. "the email said" and "yesterday's email" are not this.
+_EMAIL_REQUEST_RE = re.compile(
+    r"(?i)(?:"
+    r"\b(?:mailadress|mejladress|e-?postadress)\b|"
+    r"\b(?:e-?mail|mejl|e-?post)\s+(?:address|adress|till|för)\b|"
+    r"\b(?:his|her|their|hans|hennes)\s+(?:e-?mail|mejl|e-?post)\b|"
+    r"\b(?!yesterday\b|today\b|tomorrow\b|tonight\b|week\b|weeks\b|morning\b|"
+    r"evening\b|school\b|parent\b|weekly\b|this\b)"
+    r"[\w.-]+['’]s?\s+(?:e-?mail|mejl|e-?post)\b|"
+    # A question that ends by asking for the address, not "check the emails".
+    r"(?<!\bthe\s)(?<!\ban\s)(?<!\bthese\s)(?<!\bthose\s)"
+    r"\b(?:e-?mail|mejl|e-?post)s?\s*[?.!]*$"
+    r")"
+)
+_WHO_IS_NAME_RE = re.compile(
+    r"\b[Ww]ho(?:'s| is)\s+[A-Z][\w'’.-]+(?:\s+[A-Z][\w'’.-]+){0,2}\b"
+)
+_NAME_OF_PERSON_RE = re.compile(
+    r"\b[Nn]ame of\s+(?:the\s+)?[A-Z][\w'’.-]+(?:\s+[A-Z][\w'’.-]+){0,2}\b"
 )
 _STAFF_LIST_MENTION_RE = re.compile(r"(?i)\bstaf+f?\s+list\b")
 _NAME_CORRECTION_RE = re.compile(
@@ -111,7 +133,7 @@ _STOPWORDS = frozenset(
 )
 
 _SUBJECT_ALIASES: tuple[tuple[re.Pattern[str], str], ...] = (
-    (re.compile(r"(?i)matte|matematik"), "math"),
+    (re.compile(r"(?i)\bmatt(?:ematik|eläraren|elärare|elararen|elarare|en|e)\b"), "math"),
     (re.compile(r"(?i)naturvetenskap|\bscience\b"), "science"),
     (re.compile(r"(?i)engelska|\benglish\b"), "english"),
     (re.compile(r"(?i)\bmusik\b|\bmusic\b"), "music"),
@@ -149,11 +171,18 @@ class StaffRecord:
 
 
 def is_staff_lookup_question(question: str) -> bool:
-    """True when the parent is asking who holds a role, or for their email."""
+    """True when the parent is asking who holds a role, or for their email.
+
+    Mentions of a message ("the email said"), a policy ("who is allowed"),
+    or a subject schedule ("is PHE cancelled") are not directory lookups.
+    Those questions must keep the bulletin and the calendar.
+    """
     text = question or ""
     if _PTC_RE.search(text) or _GENERIC_SCHOOL_CONTACT_RE.search(text):
         return False
-    if _EMAIL_ASK_RE.search(text) or _STAFF_LIST_MENTION_RE.search(text):
+    if _STAFF_LIST_MENTION_RE.search(text) or _EMAIL_REQUEST_RE.search(text):
+        return True
+    if _WHO_IS_NAME_RE.search(text) or _NAME_OF_PERSON_RE.search(text):
         return True
     return bool(_STAFF_LOOKUP_RE.search(text))
 
