@@ -87,8 +87,9 @@ _WRITTEN_DMY_RE = re.compile(
 
 _EVENT_WHEN_RE = re.compile(
     r"\b("
-    r"when(?:'s|s)?\s+is"
-    r"|what(?:'s|s)?\s+(?:the\s+)?(?:date|day)"
+    r"when(?:['’]s|s)?\s+is"
+    r"|when(?:['’]s|s)\b"
+    r"|what(?:['’]s|s)?\s+(?:the\s+)?(?:date|day)"
     r"|what\s+day\s+is"
     r"|när\s+(?:är|har\s+vi|infaller)"
     r"|vilket\s+datum"
@@ -412,6 +413,21 @@ _IS_SCHOOL_DAY_RE = re.compile(
     r")\b"
 )
 
+# Season breaks. "school break on March 7" is a day check; "spring break" is the event.
+_NAMED_BREAK_RE = re.compile(
+    r"(?i)\b(?:spring|winter|summer|autumn|fall)\s+breaks?\b"
+)
+# "What's the school holiday?" names the break and nothing else.
+_UNDATED_BREAK_ASK_RE = re.compile(
+    r"(?i)^\s*what(?:['’]s|s|\s+is|\s+are)\s+"
+    r"(?:the\s+)?(?:next\s+)?school\s+(?:breaks?|holidays?|vacations?)\s*\??\s*$"
+)
+# These are document questions that merely mention a break. The day-check
+# fast path must not answer them with "today is a school day".
+_NOT_DAY_CHECK_RE = re.compile(
+    r"(?i)\b(?:polic(?:y|ies)|homework|packing|uniform)\b"
+)
+
 _LIST_NO_SCHOOL_RE = re.compile(
     r"(?i)\b(?:"
     r"student[- ]?free|"
@@ -474,6 +490,32 @@ def detect_schedule_intent(question: str) -> ScheduleIntent:
     return "none"
 
 
+def _is_break_date_lookup(
+    text: str,
+    today: date,
+    date_range: DateRange | None,
+    intent: ScheduleIntent,
+) -> bool:
+    """True when a break question must not be answered as "is school on today".
+
+    The school-day detector matches "spring break" and "when is the school
+    holiday". With no concrete day, parsing then fills in today and the fast
+    path says whether today is a school day. "Is spring break next week?" has
+    the same failure: the reply is about the first day of that window, and its
+    yes/no means whether school is in session.
+
+    "Do we have a school break on March 7?" names a calendar day and stays a
+    school-day check.
+    """
+    if intent != "is_school_day":
+        return False
+    if _NAMED_BREAK_RE.search(text) and not extract_dates_from_text(text, today=today):
+        return True
+    if date_range is not None:
+        return False
+    return _is_event_date_lookup(text) or bool(_UNDATED_BREAK_ASK_RE.search(text))
+
+
 def parse_temporal(question: str, *, today: date | None = None) -> TemporalQuery:
     """Detect temporal intent and resolve it against the Tokyo school calendar."""
     today = today or tokyo_today()
@@ -483,6 +525,22 @@ def parse_temporal(question: str, *, today: date | None = None) -> TemporalQuery
 
     intent = detect_schedule_intent(original)
     date_range = _match_relative(original, today)
+
+    if _is_break_date_lookup(original, today, date_range, intent):
+        return TemporalQuery(
+            kind="event_date_lookup",
+            original=original,
+            label="event date",
+            schedule_intent="none",
+        )
+    # "What's the school holiday policy?" matches the day-check detector and
+    # would otherwise be answered as whether today is a school day.
+    if (
+        intent in {"is_school_day", "list_no_school_days"}
+        and _NOT_DAY_CHECK_RE.search(original)
+        and not extract_dates_from_text(original, today=today)
+    ):
+        return TemporalQuery(kind="none", original=original, schedule_intent="none")
 
     # School-day / no-school list questions need a date range; default sensibly.
     if date_range is None and intent == "is_school_day":

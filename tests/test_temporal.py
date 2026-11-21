@@ -100,6 +100,81 @@ def test_when_is_named_event():
     assert parsed.date_range is None
 
 
+def test_when_is_spring_break_is_not_today():
+    """A named break with no day must not be answered as 'is school today'."""
+    parsed = parse_temporal("When is spring break?", today=date(2026, 11, 21))
+    assert parsed.kind == "event_date_lookup"
+    assert parsed.date_range is None
+    assert parsed.schedule_intent == "none"
+
+
+def test_spring_break_next_week_is_not_a_monday_school_check():
+    parsed = parse_temporal("Is spring break next week?", today=date(2026, 11, 21))
+    assert parsed.kind == "event_date_lookup"
+    assert parsed.schedule_intent == "none"
+
+
+def test_what_date_is_fall_break_looks_up_the_event():
+    parsed = parse_temporal("What date is fall break?", today=date(2026, 11, 21))
+    assert parsed.kind == "event_date_lookup"
+    assert parsed.date_range is None
+
+
+def test_when_is_the_next_school_break_looks_up_the_event():
+    parsed = parse_temporal("When is the next school break?", today=date(2026, 11, 21))
+    assert parsed.kind == "event_date_lookup"
+    assert parsed.date_range is None
+
+
+def test_whens_the_school_holiday_is_not_today():
+    parsed = parse_temporal("When's the school holiday?", today=date(2026, 11, 21))
+    assert parsed.kind == "event_date_lookup"
+    assert parsed.date_range is None
+    assert parsed.schedule_intent == "none"
+
+
+def test_whats_the_school_holiday_is_not_today():
+    parsed = parse_temporal("What's the school holiday?", today=date(2026, 11, 21))
+    assert parsed.kind == "event_date_lookup"
+    assert parsed.date_range is None
+
+
+def test_school_holiday_policy_is_not_a_school_day_check():
+    parsed = parse_temporal(
+        "What's the school holiday policy?",
+        today=date(2026, 11, 21),
+    )
+    assert parsed.kind == "none"
+    assert parsed.schedule_intent == "none"
+
+
+def test_school_break_on_a_written_date_stays_a_school_day_check():
+    parsed = parse_temporal(
+        "Do we have a school break on March 7?",
+        today=date(2026, 2, 20),
+    )
+    assert parsed.kind == "date_anchored"
+    assert parsed.schedule_intent == "is_school_day"
+    assert parsed.date_range is not None
+    assert parsed.date_range.start == date(2026, 3, 7)
+
+
+def test_undated_school_break_still_checks_today():
+    parsed = parse_temporal("Do we have a school break?", today=date(2026, 11, 21))
+    assert parsed.kind == "date_anchored"
+    assert parsed.schedule_intent == "is_school_day"
+    assert parsed.date_range is not None
+    assert parsed.date_range.start == date(2026, 11, 21)
+
+
+def test_spring_break_on_a_written_date_stays_a_school_day_check():
+    parsed = parse_temporal("Is spring break on March 23?", today=date(2026, 2, 20))
+    assert parsed.kind == "date_anchored"
+    assert parsed.schedule_intent == "is_school_day"
+    assert parsed.date_range is not None
+    assert parsed.date_range.start == date(2026, 3, 23)
+
+
 def test_procedural_when_is_not_temporal():
     parsed = _q("When should I report an absence?")
     assert parsed.kind == "none"
