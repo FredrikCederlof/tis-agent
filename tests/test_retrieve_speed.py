@@ -31,6 +31,21 @@ def test_school_break_on_date_uses_calendar_fast_path():
     assert use_calendar_fast_path(temporal)
 
 
+def test_when_is_spring_break_skips_the_school_day_fast_path():
+    temporal = parse_temporal("When is spring break?", today=date(2026, 11, 21))
+    assert temporal.kind == "event_date_lookup"
+    assert not use_calendar_fast_path(temporal)
+
+
+def test_school_holiday_policy_skips_the_school_day_fast_path():
+    temporal = parse_temporal(
+        "What's the school holiday policy?",
+        today=date(2026, 11, 21),
+    )
+    assert temporal.kind == "none"
+    assert not use_calendar_fast_path(temporal)
+
+
 def test_list_no_school_days_uses_calendar_fast_path():
     temporal = parse_temporal("Student free days in September", today=date(2026, 8, 30))
     assert use_calendar_fast_path(temporal)
