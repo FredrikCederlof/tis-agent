@@ -13,7 +13,7 @@ from tis_agent.handbook import Chunk
 DEFAULT_PAST_DAYS = 0
 DEFAULT_FUTURE_DAYS = 365  # parent calendar: today through 1 year ahead
 # Bump when ICS window/chunking or day-kind labels change so an unchanged feed is re-ingested.
-ICAL_CHUNK_VERSION = "v3-day-kind-students-in-session"
+ICAL_CHUNK_VERSION = "v4-keep-ongoing-events"
 
 
 def _unfold_lines(raw: str) -> list[str]:
@@ -49,6 +49,41 @@ def _as_date(value: datetime | date, tz: ZoneInfo) -> date:
     if isinstance(value, datetime):
         return value.astimezone(tz).date()
     return value
+
+
+def _as_window_datetime(
+    value: datetime | date,
+    tz: ZoneInfo,
+    *,
+    end_of_day: bool = False,
+) -> datetime:
+    """Comparable Tokyo instant. All-day dates cover that whole local day."""
+    if isinstance(value, datetime):
+        dt = value if value.tzinfo is not None else value.replace(tzinfo=tz)
+        return dt.astimezone(tz)
+    clock = datetime.max.time().replace(microsecond=0) if end_of_day else datetime.min.time()
+    return datetime.combine(value, clock, tzinfo=tz)
+
+
+def _overlaps_window(
+    start: datetime | date,
+    end: datetime | date | None,
+    *,
+    window_start: datetime,
+    window_end: datetime,
+    tz: ZoneInfo,
+) -> bool:
+    """True when the event is still in effect somewhere inside the sync window.
+
+    A multi-day break that started yesterday and ends next week overlaps today.
+    An event that already ended does not.
+    """
+    start_key = _as_window_datetime(start, tz)
+    finish = end if end is not None else start
+    end_key = _as_window_datetime(finish, tz, end_of_day=not isinstance(finish, datetime))
+    if end_key < start_key:
+        end_key = start_key
+    return end_key >= window_start and start_key <= window_end
 
 
 def inclusive_end(
@@ -138,12 +173,14 @@ def parse_ics_events(
         end = inclusive_end(start, _parse_dt(fields.get("DTEND", ""), tz))
         if start is None:
             continue
-        sort_key = (
-            start
-            if isinstance(start, datetime)
-            else datetime.combine(start, datetime.min.time(), tz)
-        )
-        if sort_key < window_start or sort_key > window_end:
+        sort_key = _as_window_datetime(start, tz)
+        if not _overlaps_window(
+            start,
+            end,
+            window_start=window_start,
+            window_end=window_end,
+            tz=tz,
+        ):
             continue
         text = _format_event(start, end, summary, description)
         events.append(
