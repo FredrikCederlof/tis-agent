@@ -233,6 +233,41 @@ END:VCALENDAR
     assert {e.summary for e in events} == {"Hope and Dreams", "No Number Day"}
 
 
+def test_ongoing_break_is_kept_after_it_starts():
+    """A break that started yesterday is still in effect. Dropping it makes Tina
+    call the remaining days a normal school day on the next calendar sync.
+    """
+    raw = """BEGIN:VCALENDAR
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20260824
+DTEND;VALUE=DATE:20260829
+SUMMARY:Winter Break
+END:VEVENT
+BEGIN:VEVENT
+DTSTART;VALUE=DATE:20260827
+DTEND;VALUE=DATE:20260828
+SUMMARY:Finished Yesterday
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20260827T220000
+DTEND:20260828T010000
+SUMMARY:Overnight Trip
+END:VEVENT
+BEGIN:VEVENT
+DTSTART:20260827T090000
+DTEND:20260827T100000
+SUMMARY:Yesterday Meeting
+END:VEVENT
+END:VCALENDAR
+"""
+    now = datetime(2026, 8, 28, 18, 14, tzinfo=TOKYO)
+    events, _, _ = parse_ics_events(raw, now=now)
+    assert {e.summary for e in events} == {"Winter Break", "Overnight Trip"}
+    winter = next(e for e in events if e.summary == "Winter Break")
+    assert winter.start == date(2026, 8, 24)
+    assert winter.end == date(2026, 8, 28)
+
+
 def test_tis_times_empty_window_is_not_today_evidence():
     stub = (
         "TIS Times (Parent Portal)\n"
