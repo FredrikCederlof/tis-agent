@@ -179,6 +179,16 @@ def test_is_school_day_monday_pd_is_a_long_weekend():
     assert reply.count("😊") == 1
 
 
+def test_school_day_reply_uses_written_date_not_weekday():
+    today = date(2026, 11, 23)  # Monday; December 18 2026 is a Friday
+    temporal = parse_temporal("Is it school on Friday, December 18?", today=today)
+    assert temporal.date_range is not None
+    assert temporal.date_range.start == date(2026, 12, 18)
+    reply = format_is_school_day_reply([], temporal, "en")
+    assert "December 18" in reply
+    assert "November 27" not in reply
+
+
 def test_school_break_on_date_is_school_day_intent():
     temporal = parse_temporal(
         "Do we have a school break on March 7?",
