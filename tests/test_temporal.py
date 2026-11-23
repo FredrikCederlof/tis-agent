@@ -87,6 +87,35 @@ def test_absolute_date():
     assert parsed.date_range.start == date(2026, 9, 17)
 
 
+def test_written_date_wins_over_weekday_name():
+    """Friday, December 18 is that Friday, not the Friday coming up from today."""
+    today = date(2026, 11, 23)  # Monday
+    parsed = parse_temporal("Is it school on Friday, December 18?", today=today)
+    assert parsed.kind == "date_anchored"
+    assert parsed.schedule_intent == "is_school_day"
+    assert parsed.date_range is not None
+    assert parsed.date_range.start == date(2026, 12, 18)
+    assert parsed.date_range.end == date(2026, 12, 18)
+
+    parsed = parse_temporal("Do we have school on Monday, January 5?", today=today)
+    assert parsed.date_range is not None
+    assert parsed.date_range.start == date(2027, 1, 5)
+    assert parsed.date_range.end == date(2027, 1, 5)
+
+    parsed = parse_temporal("Is it school on Friday 18/12/2026?", today=today)
+    assert parsed.date_range is not None
+    assert parsed.date_range.start == date(2026, 12, 18)
+
+    parsed = parse_temporal("Är det skola på fredag den 18 december?", today=today)
+    assert parsed.date_range is not None
+    assert parsed.date_range.start == date(2026, 12, 18)
+
+    # A weekday with no written date is still the soonest one.
+    parsed = parse_temporal("What's happening next Thursday?", today=today)
+    assert parsed.date_range is not None
+    assert parsed.date_range.start == date(2026, 11, 26)
+
+
 def test_in_two_weeks_is_that_school_week():
     parsed = _q("Anything in two weeks?")
     # today + 14 days = 11 Sep 2026 (Friday) → that Mon–Fri

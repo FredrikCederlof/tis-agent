@@ -357,6 +357,13 @@ def _match_relative(text: str, today: date) -> DateRange | None:
             target = today + timedelta(days=amount)
             return DateRange(target, target)
 
+    # A written calendar date is the day the parent named. A weekday in the
+    # same sentence ("Friday, December 18", "Monday 5 January") must not
+    # replace it with the soonest weekday from today.
+    absolute = parse_absolute_range(text, today=today)
+    if absolute is not None:
+        return absolute
+
     weekday_match = re.search(
         rf"\b(next|this|på|kommande|coming)?\s*({_WEEKDAY_ALT})s?\b",
         lower,
@@ -372,7 +379,7 @@ def _match_relative(text: str, today: date) -> DateRange | None:
             day = upcoming_weekday(today, weekday)
         return DateRange(day, day)
 
-    return parse_absolute_range(text, today=today)
+    return None
 
 
 def _is_event_date_lookup(text: str) -> bool:
