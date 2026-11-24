@@ -823,6 +823,122 @@ def _calendar_items_for_range(evidence: list[Evidence], rng: DateRange) -> list[
     return items
 
 
+def _closure_bounds(item: Evidence, fallback: date) -> tuple[date, date]:
+    start = item.start_date or fallback
+    end = item.end_date or start
+    if end < start:
+        end = start
+    return start, end
+
+
+def _closure_bullet(start: date, end: date, name: str) -> str:
+    if start == end:
+        return f"• {start.strftime('%Y-%m-%d')} ({start.strftime('%A')}): {name}"
+    return f"• {start.isoformat()} to {end.isoformat()}: {name}"
+
+
+def _off_closures(
+    evidence: list[Evidence], rng: DateRange
+) -> list[tuple[date, date, str]]:
+    """Student-off calendar events that overlap rng, one row per span."""
+    rows: list[tuple[date, date, str]] = []
+    seen: set[tuple[str, str, str]] = set()
+    for item in _calendar_items_for_range(evidence, rng):
+        impact = impact_from_evidence_text(
+            section_title=item.section_title,
+            content=item.content,
+            event_type=item.event_type,
+        )
+        if impact.students_in_session is not False:
+            continue
+        start, end = _closure_bounds(item, rng.start)
+        name = _event_label(item)
+        key = (start.isoformat(), end.isoformat(), name.lower())
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append((start, end, name))
+    rows.sort(key=lambda row: (row[0], row[1], row[2].lower()))
+    return rows
+
+
+def _range_is_all_weekend(rng: DateRange) -> bool:
+    days = rng.days()
+    return bool(days) and all(day.weekday() >= 5 for day in days)
+
+
+def _format_multiday_school_reply(
+    evidence: list[Evidence],
+    temporal: TemporalQuery,
+    language: str,
+) -> str:
+    """Answer a school-day question whose range is longer than one day.
+
+    The single-day reply only inspects the first date. A month that opens on
+    a weekend, or a week whose holiday is not Monday, was answered from that
+    first date and the rest of the closure was dropped.
+    """
+    rng = temporal.date_range
+    assert rng is not None
+    label = _format_range_label(rng, language)
+    source = "_Source: TIS Parent Calendar_"
+    if language == "sv":
+        source = "_Källa: TIS Parent Calendar_"
+    weekdays = [day for day in rng.days() if day.weekday() < 5]
+    closures = [
+        (start, end, name)
+        for start, end, name in _off_closures(evidence, rng)
+        if any(start <= day <= end for day in weekdays)
+    ]
+    if not closures:
+        if language == "sv":
+            body = (
+                f"Ja — skola på vardagarna {label}. "
+                "Inget lov eller elevfri dag markerat."
+            )
+        else:
+            body = (
+                f"Yes — school is in session on the weekdays in {label}. "
+                "Nothing is marked as a holiday or student-free day."
+            )
+        return f"{body}\n\n{source}"
+
+    covered = {
+        day
+        for start, end, _name in closures
+        for day in weekdays
+        if start <= day <= end
+    }
+    if weekdays and len(covered) == len(weekdays) and len(closures) == 1:
+        start, end, name = closures[0]
+        # The range label already is the span when the closure covers it exactly.
+        if start == rng.start and end == rng.end:
+            detail = name
+        elif start == end:
+            detail = f"{name} ({start.isoformat()})"
+        else:
+            detail = f"{name} ({start.isoformat()} to {end.isoformat()})"
+        if language == "sv":
+            body = f"Ingen skola {label} — {detail}."
+        else:
+            body = f"No school {label} — {detail}."
+        return f"{body}\n\n{source}"
+
+    bullets = "\n".join(
+        _closure_bullet(start, end, name) for start, end, name in closures[:20]
+    )
+    if weekdays and len(covered) == len(weekdays):
+        if language == "sv":
+            heading = f"Ingen skola {label}:"
+        else:
+            heading = f"No school {label}:"
+    elif language == "sv":
+        heading = f"Inte alla vardagar {label} är skoldagar:"
+    else:
+        heading = f"Not every weekday in {label} is a school day:"
+    return f"{heading}\n\n{bullets}\n\n{source}"
+
+
 def format_is_school_day_reply(
     evidence: list[Evidence],
     temporal: TemporalQuery,
@@ -831,6 +947,8 @@ def format_is_school_day_reply(
     """Answer whether students have school on a given day from calendar day-kind labels."""
     rng = temporal.date_range
     assert rng is not None
+    if rng.start != rng.end and not _range_is_all_weekend(rng):
+        return _format_multiday_school_reply(evidence, temporal, language)
     day = rng.start
     label = _format_range_label(DateRange(day, day), language)
     source = "_Source: TIS Parent Calendar_"
@@ -951,31 +1069,9 @@ def format_no_school_days_reply(
     if language == "sv":
         source = "_Källa: TIS Parent Calendar_"
 
-    calendar_items = _calendar_items_for_range(evidence, rng)
-    off_rows: list[tuple[date, str]] = []
-    for item in calendar_items:
-        impact = impact_from_evidence_text(
-            section_title=item.section_title,
-            content=item.content,
-            event_type=item.event_type,
-        )
-        if impact.students_in_session is not False:
-            continue
-        day = item.start_date or rng.start
-        off_rows.append((day, _event_label(item)))
+    closures = _off_closures(evidence, rng)
 
-    # Dedupe same day+label
-    seen: set[tuple[str, str]] = set()
-    unique: list[tuple[date, str]] = []
-    for day, name in off_rows:
-        key = (day.isoformat(), name.lower())
-        if key in seen:
-            continue
-        seen.add(key)
-        unique.append((day, name))
-    unique.sort(key=lambda row: (row[0], row[1]))
-
-    if not unique:
+    if not closures:
         if language == "sv":
             return (
                 f"Inga elevfria dagar eller lov markerade {label}.\n\n{source}"
@@ -985,8 +1081,7 @@ def format_no_school_days_reply(
         )
 
     bullets = "\n".join(
-        f"• {day.strftime('%Y-%m-%d')} ({day.strftime('%A')}): {name}"
-        for day, name in unique[:20]
+        _closure_bullet(start, end, name) for start, end, name in closures[:20]
     )
     if language == "sv":
         heading = f"Dagar ledigt / lov {label}:"
