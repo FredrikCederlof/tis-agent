@@ -242,3 +242,116 @@ def test_expand_school_day_fetch_range_pads_single_day():
     assert expanded.date_range.start == date(2026, 2, 16)
     assert expanded.date_range.end == date(2026, 3, 30)
     assert expanded.schedule_intent == "is_school_day"
+
+
+def _spring_break() -> Evidence:
+    return Evidence(
+        content="Event: Spring Break\nStudents in session: no",
+        section_title="Spring Break",
+        page_start=1,
+        page_end=1,
+        document_title="TIS Parent Calendar",
+        similarity=0.99,
+        source_type="calendar",
+        start_date=date(2026, 3, 23),
+        end_date=date(2026, 3, 27),
+        event_type=DAY_KIND_HOLIDAY,
+    )
+
+
+def test_school_break_this_month_is_not_answered_from_the_first_day():
+    """March 1 2026 is a Sunday. The break is the following week, not the weekend."""
+    temporal = parse_temporal(
+        "Do we have a school break this month?",
+        today=date(2026, 3, 2),
+    )
+    assert temporal.date_range is not None
+    assert temporal.date_range.start == date(2026, 3, 1)
+    assert temporal.date_range.end == date(2026, 3, 31)
+    reply = format_is_school_day_reply([_spring_break()], temporal, "en")
+    assert "Spring Break" in reply
+    assert "2026-03-23" in reply
+    assert "2026-03-27" in reply
+    assert "weekend" not in reply.lower()
+
+
+def test_next_week_holiday_is_not_a_yes_about_monday():
+    temporal = parse_temporal(
+        "Do we have school next week?",
+        today=date(2026, 3, 13),
+    )
+    assert temporal.date_range is not None
+    assert temporal.date_range.start == date(2026, 3, 16)
+    holiday = Evidence(
+        content="Event: School Holiday (Japanese Holiday)\nStudents in session: no",
+        section_title="School Holiday (Japanese Holiday)",
+        page_start=1,
+        page_end=1,
+        document_title="TIS Parent Calendar",
+        similarity=0.99,
+        source_type="calendar",
+        start_date=date(2026, 3, 19),
+        end_date=date(2026, 3, 19),
+        event_type=DAY_KIND_HOLIDAY,
+    )
+    reply = format_is_school_day_reply([holiday], temporal, "en")
+    assert "2026-03-19" in reply
+    assert "Yes —" not in reply
+
+
+def test_next_week_that_is_the_whole_break_names_the_break():
+    temporal = parse_temporal(
+        "Do we have school next week?",
+        today=date(2026, 3, 16),
+    )
+    reply = format_is_school_day_reply([_spring_break()], temporal, "en")
+    assert reply.startswith("No school 2026-03-23 to 2026-03-27 — Spring Break.")
+    assert reply.count("2026-03-23 to 2026-03-27") == 1
+
+
+def test_next_week_with_no_closure_says_school_is_in_session():
+    temporal = parse_temporal(
+        "Do we have school next week?",
+        today=date(2026, 3, 6),
+    )
+    reply = format_is_school_day_reply([], temporal, "en")
+    assert reply.startswith("Yes —")
+    assert "weekdays" in reply
+
+
+def test_weekend_range_stays_a_weekend_reply():
+    temporal = parse_temporal("Is it school this weekend?", today=date(2026, 8, 28))
+    assert temporal.date_range is not None
+    assert temporal.date_range.start != temporal.date_range.end
+    reply = format_is_school_day_reply([], temporal, "en")
+    assert "weekend" in reply.lower()
+
+
+def test_multi_day_break_lists_the_full_span():
+    temporal = parse_temporal(
+        "school holidays in March",
+        today=date(2026, 2, 20),
+    )
+    reply = format_no_school_days_reply([_spring_break()], temporal, "en")
+    assert "2026-03-23 to 2026-03-27: Spring Break" in reply
+    assert "(Monday): Spring Break" not in reply
+
+
+def test_break_that_started_before_the_month_keeps_its_end():
+    temporal = parse_temporal("no school days in January", today=date(2026, 11, 24))
+    assert temporal.date_range is not None
+    assert temporal.date_range.start == date(2027, 1, 1)
+    winter = Evidence(
+        content="Event: Winter Break\nStudents in session: no",
+        section_title="Winter Break",
+        page_start=1,
+        page_end=1,
+        document_title="TIS Parent Calendar",
+        similarity=0.99,
+        source_type="calendar",
+        start_date=date(2026, 12, 19),
+        end_date=date(2027, 1, 5),
+        event_type=DAY_KIND_HOLIDAY,
+    )
+    reply = format_no_school_days_reply([winter], temporal, "en")
+    assert "2026-12-19 to 2027-01-05: Winter Break" in reply
