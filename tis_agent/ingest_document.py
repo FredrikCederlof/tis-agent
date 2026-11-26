@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import io
+import logging
 from dataclasses import dataclass, replace
 from datetime import datetime
 from pathlib import Path
@@ -14,6 +15,8 @@ from tis_agent.handbook import Chunk, chunk_pages, extract_pages
 from tis_agent.ical_text import ICAL_CHUNK_VERSION, calendar_chunks_from_bytes
 from tis_agent.temporal import extract_dates_from_text, is_sync_window_stub
 from tis_agent.text_chunk import chunk_plain_text
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -164,6 +167,16 @@ def _infer_source_type(title: str, mime_type: str) -> str:
     return "document"
 
 
+def _find_existing_document(supabase, *, drive_file_id: str | None, title: str) -> dict | None:
+    existing_query = supabase.table("documents").select("*")
+    if drive_file_id:
+        existing_query = existing_query.eq("drive_file_id", drive_file_id)
+    else:
+        existing_query = existing_query.eq("title", title)
+    existing = existing_query.limit(1).execute()
+    return (existing.data or [None])[0]
+
+
 def ingest_bytes(
     settings: Settings,
     *,
@@ -176,7 +189,6 @@ def ingest_bytes(
     language: str = "en",
     source_type: str | None = None,
 ) -> IngestResult:
-    openai = make_openai(settings)
     supabase = make_supabase(settings)
     digest = content_hash(
         data,
@@ -184,35 +196,32 @@ def ingest_bytes(
     )
     source_type = source_type or _infer_source_type(title, mime_type)
     modified_iso = _parse_modified_time(drive_modified_time)
+    existing_row = _find_existing_document(
+        supabase, drive_file_id=drive_file_id, title=title
+    )
 
-    existing_query = supabase.table("documents").select("*")
-    if drive_file_id:
-        existing_query = existing_query.eq("drive_file_id", drive_file_id)
-    else:
-        existing_query = existing_query.eq("title", title)
-    existing = existing_query.limit(1).execute()
-    existing_row = (existing.data or [None])[0]
+    if existing_row and existing_row.get("content_hash") == digest:
+        return IngestResult(
+            document_id=existing_row["id"],
+            title=title,
+            chunks=0,
+            pages=None,
+            storage_path=existing_row.get("storage_path") or storage_path,
+            skipped=True,
+        )
 
-    if existing_row:
-        same_hash = existing_row.get("content_hash") == digest
-        if same_hash:
-            return IngestResult(
-                document_id=existing_row["id"],
-                title=title,
-                chunks=0,
-                pages=None,
-                storage_path=existing_row.get("storage_path") or storage_path,
-                skipped=True,
-            )
-        supabase.table("documents").delete().eq("id", existing_row["id"]).execute()
-
+    # Parse and embed before touching the live document. A bad download or an
+    # embedding error must leave the previous handbook or calendar in place.
     chunks, page_count = _chunks_from_bytes(data, mime_type, source_type=source_type)
     embeddings = embed_texts(
-        openai,
+        make_openai(settings),
         settings.embedding_model,
         [chunk.content for chunk in chunks],
     )
 
+    # drive_file_id is unique. The live row keeps it until its chunks are
+    # replaced, so a failed insert cannot free the id and drop the old copy.
+    holds_drive_id = bool(existing_row and drive_file_id)
     doc = (
         supabase.table("documents")
         .insert(
@@ -221,7 +230,7 @@ def ingest_bytes(
                 "source_type": source_type,
                 "source_path": Path(storage_path).name,
                 "language": language,
-                "drive_file_id": drive_file_id,
+                "drive_file_id": None if holds_drive_id else drive_file_id,
                 "drive_modified_time": modified_iso,
                 "storage_path": storage_path,
                 "content_hash": digest,
@@ -236,7 +245,22 @@ def ingest_bytes(
         _chunk_row(document_id, chunk, embedding)
         for chunk, embedding in zip(chunks, embeddings, strict=True)
     ]
-    _insert_chunk_rows(supabase, rows)
+    try:
+        _insert_chunk_rows(supabase, rows)
+    except Exception:
+        _rollback_replacement(supabase, document_id)
+        raise
+
+    if existing_row:
+        try:
+            supabase.table("documents").delete().eq("id", existing_row["id"]).execute()
+        except Exception:
+            _rollback_replacement(supabase, document_id)
+            raise
+    if holds_drive_id:
+        supabase.table("documents").update({"drive_file_id": drive_file_id}).eq(
+            "id", document_id
+        ).execute()
 
     return IngestResult(
         document_id=document_id,
@@ -245,6 +269,13 @@ def ingest_bytes(
         pages=page_count,
         storage_path=storage_path,
     )
+
+
+def _rollback_replacement(supabase, document_id: str) -> None:
+    try:
+        supabase.table("documents").delete().eq("id", document_id).execute()
+    except Exception:
+        logger.exception("Failed to roll back replacement document %s", document_id)
 
 
 def ingest_path(
