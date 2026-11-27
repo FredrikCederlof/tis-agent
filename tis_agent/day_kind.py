@@ -38,6 +38,16 @@ _HOLIDAY_RE = re.compile(
     r"golden\s+week"
     r")\b"
 )
+# A return day or the last day of term often names the break it sits next to.
+# Those are still days students attend. "Winter Break" itself does not match.
+_ATTENDANCE_DAY_RE = re.compile(
+    r"(?i)\b(?:"
+    r"class(?:es)?\s+resumes?|"
+    r"last\s+school\s+day|"
+    r"first\s+school\s+day|"
+    r"first\s+day\s+of\s+school"
+    r")\b"
+)
 _ROTATION_RE = re.compile(r"(?i)^day\s*[1-6]$")
 # Special days that still have school unless the title also says no students.
 _IN_SESSION_SPECIAL_RE = re.compile(
@@ -81,6 +91,10 @@ def classify_calendar_event(summary: str, description: str = "") -> DayImpact:
     # Explicit no-student / PD wins even if "No Number Day" appears elsewhere.
     if _NO_STUDENT_RE.search(blob):
         return DayImpact(DAY_KIND_NO_STUDENT, False)
+
+    # Check the title only. A break's description may say when classes resume.
+    if _ATTENDANCE_DAY_RE.search(title_only):
+        return DayImpact(DAY_KIND_SPECIAL, True)
 
     if _HOLIDAY_RE.search(blob):
         return DayImpact(DAY_KIND_HOLIDAY, False)
