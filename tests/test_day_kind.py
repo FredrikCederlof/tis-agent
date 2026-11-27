@@ -34,6 +34,58 @@ def test_japanese_holiday_is_holiday():
     assert impact.students_in_session is False
 
 
+def test_resume_and_last_school_day_are_not_the_break():
+    """Naming the break in a return-day title must not mark that day as off."""
+    resume = classify_calendar_event("Classes resume after Winter Break")
+    assert resume.day_kind == DAY_KIND_SPECIAL
+    assert resume.students_in_session is True
+
+    spring = classify_calendar_event("Classes resume after Spring Break")
+    assert spring.students_in_session is True
+
+    last = classify_calendar_event("Last school day before Winter Break (Close at noon)")
+    assert last.students_in_session is True
+
+    assert classify_calendar_event("Winter Break").day_kind == DAY_KIND_HOLIDAY
+    assert classify_calendar_event("Spring Break").students_in_session is False
+    # An explicit no-student label still wins over "school day" in the title.
+    pd = classify_calendar_event("Last school day (No Student Day)")
+    assert pd.day_kind == DAY_KIND_NO_STUDENT
+    assert pd.students_in_session is False
+
+
+def test_classes_resume_day_is_answered_as_school():
+    temporal = parse_temporal(
+        "Is it school on January 12?",
+        today=date(2026, 11, 27),
+    )
+    assert temporal.date_range is not None
+    assert temporal.date_range.start == date(2027, 1, 12)
+    evidence = [
+        Evidence(
+            content=(
+                "Event: Classes resume after Winter Break\n"
+                "Starts: 2027-01-12 (all day)\n"
+                "Day kind: special_event\n"
+                "Students in session: yes"
+            ),
+            section_title="Classes resume after Winter Break",
+            page_start=1,
+            page_end=1,
+            document_title="TIS Parent Calendar",
+            similarity=0.99,
+            source_type="calendar",
+            start_date=date(2027, 1, 12),
+            end_date=date(2027, 1, 12),
+            event_type=DAY_KIND_SPECIAL,
+        )
+    ]
+    reply = format_is_school_day_reply(evidence, temporal, "en")
+    assert reply.startswith("Yes —")
+    assert "No school" not in reply
+    assert "Classes resume after Winter Break" in reply
+
+
 def test_no_number_day_is_still_school():
     impact = classify_calendar_event("No Number Day")
     assert impact.day_kind == DAY_KIND_SPECIAL

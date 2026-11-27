@@ -13,7 +13,7 @@ from tis_agent.handbook import Chunk
 DEFAULT_PAST_DAYS = 0
 DEFAULT_FUTURE_DAYS = 365  # parent calendar: today through 1 year ahead
 # Bump when ICS window/chunking or day-kind labels change so an unchanged feed is re-ingested.
-ICAL_CHUNK_VERSION = "v3-day-kind-students-in-session"
+ICAL_CHUNK_VERSION = "v4-resume-and-last-day-in-session"
 
 
 def _unfold_lines(raw: str) -> list[str]:
