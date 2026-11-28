@@ -341,3 +341,52 @@ def test_calendar_content_hash_changes_with_parser_version():
     salted = content_hash(ics, salt=ICAL_CHUNK_VERSION)
     assert plain != salted
     assert salted == content_hash(ics, salt=ICAL_CHUNK_VERSION)
+
+
+def test_calendar_digest_ignores_export_stamp_and_event_order():
+    """A second download of an unchanged Google calendar must not look new."""
+    from tis_agent.ingest_document import document_digest
+
+    first = (
+        "BEGIN:VCALENDAR\r\n"
+        "BEGIN:VEVENT\r\n"
+        "DTSTART;VALUE=DATE:20261219\r\n"
+        "DTEND;VALUE=DATE:20270111\r\n"
+        "DTSTAMP:20261128T110550Z\r\n"
+        "UID:winter@tokyois.com\r\n"
+        "SUMMARY:Winter Break\r\n"
+        "END:VEVENT\r\n"
+        "BEGIN:VEVENT\r\n"
+        "DTSTART;VALUE=DATE:20270111\r\n"
+        "DTEND;VALUE=DATE:20270112\r\n"
+        "DTSTAMP:20261128T110551Z\r\n"
+        "UID:pd@tokyois.com\r\n"
+        "SUMMARY:Professional Development Day\r\n"
+        "END:VEVENT\r\n"
+        "END:VCALENDAR\r\n"
+    ).encode()
+    reordered = (
+        "BEGIN:VCALENDAR\n"
+        "BEGIN:VEVENT\n"
+        "DTSTART;VALUE=DATE:20270111\n"
+        "DTEND;VALUE=DATE:20270112\n"
+        "DTSTAMP:20261205T031122Z\n"
+        "UID:pd@tokyois.com\n"
+        "SUMMARY:Professional Development Day\n"
+        "END:VEVENT\n"
+        "BEGIN:VEVENT\n"
+        "DTSTART;VALUE=DATE:20261219\n"
+        "DTEND;VALUE=DATE:20270111\n"
+        "DTSTAMP:20261205T031122Z\n"
+        "UID:winter@tokyois.com\n"
+        "SUMMARY:Winter Break\n"
+        "END:VEVENT\n"
+        "END:VCALENDAR\n"
+    ).encode()
+    edited = first.replace(b"Winter Break", b"Spring Break")
+    assert document_digest(first, "text/calendar") == document_digest(
+        reordered, "text/calendar"
+    )
+    assert document_digest(first, "text/calendar") != document_digest(
+        edited, "text/calendar"
+    )

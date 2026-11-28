@@ -26,6 +26,28 @@ def _unfold_lines(raw: str) -> list[str]:
     return lines
 
 
+def canonical_calendar_bytes(data: bytes) -> bytes:
+    """Bytes that stay put when a Google ICS export is downloaded again.
+
+    Each export stamps every event with a new DTSTAMP and does not keep VEVENT
+    order. The events themselves are unchanged, so the sync hash must ignore
+    both or an untouched parent calendar is replaced on every run.
+    """
+    text = data.decode("utf-8", errors="replace").replace("\r\n", "\n").replace("\r", "\n")
+    blocks: list[str] = []
+    for part in text.split("BEGIN:VEVENT")[1:]:
+        body = part.split("END:VEVENT", 1)[0]
+        kept = [
+            line
+            for line in _unfold_lines(body)
+            if line and not line.upper().startswith("DTSTAMP")
+        ]
+        if kept:
+            blocks.append("\n".join(kept))
+    blocks.sort()
+    return "\n".join(blocks).encode("utf-8")
+
+
 def _parse_dt(value: str, tz: ZoneInfo) -> datetime | date | None:
     value = value.strip()
     if not value:
